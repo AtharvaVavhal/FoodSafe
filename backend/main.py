@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
-from routers import scan, symptoms, community, brands, fssai, users
+from routers import scan, symptoms, community, brands, fssai, users, whatsapp
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,6 +32,7 @@ app.include_router(community.router,  prefix="/api/community", tags=["Community"
 app.include_router(brands.router,     prefix="/api/brands",    tags=["Brands"])
 app.include_router(fssai.router,      prefix="/api/fssai",     tags=["FSSAI"])
 app.include_router(users.router,      prefix="/api/users",     tags=["Users"])
+app.include_router(whatsapp.router,   prefix="/api/whatsapp",  tags=["WhatsApp Bot"])
 
 @app.get("/")
 async def root():

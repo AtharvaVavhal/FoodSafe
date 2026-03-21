@@ -8,6 +8,7 @@ import BrandsPage from './pages/BrandsPage'
 import FamilyPage from './pages/FamilyPage'
 import SymptomPage from './pages/SymptomPage'
 import FestivalPage from './pages/FestivalPage'
+import AdminDashboard from './pages/AdminDashboard'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/family"     element={<FamilyPage />} />
         <Route path="/symptoms"   element={<SymptomPage />} />
         <Route path="/festival"   element={<FestivalPage />} />
+        <Route path="/admin"      element={<AdminDashboard />} />
       </Routes>
     </Layout>
   )

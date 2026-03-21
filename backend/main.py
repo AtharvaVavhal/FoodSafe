@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ml'))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -10,6 +14,19 @@ async def lifespan(app: FastAPI):
     print("🌿 FoodSafe API starting...")
     await init_db()
     print("✅ Database tables ready")
+
+    try:
+        import risk_scorer
+        print("✅ Seasonal risk scorer loaded")
+    except Exception as e:
+        print(f"⚠ Seasonal risk scorer not loaded: {e}")
+
+    try:
+        import personalized_scorer
+        print("✅ Personalized risk scorer loaded")
+    except Exception as e:
+        print(f"⚠ Personalized risk scorer not loaded: {e}")
+
     yield
     print("🌿 FoodSafe API shutting down...")
 

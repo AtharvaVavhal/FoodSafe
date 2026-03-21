@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { scanFood, scanCombination, analyzeLabel } from '../services/claude'
+import { BarcodeScanner } from '../components/scan'
 
 const FSSAI_ALERTS = [
   'FSSAI: MDH spices flagged for pesticide residue — Apr 2024',
@@ -101,20 +102,24 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Mode buttons */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-          {[
-            { id: 'image', label: t(lang, 'uploadPhoto'), action: () => fileRef.current.click() },
-            { id: 'voice', label: t(lang, 'voiceInput'),  action: startVoice },
-          ].map(btn => (
-            <button key={btn.id} onClick={btn.action}
-              style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid #ddd',
-                       background: '#f8f9f6', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-              {btn.label}
-            </button>
-          ))}
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-        </div>
+       {/* Mode buttons */}
+<div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+  <button onClick={() => fileRef.current.click()}
+    style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid #ddd',
+             background: '#f8f9f6', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+    {t(lang, 'uploadPhoto')}
+  </button>
+  <button onClick={startVoice}
+    style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid #ddd',
+             background: '#f8f9f6', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+    {t(lang, 'voiceInput')}
+  </button>
+  <BarcodeScanner
+    onResult={(name) => setQuery(name)}
+    onError={(err) => setError(err)}
+  />
+  <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+</div>
 
         {error && <div style={{ fontSize: 11, color: '#A32D2D', marginBottom: 8 }}>{error}</div>}
 

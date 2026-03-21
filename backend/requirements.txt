@@ -31,3 +31,4 @@ passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
 Pillow==10.2.0
 twilio==8.13.0
+lxml==6.0.2

@@ -4,18 +4,13 @@ import { t } from '../i18n/translations'
 import { useEffect, useState } from 'react'
 
 const RISK_COLORS = {
-  LOW:      { bg: '#EAF3DE', text: '#27500A', border: '#C0DD97' },
-  MEDIUM:   { bg: '#FAEEDA', text: '#633806', border: '#FAC775' },
-  HIGH:     { bg: '#FCEBEB', text: '#791F1F', border: '#F7C1C1' },
-  CRITICAL: { bg: '#A32D2D', text: '#fff',    border: '#A32D2D' },
+  LOW:      { bg: '#eaf3de', text: '#27500A', border: '#c0dd97', accent: '#639922' },
+  MEDIUM:   { bg: '#fff8ed', text: '#633806', border: '#fac775', accent: '#e07c1a' },
+  HIGH:     { bg: '#fff0f0', text: '#791F1F', border: '#f7c1c1', accent: '#c0392b' },
+  CRITICAL: { bg: '#A32D2D', text: '#fff',    border: '#A32D2D', accent: '#7F0000' },
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-
-const SEV_COLOR = {
-  LOW: '#639922', MEDIUM: '#854F0B', HIGH: '#A32D2D', CRITICAL: '#7F0000'
-}
-
 
 export default function ResultPage() {
   const { lastResult, lang, activeMember } = useStore()
@@ -34,12 +29,14 @@ export default function ResultPage() {
 
   if (!lastResult) {
     return (
-      <div style={{ textAlign: 'center', padding: 40 }}>
-        <p style={{ color: '#666' }}>No result yet.</p>
-        <button onClick={() => nav('/')} style={{ marginTop: 12, padding: '8px 20px',
-          borderRadius: 8, border: '1px solid #ccc', background: '#fff', cursor: 'pointer' }}>
-          ← Back to Scan
-        </button>
+      <div style={{ textAlign: 'center', padding: 60 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+        <p style={{ color: '#888', fontSize: 14, marginBottom: 20 }}>No scan result yet.</p>
+        <button onClick={() => nav('/')} style={{
+          padding: '10px 24px', borderRadius: 10, border: 'none',
+          background: '#1a3d2b', color: '#fff', cursor: 'pointer',
+          fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+        }}>← Back to Scan</button>
       </div>
     )
   }
@@ -50,85 +47,127 @@ export default function ResultPage() {
   const colors = RISK_COLORS[risk] || RISK_COLORS.MEDIUM
 
   function shareWhatsApp() {
-    const text = `🌿 FoodSafe Report: ${r.foodName || 'Food scan'}\n` +
-      `Risk: ${risk} | Score: ${score}/100\n${r.verdict || r.recommendation || ''}\n\nvia FoodSafe app`
+    const text = `🌿 FoodSafe Report: ${r.foodName || 'Food scan'}\nRisk: ${risk} | Score: ${score}/100\n${r.verdict || ''}\n\nvia FoodSafe app`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`)
   }
 
+  const scoreColor = risk === 'LOW' ? '#639922' : risk === 'MEDIUM' ? '#e07c1a' : risk === 'HIGH' ? '#c0392b' : '#7F0000'
+  const circumference = 2 * Math.PI * 22
+  const strokeDash = (score / 100) * circumference
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <style>{`
+        .result-card { transition: box-shadow 0.15s ease; }
+        .result-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-up { animation: fadeUp 0.3s ease forwards; }
+      `}</style>
 
       {/* Back */}
-      <button onClick={() => nav('/')}
-        style={{ alignSelf: 'flex-start', fontSize: 12, color: '#666', background: 'none',
-                 border: 'none', cursor: 'pointer', padding: 0 }}>
-        ← Back
-      </button>
+      <button onClick={() => nav('/')} style={{
+        alignSelf: 'flex-start', fontSize: 12, color: '#666',
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+        fontFamily: 'inherit',
+      }}>← Back to Scan</button>
 
       {/* Header card */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-                        border: `3px solid ${colors.text === '#fff' ? '#A32D2D' : colors.border}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 16, fontWeight: 500, color: SEV_COLOR[risk] }}>
-            {score}
+      <div className="result-card fade-up" style={{
+        background: '#fff', borderRadius: 16, padding: 18,
+        border: '1px solid #e8ede4',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* SVG score ring */}
+          <div style={{ position: 'relative', width: 60, height: 60, flexShrink: 0 }}>
+            <svg width="60" height="60" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="30" cy="30" r="22" fill="none" stroke="#f0f2ee" strokeWidth="5" />
+              <circle cx="30" cy="30" r="22" fill="none"
+                stroke={scoreColor} strokeWidth="5"
+                strokeDasharray={`${strokeDash} ${circumference}`}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dasharray 1s ease' }}
+              />
+            </svg>
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15, fontWeight: 700, color: scoreColor,
+            }}>{score}</div>
           </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>{r.foodName || r.productName || 'Food Item'}</div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1a3d2b', marginBottom: 4 }}>
+              {r.foodName || r.productName || 'Food Item'}
+            </div>
             {activeMember && (
-              <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: '#888', marginBottom: 6 }}>
                 ⚕ Personalized for {activeMember.name}
               </div>
             )}
-            <div style={{ marginTop: 6 }}>
-              <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 12, fontWeight: 500,
-                             background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}>
-                {risk} RISK
-              </span>
-            </div>
+            <span style={{
+              fontSize: 11, padding: '4px 12px', borderRadius: 20,
+              fontWeight: 600, letterSpacing: '0.05em',
+              background: colors.bg, color: colors.text,
+              border: `1px solid ${colors.border}`,
+            }}>
+              {risk} RISK
+            </span>
           </div>
         </div>
+
         {r.summary && (
-          <p style={{ fontSize: 12, color: '#555', marginTop: 10, lineHeight: 1.5 }}>{r.summary}</p>
+          <p style={{
+            fontSize: 12, color: '#555', marginTop: 12,
+            lineHeight: 1.6, padding: '10px 12px',
+            background: '#f5f7f3', borderRadius: 8,
+          }}>{r.summary}</p>
         )}
       </div>
 
-      {/* Cooking warning */}
+      {/* Warnings */}
       {r.cookingWarning && (
-        <div style={{ background: '#FCEBEB', borderLeft: '3px solid #A32D2D', borderRadius: 8,
-                      padding: '8px 12px', fontSize: 12, color: '#791F1F' }}>
-          🔥 {r.cookingWarning}
-        </div>
+        <div className="fade-up" style={{
+          background: '#fff0f0', borderLeft: '3px solid #c0392b',
+          borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#791F1F',
+        }}>🔥 {r.cookingWarning}</div>
       )}
-
-      {/* Personalized warning */}
       {r.personalizedWarning && (
-        <div style={{ background: '#FAEEDA', borderLeft: '3px solid #EF9F27', borderRadius: 8,
-                      padding: '8px 12px', fontSize: 12, color: '#633806' }}>
-          ⚕ {r.personalizedWarning}
-        </div>
+        <div className="fade-up" style={{
+          background: '#fff8ed', borderLeft: '3px solid #e07c1a',
+          borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806',
+        }}>⚕ {r.personalizedWarning}</div>
       )}
 
       {/* Adulterants */}
       {r.adulterants?.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 10 }}>
-            {t(lang, 'adulterants')}
+        <div className="result-card fade-up" style={{
+          background: '#fff', borderRadius: 16, padding: 16,
+          border: '1px solid #e8ede4',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3d2b', marginBottom: 12, letterSpacing: '0.06em' }}>
+            ⚠️ {t(lang, 'adulterants')}
           </div>
           {r.adulterants.map((a, i) => (
-            <div key={i} style={{ padding: '8px 0', borderBottom: i < r.adulterants.length-1 ? '0.5px solid #f0f0e8' : 'none' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{a.name}</span>
-                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10,
-                               background: RISK_COLORS[a.severity]?.bg || '#eee',
-                               color: RISK_COLORS[a.severity]?.text || '#333' }}>
-                  {a.severity}
-                </span>
+            <div key={i} style={{
+              padding: '10px 0',
+              borderBottom: i < r.adulterants.length - 1 ? '1px solid #f0f2ee' : 'none',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1a3d2b' }}>{a.name}</span>
+                <span style={{
+                  fontSize: 10, padding: '3px 8px', borderRadius: 20, fontWeight: 600,
+                  background: RISK_COLORS[a.severity]?.bg || '#eee',
+                  color: RISK_COLORS[a.severity]?.text || '#333',
+                }}>{a.severity}</span>
               </div>
-              <div style={{ fontSize: 11, color: '#666' }}>{a.healthRisk}</div>
+              <div style={{ fontSize: 11, color: '#666', lineHeight: 1.5 }}>{a.healthRisk}</div>
               {a.isPersonalRisk && (
-                <div style={{ fontSize: 10, color: '#A32D2D', marginTop: 3 }}>⚠ High risk for your profile</div>
+                <div style={{
+                  fontSize: 10, color: '#A32D2D', marginTop: 4,
+                  background: '#fff0f0', padding: '3px 8px', borderRadius: 6, display: 'inline-block',
+                }}>⚠ High risk for your profile</div>
               )}
             </div>
           ))}
@@ -137,20 +176,30 @@ export default function ResultPage() {
 
       {/* Home tests */}
       {r.homeTests?.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 10 }}>
-            {t(lang, 'homeTests')}
+        <div className="result-card fade-up" style={{
+          background: '#fff', borderRadius: 16, padding: 16,
+          border: '1px solid #e8ede4',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3d2b', marginBottom: 12, letterSpacing: '0.06em' }}>
+            🧪 {t(lang, 'homeTests')}
           </div>
           {r.homeTests.map((test, i) => (
-            <div key={i} style={{ marginBottom: 10, paddingBottom: 10,
-                                   borderBottom: i < r.homeTests.length-1 ? '0.5px solid #f0f0e8' : 'none' }}>
-              <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>
-                🧪 {test.name}
-                <span style={{ marginLeft: 6, fontSize: 10, color: '#666' }}>({test.difficulty})</span>
+            <div key={i} style={{
+              marginBottom: 12, paddingBottom: 12,
+              borderBottom: i < r.homeTests.length - 1 ? '1px solid #f0f2ee' : 'none',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#1a3d2b' }}>{test.name}</span>
+                <span style={{
+                  fontSize: 9, color: '#888', background: '#f5f7f3',
+                  padding: '2px 7px', borderRadius: 10,
+                }}>{test.difficulty}</span>
               </div>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>{test.steps}</div>
-              <div style={{ fontSize: 11, color: '#27500A', background: '#EAF3DE',
-                             padding: '4px 8px', borderRadius: 6 }}>✓ {test.result}</div>
+              <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5, marginBottom: 6 }}>{test.steps}</div>
+              <div style={{
+                fontSize: 11, color: '#27500A', background: '#eaf3de',
+                padding: '5px 10px', borderRadius: 8, fontWeight: 500,
+              }}>✓ {test.result}</div>
             </div>
           ))}
         </div>
@@ -158,14 +207,21 @@ export default function ResultPage() {
 
       {/* Buying tips */}
       {r.buyingTips?.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 8 }}>
-            {t(lang, 'buyingTips')}
+        <div className="result-card fade-up" style={{
+          background: '#fff', borderRadius: 16, padding: 16,
+          border: '1px solid #e8ede4',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3d2b', marginBottom: 10, letterSpacing: '0.06em' }}>
+            🛒 {t(lang, 'buyingTips')}
           </div>
           {r.buyingTips.map((tip, i) => (
-            <div key={i} style={{ fontSize: 12, color: '#444', padding: '4px 0',
-                                   borderBottom: i < r.buyingTips.length-1 ? '0.5px solid #f0f0e8' : 'none' }}>
-              → {tip}
+            <div key={i} style={{
+              fontSize: 12, color: '#444', padding: '6px 0',
+              borderBottom: i < r.buyingTips.length - 1 ? '1px solid #f0f2ee' : 'none',
+              display: 'flex', gap: 8, alignItems: 'flex-start',
+            }}>
+              <span style={{ color: '#27500A', fontWeight: 700, flexShrink: 0 }}>→</span>
+              {tip}
             </div>
           ))}
         </div>
@@ -173,46 +229,63 @@ export default function ResultPage() {
 
       {/* Verdict */}
       {r.verdict && (
-        <div style={{ background: '#EAF3DE', borderRadius: 10, padding: '10px 14px',
-                      fontSize: 12, color: '#27500A', fontWeight: 500 }}>
+        <div className="fade-up" style={{
+          background: 'linear-gradient(135deg, #eaf3de, #d4eac0)',
+          borderRadius: 12, padding: '12px 16px',
+          fontSize: 13, color: '#1a3d2b', fontWeight: 600,
+          border: '1px solid #c0dd97', lineHeight: 1.5,
+        }}>
           💡 {r.verdict}
         </div>
       )}
 
-      {/* Collaborative filtering */}
+      {/* Community Intelligence */}
       {collab && (
-        <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 8 }}>
+        <div className="result-card fade-up" style={{
+          background: '#fff', borderRadius: 16, padding: 16,
+          border: '1px solid #e8ede4',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3d2b', marginBottom: 8, letterSpacing: '0.06em' }}>
             👥 Community Intelligence
           </div>
-          <div style={{ fontSize: 13, color: '#1a3d2b', fontWeight: 500, marginBottom: 6 }}>
+          <div style={{ fontSize: 13, color: '#1a3d2b', fontWeight: 600, marginBottom: 6 }}>
             {collab.message}
           </div>
           {collab.top_cities?.length > 0 && (
-            <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
-              Most reported in: {collab.top_cities.map(c => c.city).join(', ')}
+            <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+              📍 Most reported in: {collab.top_cities.map(c => c.city).join(', ')}
             </div>
           )}
           {collab.also_flagged?.length > 0 && (
-            <div style={{ fontSize: 11, color: '#854F0B', background: '#FAEEDA',
-                          padding: '6px 10px', borderRadius: 8 }}>
-              ⚠ Users who flagged this also flagged: {collab.also_flagged.join(', ')}
+            <div style={{
+              fontSize: 11, color: '#633806', background: '#fff8ed',
+              padding: '8px 12px', borderRadius: 8, border: '1px solid #fac775',
+            }}>
+              ⚠ Users also flagged: {collab.also_flagged.join(', ')}
             </div>
           )}
         </div>
       )}
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => nav('/brands')}
-          style={{ flex: 2, padding: 10, borderRadius: 8, border: 'none', background: '#1a3d2b',
-                   color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+      <div className="fade-up" style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => nav('/brands')} style={{
+          flex: 2, padding: 12, borderRadius: 10, border: 'none',
+          background: 'linear-gradient(135deg, #1a3d2b, #2d6647)',
+          color: '#fff', fontSize: 13, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'inherit',
+          boxShadow: '0 2px 8px rgba(26,61,43,0.2)',
+        }}>
           🛒 See Safe Brands
         </button>
-        <button onClick={shareWhatsApp}
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #25D366',
-                   background: '#fff', color: '#25D366', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-          WhatsApp
+        <button onClick={shareWhatsApp} style={{
+          flex: 1, padding: 12, borderRadius: 10,
+          border: '1.5px solid #25D366',
+          background: '#f0fff4', color: '#128C7E',
+          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}>
+          📤 Share
         </button>
       </div>
     </div>

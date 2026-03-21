@@ -266,6 +266,24 @@ const STYLES = `
   .rp-ml-text { font-size:11px; color:#555; line-height:1.5; }
   .rp-ml-source { font-size:9px; color:#aaa; margin-top:4px; }
   .rp-exposure-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .rp-auth-gauge-wrap { display:flex; align-items:center; gap:16px; margin-bottom:12px; }
+  .rp-auth-gauge { position:relative; width:72px; height:72px; flex-shrink:0; }
+  .rp-auth-gauge svg { transform:rotate(-90deg); }
+  .rp-auth-gauge-num { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .rp-auth-split-track { height:14px; border-radius:7px; overflow:hidden; display:flex; background:#f0ede8; margin:8px 0 4px; }
+  .rp-auth-split-real { height:100%; background:linear-gradient(90deg,#27500A,#639922); border-radius:7px 0 0 7px; transition:width .8s cubic-bezier(.4,0,.2,1); }
+  .rp-auth-split-fake { height:100%; background:linear-gradient(90deg,#A32D2D,#E24B4A); border-radius:0 7px 7px 0; transition:width .8s cubic-bezier(.4,0,.2,1); }
+  .rp-auth-legend { display:flex; gap:12px; }
+  .rp-auth-legend-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; vertical-align:middle; }
+  .rp-market-card { background:#fff8ed; border:1px solid #fac775; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .rp-flag-item { display:flex; gap:8px; padding:7px 0; border-bottom:.5px solid #f4f1eb; }
+  .rp-flag-item:last-child { border-bottom:none; }
+  .rp-flag-sev { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; flex-shrink:0; align-self:flex-start; margin-top:1px; }
+  .rp-flag-high { background:#fff0f0; color:#791F1F; border:1px solid #f7c1c1; }
+  .rp-flag-medium { background:#fff8ed; color:#633806; border:1px solid #fac775; }
+  .rp-flag-low { background:#eaf3de; color:#27500A; border:1px solid #c0dd97; }
+  .rp-boost-row { display:flex; justify-content:space-between; font-size:11px; padding:5px 0; border-bottom:.5px solid #f4f1eb; }
+  .rp-boost-row:last-child { border-bottom:none; }
   .rp-exposure-ring { width:44px; height:44px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; border:2px solid; }
   .rp-actions { display:flex; gap:8px; }
   .rp-btn-primary { flex:2; padding:13px; border-radius:12px; border:none; background:linear-gradient(135deg,#c9a84c 0%,#e0c068 100%); color:#0d2818; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; box-shadow:0 3px 12px rgba(201,168,76,0.3); transition:opacity 0.15s,transform 0.1s; }
@@ -482,6 +500,151 @@ export default function ResultPage() {
           </div>
         </div>
       )}
+
+      {/* ── Image Authenticity Panel — shown only for image scans ── */}
+      {r.scanType === 'image' && (r.fake_probability !== undefined) && (() => {
+        const fake = r.fake_probability ?? 50
+        const real = r.authenticity_score ?? (100 - fake)
+        const market = r.marketFakeRate || {}
+        const flags = r.visual_red_flags || []
+        const good  = r.authenticity_indicators || []
+        const breakdown = r.scoreBreakdown || {}
+        const gaugeColor = fake >= 60 ? '#E24B4A' : fake >= 40 ? '#E07C1A' : '#639922'
+        const verdict = fake >= 70 ? 'Likely Fake' : fake >= 45 ? 'Suspicious' : 'Likely Genuine'
+        const R = 30, circ = 2 * Math.PI * R
+        const trendLabel = {rising:'↑ Rising',falling:'↓ Falling',stable:'→ Stable'}[market.trend] || ''
+        const trendColor = market.trend === 'rising' ? '#A32D2D' : market.trend === 'falling' ? '#27500A' : '#888'
+        return (
+          <div className="rp-section rp-fade rp-fade-5">
+            <div className="rp-section-label">🔬 Authenticity Analysis</div>
+            <div className="rp-card">
+              <div className="rp-card-inner">
+
+                {/* Gauge + headline */}
+                <div className="rp-auth-gauge-wrap">
+                  <div className="rp-auth-gauge">
+                    <svg width="72" height="72" viewBox="0 0 72 72">
+                      <circle cx="36" cy="36" r={R} fill="none" stroke="#f0ede8" strokeWidth="8"/>
+                      <circle cx="36" cy="36" r={R} fill="none" stroke={gaugeColor} strokeWidth="8"
+                        strokeDasharray={circ} strokeDashoffset={circ - (fake / 100) * circ}
+                        strokeLinecap="round"/>
+                    </svg>
+                    <div className="rp-auth-gauge-num">
+                      <span style={{ fontSize:16, fontWeight:700, color:gaugeColor, lineHeight:1 }}>{fake}%</span>
+                      <span style={{ fontSize:8, color:'#aaa', marginTop:1 }}>FAKE</span>
+                    </div>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:15, fontWeight:700, color: gaugeColor, marginBottom:2 }}>{verdict}</div>
+                    <div style={{ fontSize:11, color:'#555', lineHeight:1.5 }}>
+                      {fake >= 70
+                        ? 'Multiple red flags detected. High risk of adulteration or counterfeiting.'
+                        : fake >= 45
+                        ? 'Some suspicious signs. Verify with a home test before consuming.'
+                        : 'Appears genuine. Standard precautions still advised.'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Real vs Fake bar */}
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#aaa', marginBottom:4 }}>
+                    <span>Real</span><span>Fake</span>
+                  </div>
+                  <div className="rp-auth-split-track">
+                    <div className="rp-auth-split-real" style={{ width: real + '%' }}/>
+                    <div className="rp-auth-split-fake" style={{ width: fake + '%' }}/>
+                  </div>
+                  <div className="rp-auth-legend" style={{ fontSize:10, color:'#666' }}>
+                    <span><span className="rp-auth-legend-dot" style={{ background:'#639922' }}/> Genuine {real}%</span>
+                    <span><span className="rp-auth-legend-dot" style={{ background:'#E24B4A' }}/> Fake {fake}%</span>
+                  </div>
+                </div>
+
+                {/* Market fake rate */}
+                {market.rate !== undefined && (
+                  <div className="rp-market-card">
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+                      <span style={{ fontSize:10, fontWeight:600, color:'#854F0B', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                        Market adulteration rate
+                      </span>
+                      <span style={{ fontFamily:'monospace', fontSize:20, fontWeight:700, color:'#854F0B', lineHeight:1 }}>
+                        {market.rate}%
+                      </span>
+                    </div>
+                    <div style={{ fontSize:11, color:'#633806', lineHeight:1.5 }}>
+                      <strong>{market.rate}% of {r.foodName || 'this food'} in Indian markets</strong> fail quality tests.
+                      {market.rate >= 60 ? ' High prevalence — your risk score is boosted.' : ''}
+                    </div>
+                    {market.source && (
+                      <div style={{ fontSize:9, color:'#aaa', marginTop:4 }}>📊 {market.source}</div>
+                    )}
+                    {trendLabel && (
+                      <span style={{ fontSize:9, fontWeight:700, color: trendColor, marginTop:5, display:'inline-block' }}>
+                        {trendLabel} adulteration trend
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Score breakdown */}
+                {breakdown.ai_visual_score !== undefined && (
+                  <div style={{ background:'#f5f7f3', borderRadius:8, padding:'8px 10px', marginBottom:8 }}>
+                    <div style={{ fontSize:10, fontWeight:600, color:'#1a3d2b', marginBottom:6 }}>How score was calculated</div>
+                    <div className="rp-boost-row">
+                      <span style={{ color:'#555' }}>AI visual analysis</span>
+                      <span style={{ color:'#E07C1A', fontWeight:600 }}>{breakdown.ai_visual_score}/100 authentic</span>
+                    </div>
+                    <div className="rp-boost-row">
+                      <span style={{ color:'#555' }}>Market adulteration penalty</span>
+                      <span style={{ color:'#A32D2D', fontWeight:600 }}>+{breakdown.market_boost}% fake risk</span>
+                    </div>
+                    <div className="rp-boost-row" style={{ borderTop:'1px solid #e0e8da', marginTop:4, paddingTop:6 }}>
+                      <span style={{ color:'#1a3d2b', fontWeight:600 }}>Final fake probability</span>
+                      <span style={{ color: gaugeColor, fontWeight:700, fontSize:13 }}>{fake}%</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Visual red flags */}
+                {flags.length > 0 && (
+                  <div style={{ marginBottom:8 }}>
+                    <div style={{ fontSize:10, fontWeight:600, color:'#A32D2D', marginBottom:6 }}>
+                      🚩 Visual red flags ({flags.length})
+                    </div>
+                    {flags.map((f, i) => (
+                      <div key={i} className="rp-flag-item">
+                        <span className={`rp-flag-sev rp-flag-${(f.severity||'medium').toLowerCase()}`}>
+                          {f.severity}
+                        </span>
+                        <div>
+                          <div style={{ fontSize:11, color:'#333', fontWeight:500 }}>{f.flag}</div>
+                          {f.explanation && (
+                            <div style={{ fontSize:10, color:'#888', marginTop:2 }}>{f.explanation}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Positive indicators */}
+                {good.length > 0 && (
+                  <div style={{ background:'#eaf3de', borderRadius:8, padding:'8px 10px' }}>
+                    <div style={{ fontSize:10, fontWeight:600, color:'#27500A', marginBottom:4 }}>✓ Genuine indicators</div>
+                    {good.map((g, i) => (
+                      <div key={i} style={{ fontSize:11, color:'#3d5a24', padding:'3px 0', borderBottom: i < good.length-1 ? '.5px solid #c0dd97' : 'none' }}>
+                        ✓ {g}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ML Insights */}
       {(r.seasonalRisk || r.personalizedScore) && (

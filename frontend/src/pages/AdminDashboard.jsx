@@ -29,38 +29,27 @@ export default function AdminDashboard() {
   const [scans,   setScans]   = useState([])
   const [reports, setReports] = useState([])
   const [alerts,  setAlerts]  = useState([])
+  const [mlStatus,setMlStatus]= useState({})
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState('overview')
 
   useEffect(() => {
     async function load() {
       try {
-        const [repsRes, altsRes] = await Promise.all([
+        const [statsRes, scansRes, repsRes, altsRes, mlRes] = await Promise.all([
+          API.get('/admin/stats').then(r => r.data),
+          API.get('/admin/recent-scans?limit=20').then(r => r.data),
           API.get('/community/reports').then(r => r.data),
           API.get('/fssai/alerts').then(r => r.data),
+          API.get('/admin/ml-status').then(r => r.data),
         ])
-        // Fix: extract nested arrays from API responses
+        setStats(statsRes)
+        setScans(scansRes.scans || [])
         setReports(repsRes.reports || [])
         setAlerts(altsRes.alerts || [])
-
-        setStats({
-          totalScans:    1284,
-          todayScans:    47,
-          highRiskScans: 312,
-          activeUsers:   203,
-          whatsappMsgs:  891,
-          avgScore:      62,
-          topFood:       'Turmeric',
-          topCity:       'Nagpur',
-        })
-        setScans([
-          { food: 'Turmeric Powder', risk: 'HIGH',   city: 'Nagpur',     time: '2m ago' },
-          { food: 'Buffalo Milk',    risk: 'MEDIUM', city: 'Pune',       time: '5m ago' },
-          { food: 'Mustard Oil',     risk: 'HIGH',   city: 'Nagpur',     time: '11m ago' },
-          { food: 'Honey',           risk: 'MEDIUM', city: 'Mumbai',     time: '18m ago' },
-          { food: 'Basmati Rice',    risk: 'LOW',    city: 'Nashik',     time: '24m ago' },
-          { food: 'Paneer',          risk: 'HIGH',   city: 'Aurangabad', time: '31m ago' },
-        ])
+        setMlStatus(mlRes.models || {})
+      } catch (e) {
+        console.error('Admin load error:', e)
       } finally { setLoading(false) }
     }
     load()
@@ -221,13 +210,28 @@ export default function AdminDashboard() {
 
         {tab === 'ml' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {Object.entries(mlStatus).map(([key, m]) => (
+              <div key={key} style={{ background:'#fff', borderRadius:10, padding:14, border:'0.5px solid #e0e0d8',
+                                       display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:500 }}>{m.label}</div>
+                  <div style={{ fontSize:11, color:'#888', marginTop:2 }}>
+                    {m.classes ? `${m.classes} food classes` :
+                     m.mappings ? `${m.mappings} Hindi/Marathi mappings` :
+                     m.categories ? `${m.categories} food categories` : ''}
+                  </div>
+                </div>
+                <span style={{ fontSize:11, padding:'3px 10px', borderRadius:10,
+                  background: m.loaded ? '#EAF3DE' : '#FAEEDA',
+                  color:      m.loaded ? '#27500A' : '#854F0B' }}>
+                  {m.loaded ? 'Running' : 'Not loaded'}
+                </span>
+              </div>
+            ))}
+            {/* Groq + DB always dynamic */}
             {[
-              { name:'YOLOv8 Food Detection',   status:'Pending',   metric:'Not trained yet',        color:'#854F0B', bg:'#FAEEDA' },
-              { name:'MuRIL NLP (HI/MR/EN)',     status:'Pending',   metric:'Not trained yet',        color:'#854F0B', bg:'#FAEEDA' },
-              { name:'Prophet Seasonal Model',    status:'Pending',   metric:'Not trained yet',        color:'#854F0B', bg:'#FAEEDA' },
-              { name:'Groq LLaMA 3.1',           status:'Running',   metric:'llama-3.1-8b-instant',   color:'#27500A', bg:'#EAF3DE' },
-              { name:'FastAPI Backend',           status:'Running',   metric:'localhost:8000',          color:'#27500A', bg:'#EAF3DE' },
-              { name:'SQLite DB',                status:'Running',   metric:'foodsafe.db',             color:'#27500A', bg:'#EAF3DE' },
+              { name:'Groq LLaMA 3.1 (Vision + Text)', metric:'llama-3.1-8b-instant + llama-4-scout', ok:true },
+              { name:'FastAPI Backend', metric:`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}`, ok:true },
             ].map((m,i) => (
               <div key={i} style={{ background:'#fff', borderRadius:10, padding:14, border:'0.5px solid #e0e0d8',
                                      display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -235,8 +239,8 @@ export default function AdminDashboard() {
                   <div style={{ fontSize:13, fontWeight:500 }}>{m.name}</div>
                   <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{m.metric}</div>
                 </div>
-                <span style={{ fontSize:11, padding:'3px 10px', borderRadius:10, background:m.bg, color:m.color }}>
-                  {m.status}
+                <span style={{ fontSize:11, padding:'3px 10px', borderRadius:10, background:'#EAF3DE', color:'#27500A' }}>
+                  Running
                 </span>
               </div>
             ))}

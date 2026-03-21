@@ -124,31 +124,29 @@ export default function DiaryPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
 
-  // Fetch AI insights when history changes
+  // Fetch AI insights from dedicated diary endpoint — no scan/text abuse
   useEffect(() => {
     if (scanHistory.length < 3) return
     setLoadingInsights(true)
     const summary = scanHistory.slice(0, 10).map(s => ({
-      food: s.food_name,
-      risk: s.risk_level,
+      food:  s.food_name,
+      risk:  s.risk_level,
       score: s.safety_score,
     }))
-    fetch(`${API_URL}/scan/text`, {
+    fetch(`${API_URL}/diary/insights`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        food_name: `DIARY_ANALYSIS: ${JSON.stringify(summary)}`,
-        lang,
-      }),
+      body: JSON.stringify({ scan_history: summary, lang }),
     })
     .then(r => r.json())
     .then(data => {
-      // Use verdict + summary as insight
-      if (data.verdict || data.summary) {
+      if (data.main) {
         setAiInsights({
-          main: data.verdict || data.summary,
-          warning: data.cookingWarning || null,
-          tip: data.buyingTips?.[0] || null,
+          main:    data.main,
+          warning: data.warning || null,
+          tip:     data.tip    || null,
+          pattern: data.riskPattern || null,
+          swap:    data.safeSwap || null,
         })
       }
     })
@@ -267,6 +265,16 @@ export default function DiaryPage() {
                       {aiInsights?.warning && (
                         <div className="dp-insight" style={{ background: '#fff0f0', borderColor: '#f7c1c1', color: '#791F1F' }}>
                           <span className="dp-insight-icon">⚠️</span>{aiInsights.warning}
+                        </div>
+                      )}
+                      {aiInsights?.pattern && (
+                        <div className="dp-insight" style={{ background: '#fff8ed', borderColor: '#fac775', color: '#633806' }}>
+                          <span className="dp-insight-icon">📈</span>Pattern: {aiInsights.pattern}
+                        </div>
+                      )}
+                      {aiInsights?.swap && (
+                        <div className="dp-insight" style={{ background: '#eaf3de', borderColor: '#c0dd97', color: '#27500A' }}>
+                          <span className="dp-insight-icon">🔄</span>Safer swap: {aiInsights.swap}
                         </div>
                       )}
                       {aiInsights?.tip && (

@@ -2,13 +2,12 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useStore } from '../../store'
 import { t } from '../../i18n/translations'
 import { useEffect, useState } from 'react'
-import MealPlanner from '../MealPlanner'
 import PushNotificationBell from '../PushNotificationBell'
 
 const NAV = [
   { to: '/',       icon: '🔍', key: 'scan' },
   { to: '/diary',  icon: '📔', key: 'diary' },
-  { to: '/map',    icon: '🗺',  key: 'map' },
+  { to: '/meal',   icon: '🥗', key: 'meal' },
   { to: '/brands', icon: '🛒', key: 'brands' },
   { to: '/family', icon: '👨‍👩‍👧', key: 'family' },
 ]
@@ -189,9 +188,6 @@ export default function Layout({ children }) {
       <main style={{ flex: 1, overflowY: 'auto' }}>
         {children}
       </main>
-
-      {/* Meal Planner FAB */}
-      <MealPlanner />
 
       {/* Bottom nav */}
       <nav style={{

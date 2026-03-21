@@ -1,25 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
-// Fallback static coords for known Maharashtra cities
-const CITY_COORDS = {
-  'Mumbai':     { x: 112, y: 245 },
-  'Pune':       { x: 162, y: 278 },
-  'Nagpur':     { x: 388, y: 162 },
-  'Nashik':     { x: 178, y: 178 },
-  'Aurangabad': { x: 262, y: 218 },
-  'Solapur':    { x: 238, y: 320 },
-  'Kolhapur':   { x: 148, y: 358 },
-  'Amravati':   { x: 338, y: 148 },
-  'Nanded':     { x: 302, y: 288 },
-  'Sangli':     { x: 178, y: 340 },
-  'Jalgaon':    { x: 228, y: 138 },
-  'Latur':      { x: 298, y: 318 },
-  'Dhule':      { x: 188, y: 120 },
-  'Akola':      { x: 312, y: 148 },
-  'Chandrapur': { x: 408, y: 228 },
+// Maharashtra bounding box for SVG projection
+// lat: 15.6 (south) to 22.1 (north), lng: 72.6 (west) to 80.9 (east)
+const MH_BOUNDS = { latMin:15.6, latMax:22.1, lngMin:72.6, lngMax:80.9 }
+const SVG_W = 520, SVG_H = 430
+
+function latLngToXY(lat, lng) {
+  const x = ((lng - MH_BOUNDS.lngMin) / (MH_BOUNDS.lngMax - MH_BOUNDS.lngMin)) * (SVG_W - 60) + 30
+  const y = ((MH_BOUNDS.latMax - lat) / (MH_BOUNDS.latMax - MH_BOUNDS.latMin)) * (SVG_H - 60) + 30
+  return { x: Math.round(x), y: Math.round(y) }
+}
+
+// Geocoding cache — fetches from Nominatim once per city, persists in memory
+const _geoCache = {}
+
+async function geocodeCity(cityName) {
+  if (_geoCache[cityName]) return _geoCache[cityName]
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName + ', Maharashtra, India')}&format=json&limit=1`
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+    const data = await res.json()
+    if (data?.[0]) {
+      const coords = latLngToXY(parseFloat(data[0].lat), parseFloat(data[0].lon))
+      _geoCache[cityName] = coords
+      return coords
+    }
+  } catch {}
+  return null
 }
 
 const RISK_CONFIG = {
@@ -278,10 +288,12 @@ const STYLES = `
 export default function MapPage() {
   const { lang } = useStore()
   const [cities, setCities] = useState([])
+  const [mappedCities, setMappedCities] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [filter, setFilter] = useState('ALL')
 
+  // Fetch city risk data from DB
   useEffect(() => {
     fetch(`${API_URL}/community/city-risk`)
       .then(r => r.json())
@@ -292,10 +304,24 @@ export default function MapPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Merge DB data with known coords; skip cities without coords
-  const mappedCities = cities
-    .map(c => ({ ...c, ...(CITY_COORDS[c.city] || {}) }))
-    .filter(c => c.x && c.y)
+  // Geocode each city via Nominatim — no hardcoded coords
+  useEffect(() => {
+    if (cities.length === 0) return
+    let cancelled = false
+    async function geocodeAll() {
+      const results = await Promise.all(
+        cities.map(async city => {
+          const coords = await geocodeCity(city.city)
+          return coords ? { ...city, ...coords } : null
+        })
+      )
+      if (!cancelled) {
+        setMappedCities(results.filter(Boolean))
+      }
+    }
+    geocodeAll()
+    return () => { cancelled = true }
+  }, [cities])
 
   const filtered = filter === 'ALL' ? mappedCities : mappedCities.filter(c => c.risk === filter)
   const sel = selected ? mappedCities.find(c => c.city === selected) : null

@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
 
+    # Twilio WhatsApp
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN:  str = ""
+    TWILIO_WHATSAPP_FROM: str = "whatsapp:+14155238886"
+
     class Config:
         env_file = ".env"
 

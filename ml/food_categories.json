@@ -1,0 +1,84 @@
+{
+  "categories": [
+    "turmeric_powder",
+    "chilli_powder",
+    "milk",
+    "mustard_oil",
+    "dal",
+    "rice",
+    "honey",
+    "ghee",
+    "paneer",
+    "wheat_flour"
+  ],
+  "adulteration_risk": {
+    "turmeric_powder": "HIGH",
+    "chilli_powder": "CRITICAL",
+    "coriander_powder": "HIGH",
+    "milk": "HIGH",
+    "paneer": "HIGH",
+    "ghee": "MEDIUM",
+    "mustard_oil": "HIGH",
+    "rice": "LOW",
+    "wheat_flour": "MEDIUM",
+    "dal": "MEDIUM",
+    "honey": "MEDIUM",
+    "mawa_khoya": "CRITICAL",
+    "jaggery": "MEDIUM",
+    "besan": "MEDIUM"
+  },
+  "coco_mapping": {
+    "banana": {
+      "food": "banana",
+      "adulteration_risk": "LOW"
+    },
+    "apple": {
+      "food": "apple",
+      "adulteration_risk": "LOW"
+    },
+    "orange": {
+      "food": "orange",
+      "adulteration_risk": "LOW"
+    },
+    "broccoli": {
+      "food": "vegetables",
+      "adulteration_risk": "MEDIUM"
+    },
+    "carrot": {
+      "food": "vegetables",
+      "adulteration_risk": "MEDIUM"
+    },
+    "hot dog": {
+      "food": "processed_meat",
+      "adulteration_risk": "HIGH"
+    },
+    "pizza": {
+      "food": "processed_food",
+      "adulteration_risk": "MEDIUM"
+    },
+    "donut": {
+      "food": "sweets",
+      "adulteration_risk": "HIGH"
+    },
+    "cake": {
+      "food": "sweets",
+      "adulteration_risk": "HIGH"
+    },
+    "sandwich": {
+      "food": "bread",
+      "adulteration_risk": "MEDIUM"
+    },
+    "bowl": {
+      "food": "dal/curry",
+      "adulteration_risk": "MEDIUM"
+    },
+    "bottle": {
+      "food": "oil/liquid",
+      "adulteration_risk": "HIGH"
+    },
+    "cup": {
+      "food": "milk/tea",
+      "adulteration_risk": "MEDIUM"
+    }
+  }
+}

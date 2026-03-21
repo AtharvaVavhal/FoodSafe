@@ -6,6 +6,7 @@ from services.ai_service import scan_food_text, scan_combination, analyze_label_
 from app.db.database import get_db
 from models.models import ScanRecord
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 
 router = APIRouter()
 
@@ -40,11 +41,31 @@ async def scan_text(req: TextScanRequest, db: AsyncSession = Depends(get_db)):
 
     # 3. Personalized RF scorer ML
     try:
-        from personalized_scorer import compute_personalized_score
+        from personalized_scorer import predict_personal_risk, calculate_weekly_exposure
         if req.member_profile:
+            # predict_personal_risk for this specific food + user
+            personal = predict_personal_risk(
+                age=req.member_profile.get("age", 30),
+                condition=req.member_profile.get("conditions", ["none"])[0] if req.member_profile.get("conditions") else "none",
+                city=req.city or req.member_profile.get("city", "Pune"),
+                food=req.food_name,
+                month=datetime.now().month,
+                safety_score=result.get("safetyScore", 50),
+            )
+            # calculate weekly exposure
             scan_history = [{"food_name": req.food_name, "risk_level": result.get("riskLevel", "LOW")}]
-            personal = compute_personalized_score(req.member_profile, scan_history)
-            result["personalizedScore"] = personal
+            weekly = calculate_weekly_exposure(
+                scan_history=scan_history,
+                condition=req.member_profile.get("conditions", ["none"])[0] if req.member_profile.get("conditions") else "none"
+            )
+            result["personalizedScore"] = {
+                "cumulative_score": weekly["weekly_exposure_score"],
+                "exposure_level": weekly["risk_level"],
+                "recommendation": weekly["recommendation"],
+                "top_toxins": weekly["top_toxins"],
+                "adulteration_probability": personal["adulteration_probability"],
+                "source": personal["source"],
+            }
         else:
             result["personalizedScore"] = None
     except Exception as e:

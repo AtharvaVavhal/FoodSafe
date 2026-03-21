@@ -14,15 +14,15 @@ export default function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/"           element={<HomePage />} />
-        <Route path="/result"     element={<ResultPage />} />
-        <Route path="/diary"      element={<DiaryPage />} />
-        <Route path="/map"        element={<MapPage />} />
-        <Route path="/brands"     element={<BrandsPage />} />
-        <Route path="/family"     element={<FamilyPage />} />
-        <Route path="/symptoms"   element={<SymptomPage />} />
-        <Route path="/festival"   element={<FestivalPage />} />
-        <Route path="/admin"      element={<AdminDashboard />} />
+        <Route path="/"         element={<HomePage />} />
+        <Route path="/result"   element={<ResultPage />} />
+        <Route path="/diary"    element={<DiaryPage />} />
+        <Route path="/map"      element={<MapPage />} />
+        <Route path="/brands"   element={<BrandsPage />} />
+        <Route path="/family"   element={<FamilyPage />} />
+        <Route path="/symptoms" element={<SymptomPage />} />
+        <Route path="/festival" element={<FestivalPage />} />
+        <Route path="/admin"    element={<AdminDashboard />} />
       </Routes>
     </Layout>
   )

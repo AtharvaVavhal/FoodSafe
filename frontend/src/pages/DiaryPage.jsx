@@ -5,7 +5,7 @@ import { t } from '../i18n/translations'
 const RISK_COLOR = { LOW:'#639922', MEDIUM:'#854F0B', HIGH:'#A32D2D', CRITICAL:'#7F0000' }
 const RISK_BG    = { LOW:'#EAF3DE', MEDIUM:'#FAEEDA', HIGH:'#FCEBEB', CRITICAL:'#F7C1C1' }
 
-export function DiaryPage() {
+export default function DiaryPage() {
   const { scanHistory, lang } = useStore()
 
   const total = scanHistory.length
@@ -59,4 +59,3 @@ export function DiaryPage() {
     </div>
   )
 }
-export { DiaryPage as default } from './DiaryPage'

@@ -94,4 +94,3 @@ export default function SymptomPage() {
     </div>
   )
 }
-export { default } from './FamilyPage'

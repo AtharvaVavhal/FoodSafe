@@ -1,0 +1,94 @@
+{
+  "toxin_weights": {
+    "lead_chromate": 10.0,
+    "sudan_red": 8.0,
+    "argemone_oil": 9.0,
+    "urea": 3.0,
+    "detergent": 5.0,
+    "synthetic_milk": 4.0,
+    "hfcs": 2.0,
+    "vanaspati": 3.0,
+    "starch": 1.5,
+    "brick_powder": 6.0,
+    "kesari_dal": 7.0,
+    "synthetic_color": 4.0,
+    "animal_fat": 2.5,
+    "chalk_powder": 3.0,
+    "plastic_rice": 5.0,
+    "skimmed_powder": 1.0,
+    "sugar_syrup": 2.0,
+    "talc": 4.0,
+    "color": 3.5
+  },
+  "foods": {
+    "turmeric": {
+      "base_risk": 0.7,
+      "toxins": [
+        "lead_chromate",
+        "synthetic_color"
+      ]
+    },
+    "milk": {
+      "base_risk": 0.6,
+      "toxins": [
+        "urea",
+        "detergent",
+        "synthetic_milk"
+      ]
+    },
+    "honey": {
+      "base_risk": 0.5,
+      "toxins": [
+        "hfcs",
+        "sugar_syrup"
+      ]
+    },
+    "ghee": {
+      "base_risk": 0.4,
+      "toxins": [
+        "vanaspati",
+        "animal_fat"
+      ]
+    },
+    "mustard_oil": {
+      "base_risk": 0.6,
+      "toxins": [
+        "argemone_oil"
+      ]
+    },
+    "paneer": {
+      "base_risk": 0.7,
+      "toxins": [
+        "starch",
+        "skimmed_powder"
+      ]
+    },
+    "chilli_powder": {
+      "base_risk": 0.8,
+      "toxins": [
+        "sudan_red",
+        "brick_powder"
+      ]
+    },
+    "rice": {
+      "base_risk": 0.3,
+      "toxins": [
+        "plastic_rice"
+      ]
+    },
+    "dal": {
+      "base_risk": 0.4,
+      "toxins": [
+        "kesari_dal",
+        "color"
+      ]
+    },
+    "wheat_flour": {
+      "base_risk": 0.3,
+      "toxins": [
+        "chalk_powder",
+        "talc"
+      ]
+    }
+  }
+}

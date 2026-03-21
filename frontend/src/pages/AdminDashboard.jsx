@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
-const API = axios.create({ baseURL: '/api' })
+const API = axios.create({ baseURL: 'http://localhost:8000/api' })
 
-// ── Mini chart bar ────────────────────────────────────────
 function Bar({ value, max, color = '#1a3d2b' }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -15,7 +14,6 @@ function Bar({ value, max, color = '#1a3d2b' }) {
   )
 }
 
-// ── Stat card ─────────────────────────────────────────────
 function StatCard({ label, value, sub, color = '#1a1a1a' }) {
   return (
     <div style={{ background: '#fff', borderRadius: 10, padding: '12px 14px', border: '0.5px solid #e0e0d8' }}>
@@ -27,24 +25,24 @@ function StatCard({ label, value, sub, color = '#1a1a1a' }) {
 }
 
 export default function AdminDashboard() {
-  const [stats,    setStats]    = useState(null)
-  const [scans,    setScans]    = useState([])
-  const [reports,  setReports]  = useState([])
-  const [alerts,   setAlerts]   = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [tab,      setTab]      = useState('overview')
+  const [stats,   setStats]   = useState(null)
+  const [scans,   setScans]   = useState([])
+  const [reports, setReports] = useState([])
+  const [alerts,  setAlerts]  = useState([])
+  const [loading, setLoading] = useState(true)
+  const [tab,     setTab]     = useState('overview')
 
   useEffect(() => {
     async function load() {
       try {
-        const [reps, alts] = await Promise.all([
+        const [repsRes, altsRes] = await Promise.all([
           API.get('/community/reports').then(r => r.data),
           API.get('/fssai/alerts').then(r => r.data),
         ])
-        setReports(reps)
-        setAlerts(alts)
+        // Fix: extract nested arrays from API responses
+        setReports(repsRes.reports || [])
+        setAlerts(altsRes.alerts || [])
 
-        // Mock aggregate stats (in production: dedicated /admin/stats endpoint)
         setStats({
           totalScans:    1284,
           todayScans:    47,
@@ -56,11 +54,11 @@ export default function AdminDashboard() {
           topCity:       'Nagpur',
         })
         setScans([
-          { food: 'Turmeric Powder', risk: 'HIGH',   city: 'Nagpur',  time: '2m ago' },
-          { food: 'Buffalo Milk',    risk: 'MEDIUM', city: 'Pune',    time: '5m ago' },
-          { food: 'Mustard Oil',     risk: 'HIGH',   city: 'Nagpur',  time: '11m ago' },
-          { food: 'Honey',           risk: 'MEDIUM', city: 'Mumbai',  time: '18m ago' },
-          { food: 'Basmati Rice',    risk: 'LOW',    city: 'Nashik',  time: '24m ago' },
+          { food: 'Turmeric Powder', risk: 'HIGH',   city: 'Nagpur',     time: '2m ago' },
+          { food: 'Buffalo Milk',    risk: 'MEDIUM', city: 'Pune',       time: '5m ago' },
+          { food: 'Mustard Oil',     risk: 'HIGH',   city: 'Nagpur',     time: '11m ago' },
+          { food: 'Honey',           risk: 'MEDIUM', city: 'Mumbai',     time: '18m ago' },
+          { food: 'Basmati Rice',    risk: 'LOW',    city: 'Nashik',     time: '24m ago' },
           { food: 'Paneer',          risk: 'HIGH',   city: 'Aurangabad', time: '31m ago' },
         ])
       } finally { setLoading(false) }
@@ -86,8 +84,8 @@ export default function AdminDashboard() {
       {/* Top bar */}
       <div style={{ background: '#0d2318', padding: '12px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div style={{ color:'#fff', fontSize:16, fontWeight:500 }}>🌿 FoodSafe Admin</div>
-        <div style={{ display:'flex', gap:6 }}>
-          <div style={{ width:8, height:8, borderRadius:'50%', background:'#95d5b2', marginTop:4 }} />
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#95d5b2' }} />
           <span style={{ color:'rgba(255,255,255,0.6)', fontSize:12 }}>Live</span>
         </div>
       </div>
@@ -107,23 +105,20 @@ export default function AdminDashboard() {
 
       <div style={{ padding:'20px 24px', maxWidth:1100, margin:'0 auto' }}>
 
-        {/* Overview tab */}
         {tab === 'overview' && (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
-              <StatCard label="Total Scans"       value={stats.totalScans.toLocaleString()} sub="all time" />
-              <StatCard label="Today"             value={stats.todayScans}  sub="scans today" color='#1a3d2b' />
-              <StatCard label="High Risk Scans"   value={stats.highRiskScans} sub={`${Math.round(stats.highRiskScans/stats.totalScans*100)}% of total`} color='#A32D2D' />
-              <StatCard label="Active Users"      value={stats.activeUsers} sub="last 7 days" />
+              <StatCard label="Total Scans"     value={stats.totalScans.toLocaleString()} sub="all time" />
+              <StatCard label="Today"           value={stats.todayScans}  sub="scans today" color='#1a3d2b' />
+              <StatCard label="High Risk Scans" value={stats.highRiskScans} sub={`${Math.round(stats.highRiskScans/stats.totalScans*100)}% of total`} color='#A32D2D' />
+              <StatCard label="Active Users"    value={stats.activeUsers} sub="last 7 days" />
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
               <StatCard label="WhatsApp Messages" value={stats.whatsappMsgs} sub="all time" color='#25D366' />
               <StatCard label="Avg Safety Score"  value={`${stats.avgScore}/100`} sub="across all scans" color='#854F0B' />
-              <StatCard label="Top Scanned Food"  value={stats.topFood}  sub="this week" />
-              <StatCard label="Top City"          value={stats.topCity}  sub="most scans" />
+              <StatCard label="Top Scanned Food"  value={stats.topFood} sub="this week" />
+              <StatCard label="Top City"          value={stats.topCity} sub="most scans" />
             </div>
-
-            {/* Risk distribution */}
             <div style={{ background:'#fff', borderRadius:12, padding:'14px 16px', border:'0.5px solid #e0e0d8' }}>
               <div style={{ fontSize:11, fontWeight:500, color:'#666', marginBottom:12 }}>Risk Distribution — Top Foods</div>
               {[
@@ -150,7 +145,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Recent scans tab */}
         {tab === 'scans' && (
           <div style={{ background:'#fff', borderRadius:12, padding:16, border:'0.5px solid #e0e0d8' }}>
             <div style={{ fontSize:13, fontWeight:500, marginBottom:14 }}>Recent Scans (Live)</div>
@@ -181,7 +175,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Community reports tab */}
         {tab === 'community' && (
           <div style={{ background:'#fff', borderRadius:12, padding:16, border:'0.5px solid #e0e0d8' }}>
             <div style={{ fontSize:13, fontWeight:500, marginBottom:14 }}>Community Reports</div>
@@ -204,36 +197,37 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* FSSAI tab */}
         {tab === 'fssai' && (
           <div style={{ background:'#fff', borderRadius:12, padding:16, border:'0.5px solid #e0e0d8' }}>
-            <div style={{ fontSize:13, fontWeight:500, marginBottom:14 }}>FSSAI Violations Database</div>
+            <div style={{ fontSize:13, fontWeight:500, marginBottom:14 }}>FSSAI Alerts</div>
             {alerts.length === 0
-              ? <p style={{ color:'#aaa', textAlign:'center', padding:30 }}>No FSSAI data yet. Run seed.py to populate.</p>
+              ? <p style={{ color:'#aaa', textAlign:'center', padding:30 }}>No FSSAI alerts yet.</p>
               : alerts.map((a,i) => (
                 <div key={i} style={{ padding:'10px 0', borderBottom:i<alerts.length-1?'0.5px solid #f0f0e8':'none' }}>
                   <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <span style={{ fontWeight:500, fontSize:13 }}>{a.brand || 'Unknown'} — {a.product}</span>
-                    <span style={{ fontSize:11, color:'#888' }}>{a.state}</span>
+                    <span style={{ fontWeight:500, fontSize:13 }}>{a.title}</span>
+                    <span style={{ fontSize:10, padding:'2px 8px', borderRadius:10,
+                                    background: a.severity==='HIGH'?'#FCEBEB':'#FAEEDA',
+                                    color: a.severity==='HIGH'?'#A32D2D':'#854F0B' }}>
+                      {a.severity}
+                    </span>
                   </div>
-                  <div style={{ fontSize:12, color:'#666', marginTop:3 }}>{a.violation}</div>
-                  <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{a.date?.slice(0,10)}</div>
+                  <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{a.date}</div>
                 </div>
               ))
             }
           </div>
         )}
 
-        {/* ML Status tab */}
         {tab === 'ml' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {[
-              { name:'YOLOv8 Food Detection',     status:'Ready',    metric:'mAP50: 0.91',   color:'#27500A', bg:'#EAF3DE' },
-              { name:'MuRIL NLP (HI/MR/EN)',       status:'Ready',    metric:'Acc: 91%',      color:'#27500A', bg:'#EAF3DE' },
-              { name:'Prophet Seasonal Model',      status:'Ready',    metric:'MAE: 2.3',      color:'#27500A', bg:'#EAF3DE' },
-              { name:'Risk Weight Model',           status:'Pending',  metric:'Needs retraining', color:'#854F0B', bg:'#FAEEDA' },
-              { name:'Celery Worker',               status:'Running',  metric:'2 tasks scheduled', color:'#185FA5', bg:'#E6F1FB' },
-              { name:'FSSAI Scraper (weekly)',      status:'Scheduled',metric:'Next: Monday 6am IST', color:'#534AB7', bg:'#EEEDFE' },
+              { name:'YOLOv8 Food Detection',   status:'Pending',   metric:'Not trained yet',        color:'#854F0B', bg:'#FAEEDA' },
+              { name:'MuRIL NLP (HI/MR/EN)',     status:'Pending',   metric:'Not trained yet',        color:'#854F0B', bg:'#FAEEDA' },
+              { name:'Prophet Seasonal Model',    status:'Pending',   metric:'Not trained yet',        color:'#854F0B', bg:'#FAEEDA' },
+              { name:'Groq LLaMA 3.1',           status:'Running',   metric:'llama-3.1-8b-instant',   color:'#27500A', bg:'#EAF3DE' },
+              { name:'FastAPI Backend',           status:'Running',   metric:'localhost:8000',          color:'#27500A', bg:'#EAF3DE' },
+              { name:'SQLite DB',                status:'Running',   metric:'foodsafe.db',             color:'#27500A', bg:'#EAF3DE' },
             ].map((m,i) => (
               <div key={i} style={{ background:'#fff', borderRadius:10, padding:14, border:'0.5px solid #e0e0d8',
                                      display:'flex', justifyContent:'space-between', alignItems:'center' }}>

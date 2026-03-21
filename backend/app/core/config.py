@@ -3,7 +3,7 @@ from typing import List
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
-    ANTHROPIC_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     DATABASE_URL: str = "sqlite+aiosqlite:///./foodsafe.db"
     REDIS_URL: str = "redis://localhost:6379"
     SECRET_KEY: str = "dev-secret-key-change-in-production"

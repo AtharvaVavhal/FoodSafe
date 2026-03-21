@@ -40,4 +40,7 @@ logs/
 *.db
 
 # Jupyter checkpoints
-.ipynb_checkpoints/
+.ipynb_checkpoints/backend/.env
+frontend/.env
+backend/.env
+frontend/.env

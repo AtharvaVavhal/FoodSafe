@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { scanFood, scanCombination, analyzeLabel } from '../services/claude'
+import { scanFoodAPI, scanCombinationAPI } from '../services/api'
 import { BarcodeScanner } from '../components/scan'
 
 const DEFAULT_ALERTS = [
@@ -47,10 +48,14 @@ export default function HomePage() {
       const profile = activeMember || null
       let result
       if (combinationFoods.length > 0) {
-        result = await scanCombination({ foods: [...combinationFoods, foodName], memberProfile: profile, lang })
+        result = await scanCombinationAPI({ foods: [...combinationFoods, foodName], member_profile: profile, lang })
         result.isCombination = true
       } else {
-        result = await scanFood({ foodName, memberProfile: profile, lang })
+        try {
+          result = await scanFoodAPI({ food_name: foodName, member_profile: profile, lang })
+        } catch {
+          result = await scanFood({ foodName, memberProfile: profile, lang })
+        }
       }
       addScan({ food_name: foodName, risk_level: result.riskLevel, safety_score: result.safetyScore })
       setLastResult(result)

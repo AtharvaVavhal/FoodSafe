@@ -267,6 +267,83 @@ export default function ResultPage() {
         </div>
       )}
 
+
+      {/* ML Insights */}
+      {(r.seasonalRisk || r.personalizedScore) && (
+        <div className="result-card fade-up" style={{
+          background: '#fff', borderRadius: 16, padding: 16,
+          border: '1px solid #e8ede4',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#1a3d2b', marginBottom: 10, letterSpacing: '0.06em' }}>
+            🤖 ML Insights
+          </div>
+
+          {r.seasonalRisk && (
+            <div style={{
+              padding: '10px 12px', borderRadius: 8, marginBottom: 8,
+              background: r.seasonalRisk.seasonal_alert ? '#fff0f0' : '#f5f7f3',
+              border: `1px solid ${r.seasonalRisk.seasonal_alert ? '#f7c1c1' : '#e0e8da'}`,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#1a3d2b' }}>
+                  📅 Seasonal Risk — {r.seasonalRisk.month}
+                </span>
+                <span style={{
+                  fontSize: 9, padding: '2px 7px', borderRadius: 10, fontWeight: 600,
+                  background: r.seasonalRisk.seasonal_alert ? '#fff0f0' : '#eaf3de',
+                  color: r.seasonalRisk.seasonal_alert ? '#c0392b' : '#27500A',
+                  border: `1px solid ${r.seasonalRisk.seasonal_alert ? '#f7c1c1' : '#c0dd97'}`,
+                }}>
+                  {r.seasonalRisk.risk_level}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>{r.seasonalRisk.reason}</div>
+              <div style={{ fontSize: 9, color: '#aaa', marginTop: 4 }}>
+                {r.seasonalRisk.source === 'prophet_model' ? '🔬 Prophet Time-Series ML' : '📊 Rule-based fallback'}
+              </div>
+            </div>
+          )}
+
+          {r.personalizedScore && (
+            <div style={{
+              padding: '10px 12px', borderRadius: 8,
+              background: '#f5f7f3', border: '1px solid #e0e8da',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#1a3d2b', marginBottom: 6 }}>
+                👤 Personalized Toxin Exposure
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, fontWeight: 700,
+                  background: r.personalizedScore.exposure_level === 'HIGH' ? '#fff0f0' :
+                               r.personalizedScore.exposure_level === 'MEDIUM' ? '#fff8ed' : '#eaf3de',
+                  color: r.personalizedScore.exposure_level === 'HIGH' ? '#c0392b' :
+                         r.personalizedScore.exposure_level === 'MEDIUM' ? '#e07c1a' : '#27500A',
+                  border: `2px solid ${r.personalizedScore.exposure_level === 'HIGH' ? '#f7c1c1' :
+                           r.personalizedScore.exposure_level === 'MEDIUM' ? '#fac775' : '#c0dd97'}`,
+                }}>
+                  {r.personalizedScore.cumulative_score ?? 0}
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#1a3d2b' }}>
+                    {r.personalizedScore.exposure_level || 'LOW'} Exposure
+                  </div>
+                  <div style={{ fontSize: 10, color: '#888' }}>Cumulative toxin score</div>
+                </div>
+              </div>
+              {r.personalizedScore.recommendation && (
+                <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>
+                  {r.personalizedScore.recommendation}
+                </div>
+              )}
+              <div style={{ fontSize: 9, color: '#aaa', marginTop: 4 }}>🔬 Random Forest ML Model</div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="fade-up" style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => nav('/brands')} style={{

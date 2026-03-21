@@ -26,13 +26,38 @@ class CombinationRequest(BaseModel):
 async def scan_text(req: TextScanRequest, db: AsyncSession = Depends(get_db)):
     if not req.food_name.strip():
         raise HTTPException(400, "food_name is required")
+
+    # 1. Groq AI scan
     result = scan_food_text(req.food_name, req.member_profile, req.lang)
+
+    # 2. Prophet seasonal risk ML
+    try:
+        from risk_scorer import predict_seasonal_risk
+        seasonal = predict_seasonal_risk(req.food_name)
+        result["seasonalRisk"] = seasonal
+    except Exception as e:
+        result["seasonalRisk"] = None
+
+    # 3. Personalized RF scorer ML
+    try:
+        from personalized_scorer import compute_personalized_score
+        if req.member_profile:
+            scan_history = [{"food_name": req.food_name, "risk_level": result.get("riskLevel", "LOW")}]
+            personal = compute_personalized_score(req.member_profile, scan_history)
+            result["personalizedScore"] = personal
+        else:
+            result["personalizedScore"] = None
+    except Exception as e:
+        result["personalizedScore"] = None
+
+    # 4. Save to DB
     if req.user_id:
         db.add(ScanRecord(
             user_id=req.user_id, food_name=req.food_name,
             risk_level=result.get("riskLevel"), safety_score=result.get("safetyScore"),
             result_json=result, scan_type="text", city=req.city
         ))
+
     return result
 
 # ── Image scan ────────────────────────────────────────────
@@ -45,7 +70,7 @@ async def scan_image(file: UploadFile = File(...), lang: str = "en"):
     result = analyze_label_image(b64, file.content_type)
     return result
 
-# ── Barcode scan via Open Food Facts ─────────────────────
+# ── Barcode scan ──────────────────────────────────────────
 @router.get("/barcode/{barcode}")
 async def scan_barcode(barcode: str, lang: str = "en"):
     async with httpx.AsyncClient() as client:
@@ -58,6 +83,14 @@ async def scan_barcode(barcode: str, lang: str = "en"):
     if not food_name:
         raise HTTPException(404, "Could not identify product name from barcode")
     result = scan_food_text(food_name, None, lang)
+
+    # Seasonal risk for barcode scans
+    try:
+        from risk_scorer import predict_seasonal_risk
+        result["seasonalRisk"] = predict_seasonal_risk(food_name)
+    except:
+        result["seasonalRisk"] = None
+
     result["barcodeData"] = {
         "name": food_name,
         "brand": product.get("brands", ""),

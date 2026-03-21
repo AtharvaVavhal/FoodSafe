@@ -1,0 +1,25 @@
+{
+  "overall_accuracy": 0.556,
+  "language_accuracy": {
+    "hi": {
+      "accuracy": 0.714,
+      "samples": 21
+    },
+    "mr": {
+      "accuracy": 0.769,
+      "samples": 13
+    },
+    "en": {
+      "accuracy": 0.556,
+      "samples": 9
+    }
+  },
+  "model": "google/muril-base-cased",
+  "n_samples": 43,
+  "intent_classes": [
+    "food_scan",
+    "symptom_report",
+    "general_question"
+  ],
+  "food_categories": 48
+}

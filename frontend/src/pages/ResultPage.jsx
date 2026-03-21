@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
+import { useEffect, useState } from 'react'
 
 const RISK_COLORS = {
   LOW:      { bg: '#EAF3DE', text: '#27500A', border: '#C0DD97' },
@@ -9,13 +10,27 @@ const RISK_COLORS = {
   CRITICAL: { bg: '#A32D2D', text: '#fff',    border: '#A32D2D' },
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+
 const SEV_COLOR = {
   LOW: '#639922', MEDIUM: '#854F0B', HIGH: '#A32D2D', CRITICAL: '#7F0000'
 }
 
+
 export default function ResultPage() {
   const { lastResult, lang, activeMember } = useStore()
   const nav = useNavigate()
+  const [collab, setCollab] = useState(null)
+
+  useEffect(() => {
+    if (!lastResult) return
+    const foodName = lastResult.foodName || lastResult.productName
+    if (!foodName) return
+    fetch(`${API_URL}/recommendations/similar-users/${encodeURIComponent(foodName)}`)
+      .then(r => r.json())
+      .then(data => { if (data.flag_rate_percent > 0) setCollab(data) })
+      .catch(() => {})
+  }, [lastResult])
 
   if (!lastResult) {
     return (
@@ -53,7 +68,6 @@ export default function ResultPage() {
       {/* Header card */}
       <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {/* Score ring */}
           <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
                         border: `3px solid ${colors.text === '#fff' ? '#A32D2D' : colors.border}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -75,7 +89,6 @@ export default function ResultPage() {
             </div>
           </div>
         </div>
-
         {r.summary && (
           <p style={{ fontSize: 12, color: '#555', marginTop: 10, lineHeight: 1.5 }}>{r.summary}</p>
         )}
@@ -163,6 +176,29 @@ export default function ResultPage() {
         <div style={{ background: '#EAF3DE', borderRadius: 10, padding: '10px 14px',
                       fontSize: 12, color: '#27500A', fontWeight: 500 }}>
           💡 {r.verdict}
+        </div>
+      )}
+
+      {/* Collaborative filtering */}
+      {collab && (
+        <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '0.5px solid #e0e0d8' }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 8 }}>
+            👥 Community Intelligence
+          </div>
+          <div style={{ fontSize: 13, color: '#1a3d2b', fontWeight: 500, marginBottom: 6 }}>
+            {collab.message}
+          </div>
+          {collab.top_cities?.length > 0 && (
+            <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
+              Most reported in: {collab.top_cities.map(c => c.city).join(', ')}
+            </div>
+          )}
+          {collab.also_flagged?.length > 0 && (
+            <div style={{ fontSize: 11, color: '#854F0B', background: '#FAEEDA',
+                          padding: '6px 10px', borderRadius: 8 }}>
+              ⚠ Users who flagged this also flagged: {collab.also_flagged.join(', ')}
+            </div>
+          )}
         </div>
       )}
 

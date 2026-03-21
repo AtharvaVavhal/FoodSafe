@@ -6,22 +6,17 @@ pydantic-settings==2.2.1
 
 # Database
 sqlalchemy==2.0.27
+aiosqlite==0.20.0
 asyncpg==0.29.0
 alembic==1.13.1
 psycopg2-binary==2.9.9
 
-# Cache
-redis==5.0.1
-celery==5.3.6
-
-# AI / ML
-anthropic==0.18.1
-scikit-learn==1.4.0
+# AI / ML (no torch - too heavy for Render free tier)
+groq==0.4.2
+scikit-learn==1.6.1
 pandas==2.2.0
 numpy==1.26.4
 prophet==1.1.5
-torch==2.2.0
-ultralytics==8.1.18
 transformers==4.38.1
 sentencepiece==0.2.0
 
@@ -35,3 +30,4 @@ python-dotenv==1.0.1
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
 Pillow==10.2.0
+twilio==8.13.0

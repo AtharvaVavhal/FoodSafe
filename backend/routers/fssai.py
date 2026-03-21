@@ -25,7 +25,7 @@ async def get_alerts(db: AsyncSession = Depends(get_db)):
     if violations:
         alerts = [
             {
-                "title":    f"{v.brand or 'Unknown'} — {v.product}: {v.violation[:80]}",
+                "title": v.violation[:100] if v.violation else v.product[:100],
                 "date":     v.date.strftime("%b %Y") if v.date else "Recent",
                 "severity": "HIGH" if any(w in (v.violation or "").lower()
                              for w in ["lead", "pesticide", "carcinogen", "unsafe", "sudan", "argemone"])

@@ -5,12 +5,12 @@ import { t } from '../i18n/translations'
 import { scanFood, scanCombination, analyzeLabel } from '../services/claude'
 import { BarcodeScanner } from '../components/scan'
 
-const FSSAI_ALERTS = [
+const DEFAULT_ALERTS = [
   "FSSAI: MDH spices flagged for pesticide residue — Apr 2024",
+  "FSSAI: Everest Fish Curry Masala recalled — ethylene oxide",
   "FSSAI: Loose turmeric samples fail lead chromate tests in Maharashtra",
   "FSSAI: 83% paneer samples fail quality in UP cities — Feb 2024",
   "FSSAI: Honey adulteration with HFCS — NMR tests recommended",
-  "FSSAI: Everest Fish Curry Masala recalled — ethylene oxide",
   "FSSAI: Argemone oil in mustard oil detected in Rajasthan",
   "FSSAI: Sudan Red dye found in chilli powder — Tamil Nadu",
   "FSSAI: Synthetic milk adulteration in Mawa/Khoya — Maharashtra",
@@ -24,9 +24,23 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ticker, setTicker] = useState(0)
+  const [fssaiAlerts, setFssaiAlerts] = useState(DEFAULT_ALERTS)
+
   useEffect(() => {
     const interval = setInterval(() => setTicker(t => t + 1), 4000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+    fetch(`${API}/fssai/alerts`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.alerts?.length > 0) {
+          setFssaiAlerts(data.alerts.map(a => `FSSAI: ${a.title}`))
+        }
+      })
+      .catch(() => {})
   }, [])
   const fileRef = useRef()
 
@@ -89,7 +103,7 @@ export default function HomePage() {
       <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '7px 10px',
                     fontSize: 11, color: '#854F0B', display: 'flex', gap: 6, alignItems: 'center' }}>
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#854F0B', flexShrink: 0 }} />
-        {FSSAI_ALERTS[ticker % FSSAI_ALERTS.length]}
+        {fssaiAlerts[ticker % fssaiAlerts.length]}
       </div>
 
       {/* Scan card */}

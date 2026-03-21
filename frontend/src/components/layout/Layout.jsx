@@ -15,7 +15,8 @@ export default function Layout({ children }) {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh',
-                  display: 'flex', flexDirection: 'column', background: '#f8f9f6' }}>
+                  display: 'flex', flexDirection: 'column', background: '#f8f9f6',
+                  position: 'relative' }}>
 
       {/* Top bar */}
       <header style={{ background: '#1a3d2b', padding: '12px 16px',

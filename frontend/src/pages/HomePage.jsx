@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
@@ -6,10 +6,14 @@ import { scanFood, scanCombination, analyzeLabel } from '../services/claude'
 import { BarcodeScanner } from '../components/scan'
 
 const FSSAI_ALERTS = [
-  'FSSAI: MDH spices flagged for pesticide residue — Apr 2024',
-  'FSSAI: Loose turmeric samples fail lead chromate tests in Maharashtra',
-  'FSSAI: 83% paneer samples fail quality in UP cities — Feb 2024',
-  'FSSAI: Honey adulteration with HFCS — NMR tests recommended',
+  "FSSAI: MDH spices flagged for pesticide residue — Apr 2024",
+  "FSSAI: Loose turmeric samples fail lead chromate tests in Maharashtra",
+  "FSSAI: 83% paneer samples fail quality in UP cities — Feb 2024",
+  "FSSAI: Honey adulteration with HFCS — NMR tests recommended",
+  "FSSAI: Everest Fish Curry Masala recalled — ethylene oxide",
+  "FSSAI: Argemone oil in mustard oil detected in Rajasthan",
+  "FSSAI: Sudan Red dye found in chilli powder — Tamil Nadu",
+  "FSSAI: Synthetic milk adulteration in Mawa/Khoya — Maharashtra",
 ]
 
 export default function HomePage() {
@@ -19,7 +23,11 @@ export default function HomePage() {
   const [mode, setMode]   = useState('text')   // text | camera | voice | barcode
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [ticker] = useState(0)
+  const [ticker, setTicker] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTicker(t => t + 1), 4000)
+    return () => clearInterval(interval)
+  }, [])
   const fileRef = useRef()
 
   async function handleScan() {

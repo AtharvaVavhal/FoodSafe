@@ -11,23 +11,26 @@ import FestivalPage from './pages/FestivalPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AuthPage from './pages/AuthPage'
 import Chatbot from './components/chatbot'
+import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App() {
   return (
-    <Layout>
-      <Routes>
-        <Route path="/"         element={<HomePage />} />
-        <Route path="/auth"     element={<AuthPage />} />
-        <Route path="/result"   element={<ResultPage />} />
-        <Route path="/diary"    element={<DiaryPage />} />
-        <Route path="/map"      element={<MapPage />} />
-        <Route path="/brands"   element={<BrandsPage />} />
-        <Route path="/family"   element={<FamilyPage />} />
-        <Route path="/symptoms" element={<SymptomPage />} />
-        <Route path="/festival" element={<FestivalPage />} />
-        <Route path="/admin"    element={<AdminDashboard />} />
-      </Routes>
-      <Chatbot />
-    </Layout>
+    <ErrorBoundary>
+      <Layout>
+        <Routes>
+          <Route path="/"         element={<ErrorBoundary><HomePage /></ErrorBoundary>} />
+          <Route path="/auth"     element={<ErrorBoundary><AuthPage /></ErrorBoundary>} />
+          <Route path="/result"   element={<ErrorBoundary><ResultPage /></ErrorBoundary>} />
+          <Route path="/diary"    element={<ErrorBoundary><DiaryPage /></ErrorBoundary>} />
+          <Route path="/map"      element={<ErrorBoundary><MapPage /></ErrorBoundary>} />
+          <Route path="/brands"   element={<ErrorBoundary><BrandsPage /></ErrorBoundary>} />
+          <Route path="/family"   element={<ErrorBoundary><FamilyPage /></ErrorBoundary>} />
+          <Route path="/symptoms" element={<ErrorBoundary><SymptomPage /></ErrorBoundary>} />
+          <Route path="/festival" element={<ErrorBoundary><FestivalPage /></ErrorBoundary>} />
+          <Route path="/admin"    element={<ErrorBoundary showError><AdminDashboard /></ErrorBoundary>} />
+        </Routes>
+        <Chatbot />
+      </Layout>
+    </ErrorBoundary>
   )
 }

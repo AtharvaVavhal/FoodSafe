@@ -7,6 +7,9 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import init_db
 from routers import scan, symptoms, community, brands, fssai, users, whatsapp, recommendations
+from routers import festival, meal_planner
+from routers import festival, meal_planner, push 
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,6 +52,10 @@ app.include_router(fssai.router,            prefix="/api/fssai",           tags=
 app.include_router(users.router,            prefix="/api/users",           tags=["Users"])
 app.include_router(whatsapp.router,         prefix="/api/whatsapp",        tags=["WhatsApp Bot"])
 app.include_router(recommendations.router,  prefix="/api/recommendations", tags=["Recommendations"])
+app.include_router(meal_planner.router,     prefix="/api/meal-planner",    tags=["Meal Planner"])
+app.include_router(meal_planner.router,     prefix="/api/meal-planner",    tags=["Meal Planner"])
+app.include_router(festival.router,         prefix="/api/festival")
+app.include_router(push.router, prefix="/api/push", tags=["Push Notifications"])
 
 @app.get("/")
 async def root():

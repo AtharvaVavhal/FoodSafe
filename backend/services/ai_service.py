@@ -5,6 +5,7 @@ from app.core.config import settings
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_KEY = settings.GROQ_API_KEY
 MODEL = "llama-3.1-8b-instant"
+VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
 def _call_groq(system: str, user: str, max_tokens: int = 1500) -> dict:
@@ -113,22 +114,98 @@ Could these be food adulteration related? Return ONLY this JSON:
 
 
 # ── Label image analysis ──────────────────────────────────
-# Groq doesn't support vision — returns generic guidance
 def analyze_label_image(image_b64: str, media_type: str = "image/jpeg") -> dict:
-    system = "You are a food label safety expert. Respond ONLY with valid JSON, no markdown."
-    user = """A user uploaded a food label image. Groq does not support vision.
+    system = "You are a food label safety expert specializing in Indian food adulteration. Respond ONLY with valid JSON, no markdown."
+    user = """Look at this food product label image carefully.
+Extract all visible text, ingredients, and additives. Based on the product, suggest relevant home adulteration tests.
+
 Return ONLY this JSON:
 {
-  "productName": "Unknown — manual check needed",
-  "flaggedIngredients": [],
+  "foodName": "product name from label",
+  "productName": "product name from label",
+  "riskLevel": "LOW|MEDIUM|HIGH|CRITICAL",
+  "safetyScore": 0-100,
+  "summary": "2 sentence safety overview",
+  "flaggedIngredients": ["ingredient1", "ingredient2"],
   "eNumbers": [
-    {"code": "E102", "name": "Tartrazine", "risk": "MEDIUM", "note": "Yellow dye, may cause hyperactivity"},
-    {"code": "E621", "name": "MSG", "risk": "LOW", "note": "Flavor enhancer, generally safe"}
+    {"code": "E102", "name": "Tartrazine", "risk": "MEDIUM", "note": "why risky"}
   ],
-  "overallRisk": "MEDIUM",
-  "summary": "Image analysis not supported. Please type the ingredient list in the search box and scan as a food item."
+  "adulterants": [
+    {
+      "name": "adulterant name",
+      "description": "what it is",
+      "healthRisk": "specific impact",
+      "severity": "LOW|MEDIUM|HIGH|CRITICAL",
+      "isPersonalRisk": false
+    }
+  ],
+  "homeTests": [
+    {
+      "name": "test name relevant to this product",
+      "steps": "clear step by step home test instructions",
+      "result": "how to interpret positive vs negative result",
+      "difficulty": "Easy|Medium|Hard"
+    }
+  ],
+  "buyingTips": ["tip1", "tip2"],
+  "verdict": "one punchy verdict sentence",
+  "cookingWarning": null,
+  "personalizedWarning": null
 }"""
-    return _call_groq(system, user, max_tokens=500)
+
+    try:
+        response = httpx.post(
+            GROQ_URL,
+            headers={
+                "Authorization": f"Bearer {GROQ_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": VISION_MODEL,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{media_type};base64,{image_b64}"
+                                },
+                            },
+                            {"type": "text", "text": user},
+                        ],
+                    },
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1500,
+            },
+            timeout=45,
+        )
+        response.raise_for_status()
+        text = response.json()["choices"][0]["message"]["content"]
+        result = _parse(text)
+        # Ensure homeTests is always a list, never null
+        if not isinstance(result.get("homeTests"), list):
+            result["homeTests"] = []
+        return result
+    except Exception as e:
+        return {
+            "foodName": "Unknown — vision failed",
+            "productName": "Unknown",
+            "riskLevel": "MEDIUM",
+            "safetyScore": 50,
+            "summary": "Could not analyze image. Please type the food name manually.",
+            "flaggedIngredients": [],
+            "eNumbers": [],
+            "adulterants": [],
+            "homeTests": [],
+            "buyingTips": [],
+            "verdict": "Manual check recommended.",
+            "cookingWarning": None,
+            "personalizedWarning": None,
+            "error": str(e),
+        }
 
 
 # ── FSSAI report NLP ──────────────────────────────────────

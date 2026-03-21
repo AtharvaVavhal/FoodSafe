@@ -20,6 +20,12 @@ class ReportCreate(BaseModel):
 class UpvoteRequest(BaseModel):
     report_id: str
 
+def _risk_from_count(count: int) -> str:
+    if count >= 30: return "CRITICAL"
+    if count >= 20: return "HIGH"
+    if count >= 10: return "MEDIUM"
+    return "LOW"
+
 # ── Get reports ───────────────────────────────────────────
 @router.get("/reports")
 async def get_reports(
@@ -90,15 +96,42 @@ async def upvote_report(req: UpvoteRequest, db: AsyncSession = Depends(get_db)):
 # ── City risk summary ─────────────────────────────────────
 @router.get("/city-risk")
 async def city_risk(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+    # Report count per city
+    count_result = await db.execute(
         select(CommunityReport.city, func.count(CommunityReport.id).label("reports"))
         .group_by(CommunityReport.city)
         .order_by(func.count(CommunityReport.id).desc())
     )
-    rows = result.all()
-    return {
-        "cities": [{"city": r.city, "reports": r.reports} for r in rows]
-    }
+    city_counts = {r.city: r.reports for r in count_result.all()}
+
+    # Top food per city (most reported food_name per city)
+    top_food_result = await db.execute(
+        select(
+            CommunityReport.city,
+            CommunityReport.food_name,
+            func.count(CommunityReport.id).label("food_count"),
+        )
+        .group_by(CommunityReport.city, CommunityReport.food_name)
+        .order_by(CommunityReport.city, func.count(CommunityReport.id).desc())
+    )
+    # Keep only top food per city
+    top_food = {}
+    for row in top_food_result.all():
+        if row.city not in top_food:
+            top_food[row.city] = row.food_name
+
+    cities = [
+        {
+            "city":     city,
+            "reports":  count,
+            "risk":     _risk_from_count(count),
+            "topFood":  top_food.get(city, "Various"),
+        }
+        for city, count in city_counts.items()
+        if city  # skip null cities
+    ]
+
+    return {"cities": cities, "total": len(cities)}
 
 # ── Seed sample reports (dev only) ───────────────────────
 @router.post("/seed")

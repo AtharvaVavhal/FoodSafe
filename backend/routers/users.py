@@ -34,6 +34,12 @@ class TokenResponse(BaseModel):
     user_id:      str
     name:         str
 
+class SyncScanRequest(BaseModel):
+    food_name:    str
+    risk_level:   Optional[str] = None
+    safety_score: Optional[int] = None
+    scanned_at:   Optional[str] = None
+
 # ── JWT helpers ───────────────────────────────────────────
 def create_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -108,6 +114,66 @@ async def get_me(user: User = Depends(get_current_user)):
         "city":       user.city,
         "lang":       user.lang,
         "created_at": user.created_at,
+    }
+
+# ── Sync scan to DB ───────────────────────────────────────
+@router.post("/sync-scan")
+async def sync_scan(
+    req:  SyncScanRequest,
+    user: User = Depends(get_current_user),
+    db:   AsyncSession = Depends(get_db),
+):
+    if not req.food_name.strip():
+        raise HTTPException(400, "food_name is required")
+
+    # Avoid duplicate: same user + same food + same day
+    scanned_date = req.scanned_at[:10] if req.scanned_at else datetime.utcnow().date().isoformat()
+    existing = await db.execute(
+        select(ScanRecord).where(
+            ScanRecord.user_id   == user.id,
+            ScanRecord.food_name == req.food_name.strip(),
+        )
+    )
+    records = existing.scalars().all()
+    for r in records:
+        if r.created_at and r.created_at.date().isoformat() == scanned_date:
+            return {"success": True, "skipped": True, "reason": "duplicate"}
+
+    db.add(ScanRecord(
+        user_id      = user.id,
+        food_name    = req.food_name.strip(),
+        risk_level   = req.risk_level,
+        safety_score = req.safety_score,
+        scan_type    = "text",
+    ))
+    await db.flush()
+    return {"success": True, "skipped": False}
+
+# ── Get scan history from DB ──────────────────────────────
+@router.get("/scan-history")
+async def get_scan_history(
+    user: User = Depends(get_current_user),
+    db:   AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ScanRecord)
+        .where(ScanRecord.user_id == user.id)
+        .order_by(ScanRecord.created_at.desc())
+        .limit(100)
+    )
+    scans = result.scalars().all()
+    return {
+        "scans": [
+            {
+                "id":           s.id,
+                "food_name":    s.food_name,
+                "risk_level":   s.risk_level,
+                "safety_score": s.safety_score,
+                "date":         s.created_at.isoformat() if s.created_at else None,
+            }
+            for s in scans
+        ],
+        "total": len(scans),
     }
 
 # ── Stats ─────────────────────────────────────────────────

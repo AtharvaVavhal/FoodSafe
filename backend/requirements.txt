@@ -11,14 +11,23 @@ asyncpg==0.29.0
 alembic==1.13.1
 psycopg2-binary==2.9.9
 
-# AI / ML (no torch - too heavy for Render free tier)
+# AI / ML
 groq==0.4.2
 scikit-learn==1.6.1
 pandas==2.2.0
 numpy==1.26.4
 prophet==1.1.5
+joblib==1.3.2
+
+# IndicBERT / MuRIL (HuggingFace)
+# torch is required for MuRIL embeddings
+# On Render free tier: use --extra-index-url for CPU-only torch to save space
+torch==2.2.1
 transformers==4.38.1
 sentencepiece==0.2.0
+
+# YOLOv8 food detection
+ultralytics==8.1.29
 
 # HTTP
 httpx==0.26.0

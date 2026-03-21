@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 import base64, httpx
 from services.ai_service import scan_food_text, scan_combination, analyze_label_image
+from services.yolo_service import detect_food
 from app.db.database import get_db
 from models.models import ScanRecord
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -107,28 +108,51 @@ async def scan_image(
     data = await file.read()
     b64  = base64.b64encode(data).decode()
 
-    # 1. Groq vision → structured result
-    result = analyze_label_image(b64, file.content_type)
+    # 1. ── YOLOv8: detect food class from image ──────────────────────────────
+    yolo = detect_food(data)
 
-    # 2. Extract food name for ML (try common key variants)
+    if yolo["detected"] and yolo["confidence"] >= 0.5:
+        # YOLOv8 identified the food confidently →
+        # run the full text-scan pipeline (Groq + Prophet + RF)
+        food_name = yolo["food_name"]
+        result = scan_food_text(food_name, None, lang)
+        result["detectionSource"] = "yolov8"
+        result["yoloDetection"]   = {
+            "food":       yolo["food_name"],
+            "confidence": yolo["confidence"],
+            "all":        yolo["all_detections"],
+        }
+    else:
+        # 2. ── Fallback: Groq Vision analyzes the label/image ─────────────────
+        result = analyze_label_image(b64, file.content_type)
+        result["detectionSource"] = "groq_vision"
+        if yolo["detected"]:
+            # YOLO found something but low confidence — attach as a hint
+            result["yoloDetection"] = {
+                "food":       yolo["food_name"],
+                "confidence": yolo["confidence"],
+                "note":       "Low confidence — Groq Vision used instead",
+            }
+
+    # 3. Extract food name for ML layers
     food_name = (
         result.get("foodName")
         or result.get("food_name")
         or result.get("name")
         or result.get("productName")
-        or ""
+        or (yolo["food_name"] if yolo["detected"] else "")
     )
 
-    # 3. Prophet seasonal risk (if food name extracted)
+    # 4. Prophet seasonal risk
     if food_name:
         _attach_seasonal_risk(result, food_name)
     else:
         result["seasonalRisk"] = None
 
-    # 4. No member profile on image scan → skip personalized scorer
+    # 5. Personalized score skipped (no member profile on image scan)
     result["personalizedScore"] = None
 
-    # 5. Tag scan type so ResultPage knows
+    # 6. Tag scan type
     result["scanType"] = "image"
 
     return result

@@ -9,6 +9,7 @@ Setup:
 """
 from fastapi import APIRouter, Form, Response
 from services.ai_service import scan_food_text, analyze_symptoms
+from services.indicbert_service import classify_intent, normalize_food_name
 
 router = APIRouter()
 
@@ -80,12 +81,13 @@ def format_result(result: dict, lang: str) -> str:
 
 @router.post("/webhook")
 async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
-    phone   = From.replace("whatsapp:", "")
-    message = Body.strip()
-    session = get_session(phone)
-    lang    = session["lang"]
+    phone     = From.replace("whatsapp:", "")
+    message   = Body.strip()
+    session   = get_session(phone)
+    lang      = session["lang"]
     msg_lower = message.lower().strip()
 
+    # ── Hard commands — always string-match these ──────────────────────────────
     if msg_lower.startswith("lang "):
         new_lang = msg_lower.split(" ")[1]
         if new_lang in ["en", "hi", "mr"]:
@@ -96,43 +98,86 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
     if msg_lower in ["help", "start", "menu", "hi", "hello", "हेलो", "नमस्ते"]:
         return twiml_response({"en": HELP_EN, "hi": HELP_HI, "mr": HELP_MR}.get(lang, HELP_EN))
 
-    if msg_lower.startswith("symptom") or session["state"] == "symptoms":
-        if session["state"] == "symptoms":
-            session["state"] = "idle"
-            result  = analyze_symptoms(message, session.get("recent_foods", []))
-            urgency = result.get("urgency", "MONITOR")
-            emoji   = {"MONITOR": "👁", "CONSULT_DOCTOR": "👨‍⚕️", "EMERGENCY": "🚨"}.get(urgency, "⚠️")
-            causes  = result.get("possibleCauses", [])
-            reply   = f"{emoji} *{urgency.replace('_',' ')}*\n\n"
-            if causes:
-                reply += "*Possible causes:*\n"
-                for c in causes[:2]:
-                    reply += f"• {c['adulterant']} via {c['food']} ({c['confidence']})\n"
-            reply += f"\n💡 {result.get('recommendation','Consult a doctor if symptoms persist.')}"
-            reply += f"\n\n_{result.get('disclaimer','')}_"
-            return twiml_response(reply)
-        else:
-            session["state"] = "symptoms"
-            prompts = {"en": "Describe your symptoms:", "hi": "अपने लक्षण बताएं:", "mr": "तुमची लक्षणे सांगा:"}
-            return twiml_response(prompts.get(lang, "Describe your symptoms:"))
-
-    if msg_lower.startswith("brand"):
-        reply = ("🛒 *Safe Certified Brands:*\n\n"
-                 "🌿 *Turmeric:* Everest (88/100), MDH (82/100)\n"
-                 "🥛 *Milk:* Amul (91/100), Mother Dairy (89/100)\n"
-                 "🍯 *Honey:* Dabur (78/100), Patanjali (74/100)\n\n"
-                 "_All brands are FSSAI certified ✓_")
+    # ── Multi-turn: if we're mid-symptom flow, continue it ────────────────────
+    if session["state"] == "symptoms":
+        session["state"] = "idle"
+        result  = analyze_symptoms(message, session.get("recent_foods", []))
+        urgency = result.get("urgency", "MONITOR")
+        emoji   = {"MONITOR": "👁", "CONSULT_DOCTOR": "👨‍⚕️", "EMERGENCY": "🚨"}.get(urgency, "⚠️")
+        causes  = result.get("possibleCauses", [])
+        reply   = f"{emoji} *{urgency.replace('_', ' ')}*\n\n"
+        if causes:
+            reply += "*Possible causes:*\n"
+            for c in causes[:2]:
+                reply += f"• {c['adulterant']} via {c['food']} ({c['confidence']})\n"
+        reply += f"\n💡 {result.get('recommendation', 'Consult a doctor if symptoms persist.')}"
+        reply += f"\n\n_{result.get('disclaimer', '')}_"
         return twiml_response(reply)
 
-    if len(message) > 1:
-        try:
-            result = scan_food_text(message, None, lang)
-            session["recent_foods"] = ([message] + session.get("recent_foods", []))[:5]
-            return twiml_response(format_result(result, lang))
-        except Exception:
-            errors = {"en": "⚠️ Scan failed. Send 'help' for commands.",
-                      "hi": "⚠️ स्कैन विफल। 'help' भेजें।",
-                      "mr": "⚠️ स्कॅन अयशस्वी. 'help' पाठवा."}
-            return twiml_response(errors.get(lang, errors["en"]))
+    if len(message) < 2:
+        return twiml_response("Send a food name to scan it. Type *help* for all commands.")
 
-    return twiml_response("Send a food name to scan it. Type *help* for all commands.")
+    # ── IndicBERT intent classification ───────────────────────────────────────
+    intent = classify_intent(message)
+
+    # ── Route by intent ───────────────────────────────────────────────────────
+
+    if intent == "symptom_report":
+        session["state"] = "symptoms"
+        prompts = {
+            "en": "Describe your symptoms in detail:",
+            "hi": "अपने लक्षण विस्तार से बताएं:",
+            "mr": "तुमची लक्षणे तपशीलवार सांगा:",
+        }
+        return twiml_response(prompts.get(lang, prompts["en"]))
+
+    if intent == "brand_query":
+        reply = (
+            "🛒 *Safe Certified Brands:*\n\n"
+            "🌿 *Turmeric:* Everest (88/100), MDH (82/100)\n"
+            "🥛 *Milk:* Amul (91/100), Mother Dairy (89/100)\n"
+            "🍯 *Honey:* 24 Mantra Organic (88/100), Dabur (78/100)\n"
+            "🧈 *Ghee:* Amul (88/100)\n"
+            "🌶 *Chilli:* Everest (85/100)\n\n"
+            "_All brands are FSSAI certified ✓_\n"
+            "_Visit the app for full brand comparison_"
+        )
+        return twiml_response(reply)
+
+    # intent == "food_scan" (or general — treat as scan by default)
+    # Normalise food name: हल्दी → turmeric, तूप → ghee, etc.
+    food_name = normalize_food_name(message)
+
+    try:
+        result = scan_food_text(food_name, None, lang)
+        session["recent_foods"] = ([food_name] + session.get("recent_foods", []))[:5]
+
+        # Append seasonal risk if available
+        try:
+            from risk_scorer import predict_seasonal_risk
+            seasonal = predict_seasonal_risk(food_name)
+            if seasonal.get("seasonal_alert"):
+                result["_seasonal_note"] = (
+                    f"\n\n📅 *Seasonal alert — {seasonal['month']}:* "
+                    f"{seasonal['reason']}"
+                )
+        except Exception:
+            pass
+
+        reply = format_result(result, lang)
+        if result.get("_seasonal_note"):
+            reply += result["_seasonal_note"]
+
+        # Hint if food name was normalised from another language
+        if food_name.lower() != message.lower():
+            reply += f"\n\n_Detected: {message} → {food_name}_"
+
+        return twiml_response(reply)
+
+    except Exception:
+        errors = {
+            "en": "⚠️ Scan failed. Send 'help' for commands.",
+            "hi": "⚠️ स्कैन विफल। 'help' भेजें।",
+            "mr": "⚠️ स्कॅन अयशस्वी. 'help' पाठवा.",
+        }
+        return twiml_response(errors.get(lang, errors["en"]))

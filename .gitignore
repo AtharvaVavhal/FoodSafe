@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.production
+*.env
+
+# Build outputs
+dist/
+build/
+.next/
+
+# ML artifacts
+ml/models/*.pt
+ml/models/*.pkl
+ml/data/raw/
+*.h5
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.sqlite
+*.db
+
+# Jupyter checkpoints
+.ipynb_checkpoints/

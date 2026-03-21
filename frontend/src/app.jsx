@@ -9,12 +9,14 @@ import FamilyPage from './pages/FamilyPage'
 import SymptomPage from './pages/SymptomPage'
 import FestivalPage from './pages/FestivalPage'
 import AdminDashboard from './pages/AdminDashboard'
+import AuthPage from './pages/AuthPage'
 
 export default function App() {
   return (
     <Layout>
       <Routes>
         <Route path="/"         element={<HomePage />} />
+        <Route path="/auth"     element={<AuthPage />} />
         <Route path="/result"   element={<ResultPage />} />
         <Route path="/diary"    element={<DiaryPage />} />
         <Route path="/map"      element={<MapPage />} />

@@ -41,6 +41,8 @@ class ScanRecord(Base):
     result_json   = Column(JSON)
     scan_type     = Column(String, default="text")  # text/image/barcode/voice
     city          = Column(String)
+    feedback      = Column(String, nullable=True)   # "accurate" | "inaccurate" | None
+    feedback_note = Column(Text, nullable=True)     # optional user comment
     created_at    = Column(DateTime, default=datetime.utcnow)
     user          = relationship("User", back_populates="scans")
 

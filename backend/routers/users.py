@@ -85,6 +85,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user)
     await db.flush()
+    await db.commit()
     return TokenResponse(
         access_token = create_token(user.id),
         user_id      = user.id,
@@ -147,6 +148,7 @@ async def sync_scan(
         scan_type    = "text",
     ))
     await db.flush()
+    await db.commit()
     return {"success": True, "skipped": False}
 
 # ── Get scan history from DB ──────────────────────────────
@@ -204,4 +206,5 @@ async def update_profile(
     for key, val in data.items():
         if key in allowed:
             setattr(user, key, val)
+    await db.commit()
     return {"success": True}

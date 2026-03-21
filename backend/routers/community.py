@@ -79,6 +79,7 @@ async def submit_report(req: ReportCreate, db: AsyncSession = Depends(get_db)):
     )
     db.add(report)
     await db.flush()
+    await db.commit()
     return {"success": True, "id": report.id, "message": "Report submitted successfully"}
 
 # ── Upvote report ─────────────────────────────────────────
@@ -91,6 +92,7 @@ async def upvote_report(req: UpvoteRequest, db: AsyncSession = Depends(get_db)):
     if not report:
         raise HTTPException(404, "Report not found")
     report.upvotes = (report.upvotes or 0) + 1
+    await db.commit()
     return {"success": True, "upvotes": report.upvotes}
 
 # ── City risk summary ─────────────────────────────────────
@@ -151,4 +153,5 @@ async def seed_reports(db: AsyncSession = Depends(get_db)):
     for s in samples:
         db.add(CommunityReport(**s))
     await db.flush()
+    await db.commit()
     return {"success": True, "seeded": len(samples)}

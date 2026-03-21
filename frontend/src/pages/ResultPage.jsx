@@ -305,6 +305,21 @@ export default function ResultPage() {
   const { lastResult, lang, activeMember } = useStore()
   const nav = useNavigate()
   const [collab, setCollab] = useState(null)
+  const [feedback, setFeedback] = useState(null)   // "accurate" | "inaccurate"
+  const [feedbackSent, setFeedbackSent] = useState(false)
+
+  async function submitFeedback(value) {
+    setFeedback(value)
+    if (!r.scanId) { setFeedbackSent(true); return }
+    try {
+      await fetch(`${API_URL}/scan/${r.scanId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: value }),
+      })
+    } catch (e) { console.warn('Feedback failed:', e) }
+    setFeedbackSent(true)
+  }
 
   useEffect(() => {
     if (!lastResult) return
@@ -426,6 +441,56 @@ export default function ResultPage() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FSSAI Citations */}
+      {r.fssaiCitations?.length > 0 && (
+        <div className="rp-section rp-fade rp-fade-3">
+          <div className="rp-section-label">
+            {r.ragGrounded ? '✓ Based on verified FSSAI records' : 'FSSAI Reference'}
+          </div>
+          <div className="rp-card">
+            <div className="rp-card-inner">
+              {r.fssaiCitations.map((c, i) => (
+                <div key={i} style={{
+                  padding: '8px 0',
+                  borderBottom: i < r.fssaiCitations.length - 1 ? '1px solid #f4f1eb' : 'none',
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'flex-start',
+                }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: '#eaf3de', color: '#27500A',
+                    fontSize: 11, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {Math.round(c.relevance * 100)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#1a3d2b', marginBottom: 2 }}>
+                      {c.product}{c.brand ? ` · ${c.brand}` : ''}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#888', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {c.state && <span>📍 {c.state}</span>}
+                      {c.date && <span>📅 {c.date}</span>}
+                      {c.source && (
+                        <a href={c.source} target="_blank" rel="noopener noreferrer"
+                          style={{ color: '#c9a84c', textDecoration: 'none', fontWeight: 500 }}>
+                          View source ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ fontSize: 9, color: '#bbb', marginTop: 8, paddingTop: 6, borderTop: '1px solid #f4f1eb' }}>
+                Relevance score (0–100) shown. Higher = closer match to this food item.
+              </div>
             </div>
           </div>
         </div>
@@ -699,6 +764,43 @@ export default function ResultPage() {
           </div>
         </div>
       )}
+
+      {/* Feedback */}
+      <div className="rp-section rp-fade rp-fade-6">
+        <div className="rp-section-label">Was this analysis accurate?</div>
+        <div className="rp-card">
+          <div className="rp-card-inner" style={{ textAlign: 'center', padding: '14px 16px' }}>
+            {feedbackSent ? (
+              <div style={{ fontSize: 13, color: '#27500A', fontWeight: 500 }}>
+                {feedback === 'accurate' ? '👍 Thanks! Glad it helped.' : '👎 Thanks for the feedback — we\'ll improve.'}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button
+                  onClick={() => submitFeedback('accurate')}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+                    border: '1.5px solid #c0dd97', background: '#eaf3de',
+                    color: '#27500A', fontSize: 13, fontWeight: 600,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}>
+                  👍 Accurate
+                </button>
+                <button
+                  onClick={() => submitFeedback('inaccurate')}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+                    border: '1.5px solid #f7c1c1', background: '#fff0f0',
+                    color: '#791F1F', fontSize: 13, fontWeight: 600,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}>
+                  👎 Not accurate
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="rp-section rp-fade rp-fade-7">

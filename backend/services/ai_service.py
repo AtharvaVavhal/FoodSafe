@@ -1,12 +1,36 @@
+"""
+services/ai_service.py
+
+AI analysis layer for FoodSafe.
+
+Changes from v1:
+  - scan_food_text() now retrieves verified FSSAI records via RAG before
+    calling the LLM. The model sees real violation evidence, not just its
+    training data, so adulterant lists, severities, and home tests are
+    grounded in citable sources.
+  - Result includes a `fssaiCitations` list so the frontend can show
+    source cards beneath the analysis.
+  - All other functions (scan_combination, analyze_symptoms,
+    analyze_label_image, extract_fssai_violation) are unchanged.
+"""
+
 import json
+import logging
+
 import httpx
+
 from app.core.config import settings
+from services.rag_service import rag
+
+logger = logging.getLogger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_KEY = settings.GROQ_API_KEY
 MODEL = "llama-3.1-8b-instant"
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
+
+# ── Groq helpers ──────────────────────────────────────────────────────────────
 
 def _call_groq(system: str, user: str, max_tokens: int = 1500) -> dict:
     response = httpx.post(
@@ -19,7 +43,7 @@ def _call_groq(system: str, user: str, max_tokens: int = 1500) -> dict:
             "model": MODEL,
             "messages": [
                 {"role": "system", "content": system},
-                {"role": "user", "content": user},
+                {"role": "user",   "content": user},
             ],
             "temperature": 0.3,
             "max_tokens": max_tokens,
@@ -32,7 +56,13 @@ def _call_groq(system: str, user: str, max_tokens: int = 1500) -> dict:
 
 
 def _parse(text: str) -> dict:
-    clean = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    clean = (
+        text.strip()
+        .removeprefix("```json")
+        .removeprefix("```")
+        .removesuffix("```")
+        .strip()
+    )
     try:
         return json.loads(clean)
     except Exception:
@@ -40,8 +70,10 @@ def _parse(text: str) -> dict:
 
 
 # ── Market adulteration rate data (FSSAI + ICMR surveys) ─────────────────────
-# Higher rate = more adulteration in market = higher fake probability boost
-_MARKET_FAKE_RATES = {
+# Used as a static fallback when the RAG index has no records for a food.
+# These rates calibrate the fake_probability score.
+# TODO: move these into the DB and update them from the scraper quarterly.
+_MARKET_FAKE_RATES: dict[str, dict] = {
     "turmeric":        {"rate": 68, "source": "FSSAI 2023 survey — 1538 samples", "trend": "rising"},
     "turmeric powder": {"rate": 68, "source": "FSSAI 2023 survey — 1538 samples", "trend": "rising"},
     "chilli powder":   {"rate": 54, "source": "FSSAI random sampling report 2023", "trend": "stable"},
@@ -58,6 +90,7 @@ _MARKET_FAKE_RATES = {
     "edible oil":      {"rate": 47, "source": "ICMR oil survey 2022",             "trend": "stable"},
 }
 
+
 def _get_market_rate(food_name: str) -> dict:
     """Return market adulteration rate for a food item."""
     key = food_name.lower().strip().replace("-", " ").replace("_", " ")
@@ -69,20 +102,71 @@ def _get_market_rate(food_name: str) -> dict:
     return {"rate": 35, "source": "FSSAI general food safety survey", "trend": "unknown"}
 
 
-# ── Text scan ────────────────────────────────────────────
-def scan_food_text(food_name: str, member_profile: dict | None, lang: str = "en") -> dict:
-    lang_note = "Respond with values in Hindi." if lang == "hi" else "Respond with values in Marathi." if lang == "mr" else ""
-    profile_ctx = f"\nUser health profile: {json.dumps(member_profile)}" if member_profile else ""
-    system = f"You are a food safety expert specializing in Indian food adulteration. Respond ONLY with valid JSON, no markdown. {lang_note}"
-    user = f"""{profile_ctx}
-Analyze adulteration risk for: "{food_name}"
+# ── Text scan (RAG-enhanced) ──────────────────────────────────────────────────
+
+def scan_food_text(
+    food_name: str,
+    member_profile: dict | None,
+    lang: str = "en",
+) -> dict:
+    """
+    Analyse adulteration risk for a food item by name.
+
+    Flow:
+      1. Retrieve top-5 FSSAI violation records from ChromaDB (semantic search)
+      2. Format them as a grounding block in the prompt
+      3. Call Groq LLaMA with the grounded prompt
+      4. Attach citations + market rate to the result dict
+    """
+    # ── 1. RAG retrieval ──────────────────────────────────────────────────────
+    fssai_records = rag.retrieve(food_name, n_results=5)
+    fssai_context = rag.format_context(fssai_records)
+
+    has_evidence = bool(fssai_records)
+    evidence_note = (
+        "You have been given verified FSSAI violation records above. "
+        "Base your adulterant list and severity ratings on this evidence. "
+        "If a specific adulterant appears in the records, include it and "
+        "mention its documented frequency or state. "
+        "Do NOT invent adulterants not supported by the records or well-established food science."
+        if has_evidence
+        else
+        "No specific FSSAI records were found for this food. "
+        "Use established food science and general FSSAI survey knowledge. "
+        "Be conservative with severity ratings when citing general knowledge."
+    )
+
+    # ── 2. Prompt construction ────────────────────────────────────────────────
+    lang_note = (
+        "Respond with summary, verdict, and description values in Hindi."
+        if lang == "hi"
+        else "Respond with summary, verdict, and description values in Marathi."
+        if lang == "mr"
+        else ""
+    )
+    profile_ctx = (
+        f"\nUser health profile: {json.dumps(member_profile)}"
+        if member_profile
+        else ""
+    )
+
+    system = (
+        f"You are a food safety expert specialising in Indian food adulteration. "
+        f"Respond ONLY with valid JSON, no markdown. {lang_note}"
+    )
+
+    user = f"""{fssai_context}
+{evidence_note}
+{profile_ctx}
+
+Analyse adulteration risk for: "{food_name}"
 
 Return ONLY this JSON structure:
 {{
   "foodName": "cleaned name",
   "riskLevel": "LOW|MEDIUM|HIGH|CRITICAL",
   "safetyScore": 0-100,
-  "summary": "2 sentence overview",
+  "summary": "2 sentence overview — reference specific FSSAI evidence if available",
   "cookingWarning": null or "heating risk if applicable",
   "personalizedWarning": null or "warning for health profile",
   "adulterants": [
@@ -91,7 +175,8 @@ Return ONLY this JSON structure:
       "description": "what it is, why added",
       "healthRisk": "specific impact",
       "severity": "LOW|MEDIUM|HIGH|CRITICAL",
-      "isPersonalRisk": true or false
+      "isPersonalRisk": true or false,
+      "evidenceBased": true if from FSSAI records above, false if general knowledge
     }}
   ],
   "homeTests": [
@@ -105,13 +190,27 @@ Return ONLY this JSON structure:
   "buyingTips": ["tip1", "tip2", "tip3"],
   "verdict": "one punchy verdict sentence"
 }}"""
-    return _call_groq(system, user, max_tokens=1500)
+
+    # ── 3. LLM call ───────────────────────────────────────────────────────────
+    result = _call_groq(system, user, max_tokens=1600)
+
+    # ── 4. Attach citations and market rate ───────────────────────────────────
+    result["fssaiCitations"] = rag.format_citations(fssai_records)
+    result["ragGrounded"] = has_evidence
+    result["marketFakeRate"] = _get_market_rate(food_name)
+
+    # Ensure adulterants is always a list
+    if not isinstance(result.get("adulterants"), list):
+        result["adulterants"] = []
+
+    return result
 
 
-# ── Combination risk ──────────────────────────────────────
+# ── Combination risk ───────────────────────────────────────────────────────────
+
 def scan_combination(foods: list[str], member_profile: dict | None) -> dict:
     system = "You are a food safety and toxicology expert. Respond ONLY with valid JSON, no markdown."
-    user = f"""Analyze combined adulteration + toxin exposure for: {', '.join(foods)}
+    user = f"""Analyse combined adulteration + toxin exposure for: {', '.join(foods)}
 {f"Health profile: {json.dumps(member_profile)}" if member_profile else ""}
 
 Return ONLY this JSON:
@@ -125,7 +224,8 @@ Return ONLY this JSON:
     return _call_groq(system, user, max_tokens=1000)
 
 
-# ── Symptom reverse lookup ────────────────────────────────
+# ── Symptom reverse lookup ─────────────────────────────────────────────────────
+
 def analyze_symptoms(symptoms: str, recent_foods: list[str]) -> dict:
     system = "You are a food safety and public health expert. Respond ONLY with valid JSON, no markdown."
     user = f"""Symptoms: "{symptoms}"
@@ -143,10 +243,14 @@ Could these be food adulteration related? Return ONLY this JSON:
     return _call_groq(system, user, max_tokens=1000)
 
 
-# ── Label image analysis ──────────────────────────────────
+# ── Label image analysis ───────────────────────────────────────────────────────
+
 def analyze_label_image(image_b64: str, media_type: str = "image/jpeg") -> dict:
-    system = "You are a forensic food safety expert specializing in Indian food adulteration and product counterfeiting detection. Respond ONLY with valid JSON, no markdown."
-    user = """Analyze this food product image carefully for authenticity and adulteration signs.
+    system = (
+        "You are a forensic food safety expert specialising in Indian food adulteration "
+        "and product counterfeiting detection. Respond ONLY with valid JSON, no markdown."
+    )
+    user = """Analyse this food product image carefully for authenticity and adulteration signs.
 
 Look for:
 - Label quality: blurry text, misaligned printing, spelling errors, colour inconsistency
@@ -235,9 +339,11 @@ Return ONLY this JSON:
         result = _parse(text)
 
         # Ensure all list fields are always lists
-        for key in ["homeTests", "adulterants", "visual_red_flags",
-                    "authenticity_indicators", "buyingTips",
-                    "flaggedIngredients", "eNumbers"]:
+        for key in [
+            "homeTests", "adulterants", "visual_red_flags",
+            "authenticity_indicators", "buyingTips",
+            "flaggedIngredients", "eNumbers",
+        ]:
             if not isinstance(result.get(key), list):
                 result[key] = []
 
@@ -248,12 +354,14 @@ Return ONLY this JSON:
             or result.get("brand")
             or ""
         )
-        market_data = _get_market_rate(food_name) if food_name else \
-                      {"rate": 35, "source": "FSSAI general food safety survey", "trend": "unknown"}
+        market_data = (
+            _get_market_rate(food_name)
+            if food_name
+            else {"rate": 35, "source": "FSSAI general food safety survey", "trend": "unknown"}
+        )
         result["marketFakeRate"] = market_data
 
         # Formula: fake_prob = (AI_raw × 0.65) + (market_rate × 0.35)
-        # High market adulteration rate boosts fake probability score
         ai_raw = result.get("fake_probability") or (100 - result.get("safetyScore", 50))
         market_boost = round(market_data["rate"] * 0.35)
         boosted_fake = min(95, round(ai_raw * 0.65 + market_boost))
@@ -261,15 +369,16 @@ Return ONLY this JSON:
         result["fake_probability"] = boosted_fake
         result["authenticity_score"] = 100 - boosted_fake
         result["scoreBreakdown"] = {
-            "ai_visual_score":    round(100 - ai_raw),
-            "market_rate":        market_data["rate"],
-            "market_boost":       market_boost,
-            "final_fake_prob":    boosted_fake,
+            "ai_visual_score": round(100 - ai_raw),
+            "market_rate":     market_data["rate"],
+            "market_boost":    market_boost,
+            "final_fake_prob": boosted_fake,
         }
 
         return result
 
     except Exception as e:
+        logger.exception("Vision analysis failed")
         return {
             "foodName": "Unknown — vision failed",
             "productName": "Unknown",
@@ -282,7 +391,7 @@ Return ONLY this JSON:
             "authenticity_indicators": [],
             "marketFakeRate": {"rate": 35, "source": "General estimate", "trend": "unknown"},
             "scoreBreakdown": {"ai_visual_score": 50, "market_rate": 35, "market_boost": 12, "final_fake_prob": 50},
-            "summary": "Could not analyze image. Please type the food name manually.",
+            "summary": "Could not analyse image. Please type the food name manually.",
             "flaggedIngredients": [],
             "eNumbers": [],
             "adulterants": [],
@@ -295,7 +404,8 @@ Return ONLY this JSON:
         }
 
 
-# ── FSSAI report NLP ──────────────────────────────────────
+# ── FSSAI report NLP ───────────────────────────────────────────────────────────
+
 def extract_fssai_violation(raw_text: str) -> dict:
     system = "Extract structured food safety violation data. Respond ONLY with valid JSON, no markdown."
     user = f"""Extract from this FSSAI report text:

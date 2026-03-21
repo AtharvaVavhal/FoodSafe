@@ -7,6 +7,7 @@ from services.yolo_service import detect_food
 from app.db.database import get_db
 from models.models import ScanRecord
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from datetime import datetime
 
 router = APIRouter()
@@ -22,6 +23,10 @@ class CombinationRequest(BaseModel):
     foods: list[str]
     lang: str = "en"
     member_profile: Optional[dict] = None
+
+class FeedbackRequest(BaseModel):
+    feedback: str       # "accurate" | "inaccurate"
+    note: Optional[str] = None
 
 
 # ── Helpers ───────────────────────────────────────────────
@@ -85,13 +90,17 @@ async def scan_text(req: TextScanRequest, db: AsyncSession = Depends(get_db)):
     # 3. RF personalized scorer ML
     _attach_personalized_score(result, req.food_name, req.member_profile, req.city)
 
-    # 4. Save to DB
+    # 4. Save to DB and return scan_id so frontend can submit feedback
     if req.user_id:
-        db.add(ScanRecord(
+        record = ScanRecord(
             user_id=req.user_id, food_name=req.food_name,
             risk_level=result.get("riskLevel"), safety_score=result.get("safetyScore"),
             result_json=result, scan_type="text", city=req.city
-        ))
+        )
+        db.add(record)
+        await db.flush()
+        await db.commit()
+        result["scanId"] = record.id
 
     return result
 
@@ -198,3 +207,31 @@ async def combination_scan(req: CombinationRequest):
     if len(req.foods) < 2:
         raise HTTPException(400, "At least 2 foods required for combination scan")
     return scan_combination(req.foods, req.member_profile)
+
+
+# ── Feedback ──────────────────────────────────────────────
+@router.post("/{scan_id}/feedback")
+async def submit_feedback(
+    scan_id: str,
+    req: FeedbackRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Record user feedback on a scan result.
+    feedback must be "accurate" or "inaccurate".
+    This data is used to identify where the AI model is wrong
+    and to prioritise which foods need better FSSAI coverage.
+    """
+    if req.feedback not in ("accurate", "inaccurate"):
+        raise HTTPException(400, "feedback must be 'accurate' or 'inaccurate'")
+
+    result = await db.execute(select(ScanRecord).where(ScanRecord.id == scan_id))
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(404, "Scan record not found")
+
+    record.feedback      = req.feedback
+    record.feedback_note = req.note
+    await db.commit()
+
+    return {"success": True, "scan_id": scan_id, "feedback": req.feedback}

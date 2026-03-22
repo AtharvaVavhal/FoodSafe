@@ -21,4 +21,4 @@ async def get_db():
 
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, checkfirst=True))

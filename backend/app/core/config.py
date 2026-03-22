@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List
+import json
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
@@ -21,5 +22,12 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+    def model_post_init(self, __context):
+        if isinstance(self.CORS_ORIGINS, str):
+            try:
+                object.__setattr__(self, 'CORS_ORIGINS', json.loads(self.CORS_ORIGINS))
+            except Exception:
+                object.__setattr__(self, 'CORS_ORIGINS', [self.CORS_ORIGINS])
 
 settings = Settings()

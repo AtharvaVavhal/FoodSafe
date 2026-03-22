@@ -19,8 +19,6 @@ numpy==1.26.4
 prophet==1.1.5
 joblib==1.3.2
 
-
-
 # HTTP
 httpx>=0.27.0
 beautifulsoup4==4.12.3
@@ -29,15 +27,10 @@ requests==2.31.0
 # Utils
 python-dotenv==1.0.1
 passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 Pillow==10.2.0
 twilio==8.13.0
 lxml==6.0.2
-
-# RAG / Vector store
-chromadb==0.5.23
-sentence-transformers>=3.0.0
 
 # Task queue
 celery==5.3.6
@@ -45,3 +38,11 @@ redis==5.0.1
 
 # Push notifications
 pywebpush==2.0.0
+
+# REMOVED — replaced by Groq API calls:
+#   chromadb==0.5.23          (rag_service.py)
+#   sentence-transformers      (rag_service.py)
+#   torch==2.2.1              (indicbert_service.py + yolo_service.py)
+#   transformers==4.38.1      (indicbert_service.py)
+#   sentencepiece==0.2.0      (indicbert_service.py)
+#   ultralytics==8.1.29       (yolo_service.py)

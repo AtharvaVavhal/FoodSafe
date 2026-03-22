@@ -44,3 +44,5 @@ logs/
 frontend/.env
 backend/.env
 frontend/.env
+backend/data/
+foodsafe.zip

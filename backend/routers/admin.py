@@ -202,3 +202,139 @@ async def get_ml_status():
         status["random_forest"] = {"loaded": False, "label": "Random Forest Personalized Scorer"}
 
     return {"models": status, "checked_at": datetime.utcnow().isoformat()}
+
+
+@router.get("/scraper-stats")
+async def get_scraper_stats(db: AsyncSession = Depends(get_db)):
+    """
+    Live scraper health stats:
+    - Total FSSAI violation records in DB
+    - Records added in last 7 days (per day)
+    - Source breakdown
+    - RAG index record count
+    - Last scrape timestamp
+    """
+    now = datetime.utcnow()
+
+    # Total records
+    total = (await db.execute(
+        select(func.count()).select_from(FssaiViolation)
+    )).scalar() or 0
+
+    # Last scrape time (most recent record created)
+    last_record = (await db.execute(
+        select(FssaiViolation.created_at)
+        .order_by(FssaiViolation.created_at.desc())
+        .limit(1)
+    )).scalar()
+    last_scrape = last_record.isoformat() if last_record else None
+
+    # Records added per day for last 7 days
+    daily_adds = []
+    for i in range(6, -1, -1):
+        day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end   = day_start + timedelta(days=1)
+        count = (await db.execute(
+            select(func.count()).where(
+                FssaiViolation.created_at >= day_start,
+                FssaiViolation.created_at < day_end,
+            )
+        )).scalar() or 0
+        daily_adds.append({
+            "day":   day_start.strftime("%a"),
+            "date":  day_start.strftime("%d %b"),
+            "count": count,
+        })
+
+    # Top states with violations
+    state_rows = (await db.execute(
+        select(FssaiViolation.state, func.count().label("cnt"))
+        .where(FssaiViolation.state.is_not(None))
+        .where(FssaiViolation.state != "Unknown")
+        .group_by(FssaiViolation.state)
+        .order_by(desc("cnt"))
+        .limit(8)
+    )).all()
+    top_states = [{"state": r.state, "count": r.cnt} for r in state_rows]
+
+    # Top products with violations
+    product_rows = (await db.execute(
+        select(FssaiViolation.product, func.count().label("cnt"))
+        .where(FssaiViolation.product.is_not(None))
+        .group_by(FssaiViolation.product)
+        .order_by(desc("cnt"))
+        .limit(8)
+    )).all()
+    top_products = [{"product": r.product, "count": r.cnt} for r in product_rows]
+
+    # Recent violations (last 10)
+    recent_rows = (await db.execute(
+        select(FssaiViolation)
+        .order_by(FssaiViolation.created_at.desc())
+        .limit(10)
+    )).scalars().all()
+    recent = [
+        {
+            "id":      v.id,
+            "brand":   v.brand or "Unknown",
+            "product": v.product or "Unknown",
+            "state":   v.state or "Unknown",
+            "date":    v.date.strftime("%d %b %Y") if v.date else "—",
+            "source":  v.source_url or "",
+        }
+        for v in recent_rows
+    ]
+
+    # RAG index health
+    rag_count = 0
+    rag_status = "unknown"
+    try:
+        from services.rag_service import rag
+        rag_count  = rag.record_count
+        rag_status = "healthy" if rag_count > 0 else "empty"
+    except Exception:
+        rag_status = "error"
+
+    return {
+        "totalRecords":  total,
+        "lastScrapeAt":  last_scrape,
+        "dailyAdds":     daily_adds,
+        "topStates":     top_states,
+        "topProducts":   top_products,
+        "recentRecords": recent,
+        "rag": {
+            "status":  rag_status,
+            "indexed": rag_count,
+            "coverage": round((rag_count / total) * 100) if total > 0 else 0,
+        },
+        "sources": {
+            "gnews_fssai":    "Google News — FSSAI adulteration",
+            "gnews_recall":   "Google News — food recalls",
+            "gnews_spurious": "Google News — spurious food",
+            "gnews_poisoning":"Google News — food poisoning",
+            "gnews_violation":"Google News — food violations",
+            "times_of_india": "Times of India",
+            "fssai_press":    "FSSAI press releases",
+            "pib_govt":       "Press Information Bureau",
+            "fssai_official": "FSSAI official alerts",
+        },
+    }
+
+
+@router.post("/scraper/trigger")
+async def trigger_scraper():
+    """Manually trigger the FSSAI scraper task."""
+    try:
+        from tasks.scraper_tasks import run_fssai_scraper
+        task = run_fssai_scraper.delay()
+        return {
+            "success":  True,
+            "task_id":  task.id,
+            "message":  "Scraper task queued successfully",
+            "note":     "Check logs in ~2 minutes for results",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error":   str(e),
+        }

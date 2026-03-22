@@ -5,11 +5,12 @@ from typing import Optional
 import base64, httpx
 from services.ai_service import scan_food_text, scan_combination, analyze_label_image
 from services.yolo_service import detect_food
+from services.overconsumption_service import check_overconsumption
 from app.db.database import get_db
 from models.models import ScanRecord, User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter()
 bearer = HTTPBearer(auto_error=False)
@@ -64,7 +65,6 @@ class TextScanRequest(BaseModel):
     lang:           str            = "en"
     member_profile: Optional[dict] = None
     city:           Optional[str]  = None
-    # user_id removed — extracted from JWT token now
 
 class CombinationRequest(BaseModel):
     foods:          list[str]
@@ -120,6 +120,41 @@ def _attach_personalized_score(result: dict, food_name: str, member_profile: dic
         result["personalizedScore"] = None
 
 
+# ── Overconsumption helper ────────────────────────────────────────────────────
+
+async def _attach_overconsumption(
+    result:    dict,
+    food_name: str,
+    user:      User,
+    db:        AsyncSession,
+) -> None:
+    """
+    Fetch last 7 days of the user's scans, run overconsumption check,
+    and attach the result to `result["overconsumptionWarnings"]`.
+    Fails silently — never blocks the scan response.
+    """
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=7)
+        rows = await db.execute(
+            select(ScanRecord.food_name, ScanRecord.created_at)
+            .where(ScanRecord.user_id == user.id)
+            .where(ScanRecord.created_at >= cutoff)
+            .order_by(ScanRecord.created_at.desc())
+            .limit(200)
+        )
+        recent_scans = [
+            {"food_name": r.food_name, "created_at": r.created_at}
+            for r in rows.all()
+        ]
+        result["overconsumptionWarnings"] = check_overconsumption(
+            food_name, result, recent_scans
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Overconsumption check failed: %s", e)
+        result["overconsumptionWarnings"] = None
+
+
 # ── Text scan (optional auth) ─────────────────────────────────────────────────
 @router.post("/text")
 async def scan_text(
@@ -134,7 +169,6 @@ async def scan_text(
     _attach_seasonal_risk(result, req.food_name)
     _attach_personalized_score(result, req.food_name, req.member_profile, req.city)
 
-    # Save to DB only when authenticated — user_id from JWT, not request body
     if user:
         record = ScanRecord(
             user_id      = user.id,
@@ -149,6 +183,11 @@ async def scan_text(
         await db.flush()
         await db.commit()
         result["scanId"] = record.id
+
+        # Overconsumption check — only for authenticated users (needs scan history)
+        await _attach_overconsumption(result, req.food_name, user, db)
+    else:
+        result["overconsumptionWarnings"] = None
 
     return result
 
@@ -195,8 +234,9 @@ async def scan_image(
     else:
         result["seasonalRisk"] = None
 
-    result["personalizedScore"] = None
-    result["scanType"]          = "image"
+    result["personalizedScore"]       = None
+    result["overconsumptionWarnings"] = None   # image scans are anonymous
+    result["scanType"]                = "image"
     return result
 
 
@@ -216,7 +256,8 @@ async def scan_barcode(barcode: str, lang: str = "en"):
 
     result = scan_food_text(food_name, None, lang)
     _attach_seasonal_risk(result, food_name)
-    result["personalizedScore"] = None
+    result["personalizedScore"]       = None
+    result["overconsumptionWarnings"] = None   # barcode scans are anonymous
     result["barcodeData"] = {
         "name":        food_name,
         "brand":       product.get("brands", ""),

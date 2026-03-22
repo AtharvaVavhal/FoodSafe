@@ -1,3 +1,4 @@
+import { OC_STYLES, ScanBanner } from '../components/OverconsumptionBanner'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
@@ -365,7 +366,7 @@ export default function ResultPage() {
 
   return (
     <div className="rp-root">
-      <style>{STYLES}</style>
+      <style>{STYLES}{OC_STYLES}</style>
 
       {/* Hero */}
       <div className="rp-hero" style={{ background: heroBg }}>
@@ -760,6 +761,19 @@ export default function ResultPage() {
                   <div className="rp-ml-source">🔬 Random Forest ML Model</div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Overconsumption Warnings */}
+      {r.overconsumptionWarnings && (
+        <div className="rp-section rp-fade rp-fade-6">
+          <div className="rp-section-label">Overconsumption Check</div>
+          <div className="rp-card">
+            <div className="rp-card-inner" style={{ padding: '12px 14px' }}>
+              <ScanBanner warnings={r.overconsumptionWarnings} />
             </div>
           </div>
         </div>

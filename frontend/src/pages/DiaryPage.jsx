@@ -1,3 +1,4 @@
+import { OC_STYLES, DigestPanel } from '../components/OverconsumptionBanner'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { useEffect, useRef, useState } from 'react'
@@ -84,9 +85,11 @@ function DonutChart({ data, size = 100 }) {
 }
 
 export default function DiaryPage() {
-  const { scanHistory, lang } = useStore()
+  const { scanHistory, lang, token } = useStore()
   const [aiInsights, setAiInsights] = useState(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
+  const [digest, setDigest] = useState(null)
+  const [loadingDigest, setLoadingDigest] = useState(false)
 
   const total  = scanHistory.length
   const high   = scanHistory.filter(s => ['HIGH','CRITICAL'].includes(s.risk_level)).length
@@ -154,9 +157,23 @@ export default function DiaryPage() {
     .finally(() => setLoadingInsights(false))
   }, [scanHistory.length])
 
+
+  // Fetch weekly overconsumption digest
+  useEffect(() => {
+    if (!token || scanHistory.length === 0) return
+    setLoadingDigest(true)
+    fetch(`${API_URL}/diary/overconsumption`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then(r => r.json())
+    .then(data => { if (data.categories) setDigest(data) })
+    .catch(() => {})
+    .finally(() => setLoadingDigest(false))
+  }, [scanHistory.length])
+
   return (
     <div className="dp-root">
-      <style>{STYLES}</style>
+      <style>{STYLES}{OC_STYLES}</style>
 
       {/* Header */}
       <div className="dp-header">
@@ -244,6 +261,17 @@ export default function DiaryPage() {
               </div>
             </div>
           )}
+
+
+          {/* Overconsumption Digest */}
+          <div className="dp-section dp-fade">
+            <div className="dp-section-label">Weekly Overconsumption</div>
+            <div className="dp-card">
+              <div className="dp-card-inner">
+                <DigestPanel digest={digest} loading={loadingDigest} />
+              </div>
+            </div>
+          </div>
 
           {/* AI Insights */}
           {(aiInsights || loadingInsights) && (

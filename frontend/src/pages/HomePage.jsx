@@ -4,7 +4,7 @@ import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { analyzeLabel } from '../services/claude'
 import { scanFoodAPI, scanCombinationAPI } from '../services/api'
-import { BarcodeScanner } from '../components/scan'
+import ScanLoader from '../components/ScanLoader'
 
 const DEFAULT_ALERTS = [
   "MDH spices flagged for pesticide residue — Apr 2024",
@@ -489,21 +489,14 @@ export default function HomePage() {
     setLoading(false)
   }
 
-  function startVoice() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) { setError('Voice not supported on this browser'); return }
-    const rec = new SR()
-    rec.lang = lang === 'hi' ? 'hi-IN' : lang === 'mr' ? 'mr-IN' : 'en-IN'
-    rec.onresult = (e) => setQuery(e.results[0][0].transcript)
-    rec.onerror = () => setError('Voice recognition failed')
-    rec.start()
-  }
+
 
   const currentAlert = fssaiAlerts[ticker % fssaiAlerts.length]
 
   return (
     <div className="fs-root">
       <style>{PREMIUM_STYLES}</style>
+      {loading && <ScanLoader food={query.trim()} lang={lang} />}
 
       {/* Hero / Scan area */}
       <div className="fs-hero">
@@ -535,13 +528,7 @@ export default function HomePage() {
           <button className="fs-mode-btn" onClick={() => fileRef.current.click()}>
             📷 Photo
           </button>
-          <button className="fs-mode-btn" onClick={startVoice}>
-            🎤 Voice
-          </button>
-          <BarcodeScanner
-            onResult={(name) => setQuery(name)}
-            onError={(err) => setError(err)}
-          />
+
           <input
             ref={fileRef}
             type="file"
@@ -559,9 +546,7 @@ export default function HomePage() {
           onClick={handleScan}
           disabled={loading || !query.trim()}
         >
-          {loading
-            ? '⏳ ' + (t(lang, 'scanning') || 'Scanning…')
-            : '🔍 ' + (t(lang, 'scanNow') || 'Scan Now')}
+          🔍 {t(lang, 'scanNow') || 'Scan Now'}
         </button>
       </div>
 
@@ -585,6 +570,7 @@ export default function HomePage() {
           {[
             { icon: '🎉', title: 'Festival Guide', sub: 'Safe foods for festivals', to: '/festival' },
             { icon: '🩺', title: 'Symptom Check', sub: 'Identify food poisoning', to: '/symptoms' },
+            { icon: '🗺️', title: 'Food Safety Map', sub: 'Alerts near your city', to: '/map' },
           ].map(({ icon, title, sub, to }) => (
             <button key={to} className="fs-quick-btn" onClick={() => nav(to)}>
               <span className="fs-quick-icon">{icon}</span>

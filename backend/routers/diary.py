@@ -4,9 +4,11 @@ from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime, timedelta
 from app.db.database import get_db
-from models.models import User
+from models.models import User, ScanRecord
 from services.ai_service import _call_groq
+from services.overconsumption_service import build_weekly_digest
 
 router = APIRouter()
 bearer = HTTPBearer(auto_error=False)
@@ -34,7 +36,7 @@ async def get_required_user(
         raise HTTPException(401, "Invalid or expired token")
 
 
-# ── Schema ────────────────────────────────────────────────────────────────────
+# ── Schemas ────────────────────────────────────────────────────────────────────
 
 class DiaryInsightRequest(BaseModel):
     scan_history: list           # [{ food, risk, score }]
@@ -94,3 +96,37 @@ Return ONLY this JSON:
             "riskPattern": None,
             "error":       str(e),
         }
+
+
+# ── Overconsumption digest (requires auth) ────────────────────────────────────
+@router.get("/overconsumption")
+async def get_overconsumption_digest(
+    days: int         = 7,
+    user: User        = Depends(get_required_user),
+    db:   AsyncSession = Depends(get_db),
+):
+    """
+    Returns a weekly overconsumption digest for the authenticated user.
+
+    Query param:
+        days — how many days to look back (default 7, max 30)
+    """
+    days = min(max(days, 1), 30)
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    rows = await db.execute(
+        select(ScanRecord.food_name, ScanRecord.created_at)
+        .where(ScanRecord.user_id == user.id)
+        .where(ScanRecord.created_at >= cutoff)
+        .order_by(ScanRecord.created_at.desc())
+        .limit(500)
+    )
+    scan_records = [
+        {"food_name": r.food_name, "created_at": r.created_at}
+        for r in rows.all()
+    ]
+
+    digest = build_weekly_digest(scan_records)
+    digest["userId"]   = user.id
+    digest["lookback"] = days
+    return digest

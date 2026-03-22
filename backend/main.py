@@ -16,8 +16,11 @@ from routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🌿 FoodSafe API starting...")
-    await init_db()
-    print("✅ Database tables ready")
+    try:
+        await init_db()
+        print("✅ Database tables ready")
+    except Exception as e:
+        print(f"⚠ DB init skipped: {e}")
     try:
         import risk_scorer
         print("✅ Seasonal risk scorer loaded")

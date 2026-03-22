@@ -1,0 +1,374 @@
+{
+  "turmeric": {
+    "1": {
+      "violations_predicted": 14.1,
+      "risk_score": 54,
+      "risk_level": "MEDIUM"
+    },
+    "2": {
+      "violations_predicted": 12.1,
+      "risk_score": 47,
+      "risk_level": "MEDIUM"
+    },
+    "3": {
+      "violations_predicted": 15.7,
+      "risk_score": 60,
+      "risk_level": "HIGH"
+    },
+    "4": {
+      "violations_predicted": 15.9,
+      "risk_score": 61,
+      "risk_level": "HIGH"
+    },
+    "5": {
+      "violations_predicted": 12.5,
+      "risk_score": 48,
+      "risk_level": "MEDIUM"
+    },
+    "6": {
+      "violations_predicted": 13.5,
+      "risk_score": 52,
+      "risk_level": "MEDIUM"
+    },
+    "7": {
+      "violations_predicted": 11.6,
+      "risk_score": 45,
+      "risk_level": "MEDIUM"
+    },
+    "8": {
+      "violations_predicted": 11.0,
+      "risk_score": 42,
+      "risk_level": "MEDIUM"
+    },
+    "9": {
+      "violations_predicted": 12.2,
+      "risk_score": 47,
+      "risk_level": "MEDIUM"
+    },
+    "10": {
+      "violations_predicted": 14.6,
+      "risk_score": 56,
+      "risk_level": "HIGH"
+    },
+    "11": {
+      "violations_predicted": 15.0,
+      "risk_score": 58,
+      "risk_level": "HIGH"
+    },
+    "12": {
+      "violations_predicted": 12.0,
+      "risk_score": 46,
+      "risk_level": "MEDIUM"
+    }
+  },
+  "milk": {
+    "1": {
+      "violations_predicted": 13.9,
+      "risk_score": 46,
+      "risk_level": "MEDIUM"
+    },
+    "2": {
+      "violations_predicted": 15.3,
+      "risk_score": 51,
+      "risk_level": "MEDIUM"
+    },
+    "3": {
+      "violations_predicted": 15.3,
+      "risk_score": 51,
+      "risk_level": "MEDIUM"
+    },
+    "4": {
+      "violations_predicted": 14.1,
+      "risk_score": 47,
+      "risk_level": "MEDIUM"
+    },
+    "5": {
+      "violations_predicted": 18.3,
+      "risk_score": 61,
+      "risk_level": "HIGH"
+    },
+    "6": {
+      "violations_predicted": 20.7,
+      "risk_score": 69,
+      "risk_level": "HIGH"
+    },
+    "7": {
+      "violations_predicted": 19.0,
+      "risk_score": 63,
+      "risk_level": "HIGH"
+    },
+    "8": {
+      "violations_predicted": 16.8,
+      "risk_score": 56,
+      "risk_level": "HIGH"
+    },
+    "9": {
+      "violations_predicted": 12.9,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "10": {
+      "violations_predicted": 14.5,
+      "risk_score": 48,
+      "risk_level": "MEDIUM"
+    },
+    "11": {
+      "violations_predicted": 14.9,
+      "risk_score": 50,
+      "risk_level": "MEDIUM"
+    },
+    "12": {
+      "violations_predicted": 14.0,
+      "risk_score": 47,
+      "risk_level": "MEDIUM"
+    }
+  },
+  "honey": {
+    "1": {
+      "violations_predicted": 10.1,
+      "risk_score": 44,
+      "risk_level": "MEDIUM"
+    },
+    "2": {
+      "violations_predicted": 7.9,
+      "risk_score": 34,
+      "risk_level": "LOW"
+    },
+    "3": {
+      "violations_predicted": 10.0,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "4": {
+      "violations_predicted": 10.0,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "5": {
+      "violations_predicted": 10.2,
+      "risk_score": 44,
+      "risk_level": "MEDIUM"
+    },
+    "6": {
+      "violations_predicted": 8.7,
+      "risk_score": 38,
+      "risk_level": "MEDIUM"
+    },
+    "7": {
+      "violations_predicted": 8.4,
+      "risk_score": 37,
+      "risk_level": "MEDIUM"
+    },
+    "8": {
+      "violations_predicted": 9.3,
+      "risk_score": 40,
+      "risk_level": "MEDIUM"
+    },
+    "9": {
+      "violations_predicted": 9.6,
+      "risk_score": 42,
+      "risk_level": "MEDIUM"
+    },
+    "10": {
+      "violations_predicted": 13.7,
+      "risk_score": 60,
+      "risk_level": "HIGH"
+    },
+    "11": {
+      "violations_predicted": 13.9,
+      "risk_score": 60,
+      "risk_level": "HIGH"
+    },
+    "12": {
+      "violations_predicted": 13.2,
+      "risk_score": 57,
+      "risk_level": "HIGH"
+    }
+  },
+  "ghee": {
+    "1": {
+      "violations_predicted": 7.0,
+      "risk_score": 29,
+      "risk_level": "LOW"
+    },
+    "2": {
+      "violations_predicted": 7.6,
+      "risk_score": 32,
+      "risk_level": "LOW"
+    },
+    "3": {
+      "violations_predicted": 8.2,
+      "risk_score": 34,
+      "risk_level": "LOW"
+    },
+    "4": {
+      "violations_predicted": 8.3,
+      "risk_score": 35,
+      "risk_level": "MEDIUM"
+    },
+    "5": {
+      "violations_predicted": 8.6,
+      "risk_score": 36,
+      "risk_level": "MEDIUM"
+    },
+    "6": {
+      "violations_predicted": 8.1,
+      "risk_score": 34,
+      "risk_level": "LOW"
+    },
+    "7": {
+      "violations_predicted": 7.7,
+      "risk_score": 32,
+      "risk_level": "LOW"
+    },
+    "8": {
+      "violations_predicted": 8.8,
+      "risk_score": 37,
+      "risk_level": "MEDIUM"
+    },
+    "9": {
+      "violations_predicted": 7.7,
+      "risk_score": 32,
+      "risk_level": "LOW"
+    },
+    "10": {
+      "violations_predicted": 12.8,
+      "risk_score": 53,
+      "risk_level": "MEDIUM"
+    },
+    "11": {
+      "violations_predicted": 14.7,
+      "risk_score": 61,
+      "risk_level": "HIGH"
+    },
+    "12": {
+      "violations_predicted": 12.9,
+      "risk_score": 54,
+      "risk_level": "MEDIUM"
+    }
+  },
+  "mustard_oil": {
+    "1": {
+      "violations_predicted": 13.5,
+      "risk_score": 54,
+      "risk_level": "MEDIUM"
+    },
+    "2": {
+      "violations_predicted": 12.0,
+      "risk_score": 48,
+      "risk_level": "MEDIUM"
+    },
+    "3": {
+      "violations_predicted": 9.5,
+      "risk_score": 38,
+      "risk_level": "MEDIUM"
+    },
+    "4": {
+      "violations_predicted": 10.8,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "5": {
+      "violations_predicted": 10.7,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "6": {
+      "violations_predicted": 10.7,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "7": {
+      "violations_predicted": 10.9,
+      "risk_score": 44,
+      "risk_level": "MEDIUM"
+    },
+    "8": {
+      "violations_predicted": 10.0,
+      "risk_score": 40,
+      "risk_level": "MEDIUM"
+    },
+    "9": {
+      "violations_predicted": 10.4,
+      "risk_score": 42,
+      "risk_level": "MEDIUM"
+    },
+    "10": {
+      "violations_predicted": 10.7,
+      "risk_score": 43,
+      "risk_level": "MEDIUM"
+    },
+    "11": {
+      "violations_predicted": 11.8,
+      "risk_score": 47,
+      "risk_level": "MEDIUM"
+    },
+    "12": {
+      "violations_predicted": 13.4,
+      "risk_score": 54,
+      "risk_level": "MEDIUM"
+    }
+  },
+  "paneer": {
+    "1": {
+      "violations_predicted": 14.1,
+      "risk_score": 52,
+      "risk_level": "MEDIUM"
+    },
+    "2": {
+      "violations_predicted": 14.4,
+      "risk_score": 53,
+      "risk_level": "MEDIUM"
+    },
+    "3": {
+      "violations_predicted": 18.5,
+      "risk_score": 69,
+      "risk_level": "HIGH"
+    },
+    "4": {
+      "violations_predicted": 17.8,
+      "risk_score": 66,
+      "risk_level": "HIGH"
+    },
+    "5": {
+      "violations_predicted": 15.2,
+      "risk_score": 56,
+      "risk_level": "HIGH"
+    },
+    "6": {
+      "violations_predicted": 15.3,
+      "risk_score": 57,
+      "risk_level": "HIGH"
+    },
+    "7": {
+      "violations_predicted": 14.7,
+      "risk_score": 54,
+      "risk_level": "MEDIUM"
+    },
+    "8": {
+      "violations_predicted": 14.8,
+      "risk_score": 55,
+      "risk_level": "HIGH"
+    },
+    "9": {
+      "violations_predicted": 14.6,
+      "risk_score": 54,
+      "risk_level": "MEDIUM"
+    },
+    "10": {
+      "violations_predicted": 19.0,
+      "risk_score": 70,
+      "risk_level": "HIGH"
+    },
+    "11": {
+      "violations_predicted": 22.0,
+      "risk_score": 81,
+      "risk_level": "CRITICAL"
+    },
+    "12": {
+      "violations_predicted": 15.1,
+      "risk_score": 56,
+      "risk_level": "HIGH"
+    }
+  }
+}

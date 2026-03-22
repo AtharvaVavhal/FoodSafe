@@ -1,67 +1,124 @@
 version: "3.9"
 
 services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: foodsafe
-      POSTGRES_USER: foodsafe
-      POSTGRES_PASSWORD: foodsafe_dev
+      POSTGRES_DB:       foodsafe
+      POSTGRES_USER:     foodsafe
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foodsafe_dev}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U foodsafe"]
+      test:     ["CMD-SHELL", "pg_isready -U foodsafe"]
       interval: 5s
-      retries: 5
+      timeout:  5s
+      retries:  10
 
+  # ── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test:     ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries:  5
 
+  # ── Backend API ────────────────────────────────────────────────────────────
   backend:
-    build: ./backend
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://foodsafe:foodsafe_dev@db:5432/foodsafe
-      REDIS_URL: redis://redis:6379
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      CORS_ORIGINS: '["http://localhost:3000","http://frontend"]'
+      DATABASE_URL:                postgresql+asyncpg://foodsafe:${POSTGRES_PASSWORD:-foodsafe_dev}@db:5432/foodsafe
+      REDIS_URL:                   redis://redis:6379
+      GROQ_API_KEY:                ${GROQ_API_KEY}
+      ANTHROPIC_API_KEY:           ${ANTHROPIC_API_KEY:-}
+      SECRET_KEY:                  ${SECRET_KEY}
+      ALGORITHM:                   HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 10080
+      APP_ENV:                     production
+      CORS_ORIGINS:                '["https://${FRONTEND_DOMAIN:-localhost:3000}","http://frontend"]'
+    volumes:
+      # Persist ChromaDB vector store across restarts — do NOT mount source code
+      - chroma_data:/app/data/chroma_fssai
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
+    healthcheck:
+      test:     ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout:  10s
+      retries:  3
 
-  frontend:
-    build: ./frontend
+  # ── Celery Worker (async ML + scraper tasks) ───────────────────────────────
+  worker:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      - backend
-    ports:
-      - "3000:80"
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL:      postgresql+asyncpg://foodsafe:${POSTGRES_PASSWORD:-foodsafe_dev}@db:5432/foodsafe
+      REDIS_URL:         redis://redis:6379
+      GROQ_API_KEY:      ${GROQ_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SECRET_KEY:        ${SECRET_KEY}
+      APP_ENV:           production
+    volumes:
+      - chroma_data:/app/data/chroma_fssai
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
 
-  # Celery worker for async ML tasks
-  worker:
-    build: ./backend
+  # ── Celery Beat (cron scheduler — FSSAI scraper every Monday 6am IST) ──────
+  beat:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       - redis
       - db
     environment:
-      DATABASE_URL: postgresql+asyncpg://foodsafe:foodsafe_dev@db:5432/foodsafe
-      REDIS_URL: redis://redis:6379
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-    command: celery -A tasks.celery_app worker --loglevel=info
+      DATABASE_URL:      postgresql+asyncpg://foodsafe:${POSTGRES_PASSWORD:-foodsafe_dev}@db:5432/foodsafe
+      REDIS_URL:         redis://redis:6379
+      GROQ_API_KEY:      ${GROQ_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SECRET_KEY:        ${SECRET_KEY}
+      APP_ENV:           production
+    volumes:
+      - chroma_data:/app/data/chroma_fssai
+    command: celery -A tasks.celery_app beat --loglevel=info
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
 
 volumes:
   pgdata:
+  chroma_data:

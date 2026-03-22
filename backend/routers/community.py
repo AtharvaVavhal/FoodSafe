@@ -1,24 +1,53 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.database import get_db
-from models.models import CommunityReport
+from models.models import CommunityReport, User
 
 router = APIRouter()
+bearer = HTTPBearer(auto_error=False)
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+
+async def get_required_user(
+    creds: HTTPAuthorizationCredentials = Depends(bearer),
+    db:    AsyncSession = Depends(get_db),
+) -> User:
+    """Returns the authenticated User or raises 401."""
+    if not creds:
+        raise HTTPException(401, "Authentication required")
+    try:
+        from routers.users import decode_token
+        user_id = decode_token(creds.credentials)
+        result  = await db.execute(select(User).where(User.id == user_id))
+        user    = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(401, "User not found")
+        return user
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(401, "Invalid or expired token")
+
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
 
 class ReportCreate(BaseModel):
     food_name:   str
     city:        str
     description: str
-    brand:       Optional[str] = None
-    state:       Optional[str] = "Maharashtra"
+    brand:       Optional[str]   = None
+    state:       Optional[str]   = "Maharashtra"
     lat:         Optional[float] = None
     lng:         Optional[float] = None
 
 class UpvoteRequest(BaseModel):
     report_id: str
+
 
 def _risk_from_count(count: int) -> str:
     if count >= 30: return "CRITICAL"
@@ -26,7 +55,8 @@ def _risk_from_count(count: int) -> str:
     if count >= 10: return "MEDIUM"
     return "LOW"
 
-# ── Get reports ───────────────────────────────────────────
+
+# ── Get reports (public) ──────────────────────────────────────────────────────
 @router.get("/reports")
 async def get_reports(
     city:  str = "",
@@ -35,7 +65,7 @@ async def get_reports(
     limit: int = 50,
     db:    AsyncSession = Depends(get_db),
 ):
-    query = select(CommunityReport).order_by(CommunityReport.created_at.desc()).limit(limit)
+    query  = select(CommunityReport).order_by(CommunityReport.created_at.desc()).limit(limit)
     result = await db.execute(query)
     reports = result.scalars().all()
 
@@ -60,9 +90,14 @@ async def get_reports(
     ]
     return {"reports": data, "total": len(data)}
 
-# ── Submit report ─────────────────────────────────────────
+
+# ── Submit report (requires auth) ─────────────────────────────────────────────
 @router.post("/report")
-async def submit_report(req: ReportCreate, db: AsyncSession = Depends(get_db)):
+async def submit_report(
+    req:  ReportCreate,
+    db:   AsyncSession = Depends(get_db),
+    user: User         = Depends(get_required_user),
+):
     if not req.food_name.strip():
         raise HTTPException(400, "food_name is required")
     if not req.city.strip():
@@ -82,9 +117,14 @@ async def submit_report(req: ReportCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"success": True, "id": report.id, "message": "Report submitted successfully"}
 
-# ── Upvote report ─────────────────────────────────────────
+
+# ── Upvote report (requires auth) ─────────────────────────────────────────────
 @router.post("/upvote")
-async def upvote_report(req: UpvoteRequest, db: AsyncSession = Depends(get_db)):
+async def upvote_report(
+    req:  UpvoteRequest,
+    db:   AsyncSession = Depends(get_db),
+    user: User         = Depends(get_required_user),
+):
     result = await db.execute(
         select(CommunityReport).where(CommunityReport.id == req.report_id)
     )
@@ -95,10 +135,10 @@ async def upvote_report(req: UpvoteRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"success": True, "upvotes": report.upvotes}
 
-# ── City risk summary ─────────────────────────────────────
+
+# ── City risk summary (public) ────────────────────────────────────────────────
 @router.get("/city-risk")
 async def city_risk(db: AsyncSession = Depends(get_db)):
-    # Report count per city
     count_result = await db.execute(
         select(CommunityReport.city, func.count(CommunityReport.id).label("reports"))
         .group_by(CommunityReport.city)
@@ -106,7 +146,6 @@ async def city_risk(db: AsyncSession = Depends(get_db)):
     )
     city_counts = {r.city: r.reports for r in count_result.all()}
 
-    # Top food per city (most reported food_name per city)
     top_food_result = await db.execute(
         select(
             CommunityReport.city,
@@ -116,7 +155,6 @@ async def city_risk(db: AsyncSession = Depends(get_db)):
         .group_by(CommunityReport.city, CommunityReport.food_name)
         .order_by(CommunityReport.city, func.count(CommunityReport.id).desc())
     )
-    # Keep only top food per city
     top_food = {}
     for row in top_food_result.all():
         if row.city not in top_food:
@@ -124,31 +162,31 @@ async def city_risk(db: AsyncSession = Depends(get_db)):
 
     cities = [
         {
-            "city":     city,
-            "reports":  count,
-            "risk":     _risk_from_count(count),
-            "topFood":  top_food.get(city, "Various"),
+            "city":    city,
+            "reports": count,
+            "risk":    _risk_from_count(count),
+            "topFood": top_food.get(city, "Various"),
         }
         for city, count in city_counts.items()
-        if city  # skip null cities
+        if city
     ]
-
     return {"cities": cities, "total": len(cities)}
 
-# ── Seed sample reports (dev only) ───────────────────────
+
+# ── Seed sample reports (dev only — remove before production) ─────────────────
 @router.post("/seed")
 async def seed_reports(db: AsyncSession = Depends(get_db)):
     samples = [
-        {"food_name": "Turmeric Powder", "brand": "Local brand", "city": "Nagpur",
-         "state": "Maharashtra", "description": "Found yellow synthetic color, tasted bitter. Bought from local market."},
-        {"food_name": "Buffalo Milk",    "brand": "Unbranded",   "city": "Pune",
-         "state": "Maharashtra", "description": "Milk appeared watery, detergent smell noticed. Tested positive for urea."},
+        {"food_name": "Turmeric Powder", "brand": "Local brand",  "city": "Nagpur",
+         "state": "Maharashtra", "description": "Found yellow synthetic color, tasted bitter."},
+        {"food_name": "Buffalo Milk",    "brand": "Unbranded",    "city": "Pune",
+         "state": "Maharashtra", "description": "Milk appeared watery, detergent smell noticed."},
         {"food_name": "Honey",           "brand": "Local honey",  "city": "Mumbai",
-         "state": "Maharashtra", "description": "Crystallized very quickly, tastes like sugar syrup. Likely HFCS adulteration."},
+         "state": "Maharashtra", "description": "Crystallized very quickly, tastes like sugar syrup."},
         {"food_name": "Paneer",          "brand": "Local dairy",  "city": "Aurangabad",
-         "state": "Maharashtra", "description": "Rubbery texture, did not melt on heating. Starch adulteration suspected."},
+         "state": "Maharashtra", "description": "Rubbery texture, did not melt on heating."},
         {"food_name": "Mustard Oil",     "brand": "Unbranded",    "city": "Nashik",
-         "state": "Maharashtra", "description": "Unusual bitter taste, stomach cramps after use. Possible argemone oil mixing."},
+         "state": "Maharashtra", "description": "Unusual bitter taste, stomach cramps after use."},
     ]
     for s in samples:
         db.add(CommunityReport(**s))

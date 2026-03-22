@@ -13,13 +13,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the sentence-transformers embedding model
-# so first RAG query isn't slow in production
-RUN python -c "\
-from sentence_transformers import SentenceTransformer; \
-SentenceTransformer('all-MiniLM-L6-v2'); \
-print('Embedding model cached')"
-
 # Copy application code
 COPY . .
 

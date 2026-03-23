@@ -41,18 +41,16 @@ export default function AuthPage() {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(160deg, #0d2818 0%, #1a3d2b 100%)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '24px 20px',
+      overflowY: 'auto',
+      padding: '40px 20px 40px',
       fontFamily: "'DM Sans', system-ui, sans-serif",
     }}>
       {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ fontSize: 48, marginBottom: 10 }}>🌿</div>
+      <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ fontSize: 44, marginBottom: 8 }}>🌿</div>
         <div style={{
-          fontSize: 26, fontWeight: 700, color: '#f5f0e8',
+          fontSize: 24, fontWeight: 700, color: '#f5f0e8',
           fontFamily: "'Playfair Display', serif",
-          letterSpacing: '-0.01em',
         }}>FoodSafe</div>
         <div style={{ fontSize: 12, color: 'rgba(245,240,232,0.45)', marginTop: 4 }}>
           Protect your family's plate
@@ -61,7 +59,7 @@ export default function AuthPage() {
 
       {/* Card */}
       <div style={{
-        width: '100%', maxWidth: 400,
+        maxWidth: 400, margin: '0 auto',
         background: '#fff', borderRadius: 24,
         padding: '28px 24px',
         boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
@@ -118,13 +116,11 @@ export default function AuthPage() {
             cursor: loading ? 'not-allowed' : 'pointer',
             fontFamily: 'inherit', marginTop: 4,
             boxShadow: '0 4px 16px rgba(26,61,43,0.25)',
-            transition: 'opacity 0.2s',
           }}>
             {loading ? 'Please wait...' : mode === 'login' ? '→ Login' : '→ Create Account'}
           </button>
         </div>
 
-        {/* Skip */}
         <div style={{ textAlign: 'center', marginTop: 20 }}>
           <button onClick={() => nav('/scan')} style={{
             fontSize: 12, color: '#aaa', background: 'none',

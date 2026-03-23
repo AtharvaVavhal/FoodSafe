@@ -286,4 +286,16 @@ body::after {
   transition: transform 0.08s, opacity 0.08s;
   -webkit-tap-highlight-color: transparent;
 }
-.haptic:active { transform: scale(0.96); opacity: 0.85; }
+.haptic:active { transform: scale(0.96); opacity: 0.85; }html, body {
+  background: #1a3d2b;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #f7f5f0;
+  box-shadow: 0 0 40px rgba(0,0,0,0.3);
+}

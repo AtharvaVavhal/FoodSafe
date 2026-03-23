@@ -15,6 +15,7 @@ import MealPlannerPage from './pages/MealPlannerPage'
 import Chatbot from './components/chatbot'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageTransition from './components/PageTransition'
+import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
   return (
@@ -22,19 +23,18 @@ export default function App() {
       <Layout>
         <PageTransition>
           <Routes>
-            <Route path="/scan"      element={<ErrorBoundary><HomePage /></ErrorBoundary>} />
-            <Route path="/"
-            element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
+            <Route path="/"         element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
             <Route path="/auth"     element={<ErrorBoundary><AuthPage /></ErrorBoundary>} />
-            <Route path="/result"   element={<ErrorBoundary><ResultPage /></ErrorBoundary>} />
-            <Route path="/diary"    element={<ErrorBoundary><DiaryPage /></ErrorBoundary>} />
-            <Route path="/map"      element={<ErrorBoundary><MapPage /></ErrorBoundary>} />
-            <Route path="/brands"   element={<ErrorBoundary><BrandsPage /></ErrorBoundary>} />
-            <Route path="/family"   element={<ErrorBoundary><FamilyPage /></ErrorBoundary>} />
-            <Route path="/symptoms" element={<ErrorBoundary><SymptomPage /></ErrorBoundary>} />
-            <Route path="/festival" element={<ErrorBoundary><FestivalPage /></ErrorBoundary>} />
-            <Route path="/meal"     element={<ErrorBoundary><MealPlannerPage /></ErrorBoundary>} />
-            <Route path="/admin"    element={<ErrorBoundary showError><AdminDashboard /></ErrorBoundary>} />
+            <Route path="/scan"     element={<ProtectedRoute><ErrorBoundary><HomePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/result"   element={<ProtectedRoute><ErrorBoundary><ResultPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/diary"    element={<ProtectedRoute><ErrorBoundary><DiaryPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/map"      element={<ProtectedRoute><ErrorBoundary><MapPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/brands"   element={<ProtectedRoute><ErrorBoundary><BrandsPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/family"   element={<ProtectedRoute><ErrorBoundary><FamilyPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/symptoms" element={<ProtectedRoute><ErrorBoundary><SymptomPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/festival" element={<ProtectedRoute><ErrorBoundary><FestivalPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/meal"     element={<ProtectedRoute><ErrorBoundary><MealPlannerPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/admin"    element={<ProtectedRoute><ErrorBoundary showError><AdminDashboard /></ErrorBoundary></ProtectedRoute>} />
           </Routes>
         </PageTransition>
         <Chatbot />

@@ -26,7 +26,7 @@ requests==2.31.0
 
 # Utils
 python-dotenv==1.0.1
-passlib[bcrypt]==1.7.4
+passlib[bcrypt]==4.0.1
 python-jose[cryptography]==3.3.0
 Pillow==10.2.0
 twilio==8.13.0
@@ -45,4 +45,4 @@ pywebpush==2.0.0
 #   torch==2.2.1              (indicbert_service.py + yolo_service.py)
 #   transformers==4.38.1      (indicbert_service.py)
 #   sentencepiece==0.2.0      (indicbert_service.py)
-#   ultralytics==8.1.29       (yolo_service.py)
+#   ultralytics==8.1.29       (yolo_service.py)bcrypt==4.0.1

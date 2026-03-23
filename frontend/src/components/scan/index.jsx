@@ -37,7 +37,7 @@ export function ImageUploadButton({ onUpload }) {
   return (
     <>
       <button onClick={() => ref.current.click()} style={btnStyle}>📷 Photo</button>
-      <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={onUpload} />
+      <input ref={ref} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onUpload} />
     </>
   )
 }

@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/layout/Layout'
+import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import ResultPage from './pages/ResultPage'
 import DiaryPage from './pages/DiaryPage'
@@ -21,7 +22,9 @@ export default function App() {
       <Layout>
         <PageTransition>
           <Routes>
-            <Route path="/"         element={<ErrorBoundary><HomePage /></ErrorBoundary>} />
+            <Route path="/scan"      element={<ErrorBoundary><HomePage /></ErrorBoundary>} />
+            <Route path="/"
+            element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
             <Route path="/auth"     element={<ErrorBoundary><AuthPage /></ErrorBoundary>} />
             <Route path="/result"   element={<ErrorBoundary><ResultPage /></ErrorBoundary>} />
             <Route path="/diary"    element={<ErrorBoundary><DiaryPage /></ErrorBoundary>} />

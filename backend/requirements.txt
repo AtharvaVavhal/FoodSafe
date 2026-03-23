@@ -26,7 +26,8 @@ requests==2.31.0
 
 # Utils
 python-dotenv==1.0.1
-passlib[bcrypt]==4.0.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 Pillow==10.2.0
 twilio==8.13.0

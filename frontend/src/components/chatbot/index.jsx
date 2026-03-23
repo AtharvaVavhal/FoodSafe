@@ -127,8 +127,11 @@ export default function Chatbot() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMessage()}
               placeholder={lang === 'hi' ? 'कुछ पूछें...' : lang === 'mr' ? 'विचारा...' : 'Ask anything...'}
-              style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid #ddd',
-                fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+              style={{
+                flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid #ddd',
+                fontSize: 12, outline: 'none', fontFamily: 'inherit', color: '#333',
+                background: '#fff',
+              }}
             />
             <button onClick={() => sendMessage()} disabled={loading || !input.trim()} style={{
               padding: '6px 10px', borderRadius: 8, border: 'none',

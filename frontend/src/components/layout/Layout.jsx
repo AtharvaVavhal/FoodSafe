@@ -159,16 +159,20 @@ export default function Layout({ children }) {
 
           {/* Auth button */}
           {user ? (
-            <button onClick={() => { logout(); nav('/') }} style={{
-              fontSize: 10, padding: '5px 10px', borderRadius: 16,
-              border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer',
-              fontWeight: 500, fontFamily: 'inherit',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'rgba(255,255,255,0.9)',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              👤 {user.name?.split(' ')[0] || 'Logout'}
-            </button>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>
+                👤 {user.name?.split(' ')[0]}
+              </span>
+              <button onClick={() => { logout(); nav('/') }} style={{
+                fontSize: 10, padding: '5px 10px', borderRadius: 16,
+                border: '1px solid rgba(255,100,100,0.4)', cursor: 'pointer',
+                fontWeight: 500, fontFamily: 'inherit',
+                background: 'rgba(255,100,100,0.15)',
+                color: '#ffaaaa',
+              }}>
+                Logout
+              </button>
+            </div>
           ) : (
             <button onClick={() => nav('/auth')} style={{
               fontSize: 10, padding: '5px 10px', borderRadius: 16,

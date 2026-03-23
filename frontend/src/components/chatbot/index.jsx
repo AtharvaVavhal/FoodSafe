@@ -79,7 +79,7 @@ export default function Chatbot() {
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EAF3DE',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🌿</div>
             <div>
-              <div style={{ color: '#333', fontSize: 13, fontWeight: 500 }}>FoodSafe AI</div>
+              <div style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>FoodSafe AI</div>
               <div style={{ color: '#a8c5a0', fontSize: 10 }}>Food safety assistant</div>
             </div>
           </div>

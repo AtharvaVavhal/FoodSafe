@@ -1,172 +1,187 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
 
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-})
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
-function Bar({ value, max, color = '#1a3d2b' }) {
+async function apiFetch(path) {
+  const res = await fetch(`${API_BASE}${path}`)
+  if (!res.ok) throw new Error(`${res.status}`)
+  return res.json()
+}
+
+function StatCard({ label, value, sub, color = '#1a1a1a', icon }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 8, background: '#f0f0e8', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.min((value / Math.max(max, 1)) * 100, 100)}%`, height: '100%', background: color, borderRadius: 4 }} />
+    <div style={{
+      background: '#fff', borderRadius: 14, padding: '16px 18px',
+      border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ fontSize: 10, color: '#999', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</div>
+        {icon && <span style={{ fontSize: 18 }}>{icon}</span>}
       </div>
-      <span style={{ fontSize: 11, minWidth: 28, textAlign: 'right', color: '#555' }}>{value}</span>
+      <div style={{ fontSize: 28, fontWeight: 600, color, marginTop: 6, letterSpacing: '-0.02em' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#aaa', marginTop: 3 }}>{sub}</div>}
     </div>
   )
 }
 
-function StatCard({ label, value, sub, color = '#1a1a1a' }) {
+function RiskBadge({ risk }) {
+  const colors = {
+    LOW:      { bg: '#EAF3DE', color: '#27500A' },
+    MEDIUM:   { bg: '#FAEEDA', color: '#854F0B' },
+    HIGH:     { bg: '#FCEBEB', color: '#A32D2D' },
+    CRITICAL: { bg: '#F7C1C1', color: '#7F0000' },
+    UNKNOWN:  { bg: '#f0f0e8', color: '#888' },
+  }
+  const s = colors[risk] || colors.UNKNOWN
   return (
-    <div style={{ background: '#fff', borderRadius: 10, padding: '12px 14px', border: '0.5px solid #e0e0d8' }}>
-      <div style={{ fontSize: 10, color: '#888', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 500, color }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</div>}
+    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: s.bg, color: s.color, fontWeight: 600 }}>
+      {risk}
+    </span>
+  )
+}
+
+function MiniChart({ data, color = '#1a3d2b' }) {
+  if (!data?.length) return <div style={{ color: '#ccc', fontSize: 12, textAlign: 'center', padding: 16 }}>No data</div>
+  const max = Math.max(...data.map(d => d.count), 1)
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 64 }}>
+      {data.map((d, i) => {
+        const h = Math.max((d.count / max) * 56, 2)
+        return (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <span style={{ fontSize: 9, color: '#bbb' }}>{d.count || ''}</span>
+            <div style={{ width: '100%', height: h, background: color, borderRadius: '3px 3px 0 0', opacity: 0.85 }} />
+            <span style={{ fontSize: 9, color: '#bbb' }}>{d.day}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function MiniBar({ value, max, color }) {
+function ProgressBar({ value, max, color }) {
   const pct = Math.min((value / Math.max(max, 1)) * 100, 100)
   return (
     <div style={{ flex: 1, height: 6, background: '#f0f0e8', borderRadius: 3, overflow: 'hidden' }}>
-      <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3 }} />
+      <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
     </div>
   )
 }
 
+const TABS = [
+  { key: 'overview',  label: 'Overview',  icon: '📊' },
+  { key: 'scans',     label: 'Scans',     icon: '🔍' },
+  { key: 'community', label: 'Community', icon: '👥' },
+  { key: 'fssai',     label: 'FSSAI',     icon: '🏛️' },
+  { key: 'ml',        label: 'AI / ML',   icon: '🤖' },
+]
+
 export default function AdminDashboard() {
-  const [stats,      setStats]      = useState(null)
-  const [scans,      setScans]      = useState([])
-  const [reports,    setReports]    = useState([])
-  const [alerts,     setAlerts]     = useState([])
-  const [mlStatus,   setMlStatus]   = useState({})
-  const [scraper,    setScraper]    = useState(null)
-  const [triggering, setTriggering] = useState(false)
-  const [triggerMsg, setTriggerMsg] = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState(null)
-  const [tab,        setTab]        = useState('overview')
+  const [tab,         setTab]         = useState('overview')
+  const [stats,       setStats]       = useState(null)
+  const [scans,       setScans]       = useState([])
+  const [reports,     setReports]     = useState([])
+  const [alerts,      setAlerts]      = useState([])
+  const [mlStatus,    setMlStatus]    = useState({})
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
   const [lastRefresh, setLastRefresh] = useState(null)
 
   async function load() {
     try {
       setError(null)
-      const [statsRes, scansRes, repsRes, altsRes, mlRes, scraperRes] = await Promise.all([
-        API.get('/admin/stats').then(r => r.data),
-        API.get('/admin/recent-scans?limit=20').then(r => r.data),
-        API.get('/community/reports').then(r => r.data).catch(() => ({ reports: [] })),
-        API.get('/fssai/alerts').then(r => r.data).catch(() => ({ alerts: [] })),
-        API.get('/admin/ml-status').then(r => r.data).catch(() => ({ models: {} })),
-        API.get('/admin/scraper-stats').then(r => r.data).catch(() => null),
+      const [s, sc, rep, alt, ml] = await Promise.all([
+        apiFetch('/admin/stats'),
+        apiFetch('/admin/recent-scans?limit=30'),
+        apiFetch('/community/reports').catch(() => ({ reports: [] })),
+        apiFetch('/fssai/alerts').catch(() => ({ alerts: [] })),
+        apiFetch('/admin/ml-status').catch(() => ({ models: {} })),
       ])
-      setStats(statsRes)
-      setScans(scansRes.scans || [])
-      setReports(repsRes.reports || repsRes || [])
-      setAlerts(altsRes.alerts || altsRes || [])
-      setMlStatus(mlRes.models || {})
-      setScraper(scraperRes)
+      setStats(s)
+      setScans(sc.scans || [])
+      setReports(rep.reports || rep || [])
+      setAlerts(alt.alerts || alt || [])
+      setMlStatus(ml.models || {})
       setLastRefresh(new Date())
     } catch (e) {
-      console.error('Admin load error:', e)
-      setError('Failed to load admin data. Is the backend running?')
+      setError('Cannot reach backend — is it running?')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    load()
-    const interval = setInterval(load, 30000)
-    return () => clearInterval(interval)
-  }, [])
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t) }, [])
 
-  async function triggerScraper() {
-    setTriggering(true)
-    setTriggerMsg(null)
-    try {
-      const res = await API.post('/admin/scraper/trigger')
-      setTriggerMsg(res.data.success
-        ? { type: 'ok', text: `✅ Task queued — ID: ${res.data.task_id}. Check back in ~2 min.` }
-        : { type: 'err', text: `❌ ${res.data.error}` }
-      )
-    } catch (e) {
-      setTriggerMsg({ type: 'err', text: `❌ Request failed: ${e.message}` })
-    } finally {
-      setTriggering(false)
-    }
-  }
-
-  const RISK_COLOR = { LOW: '#639922', MEDIUM: '#854F0B', HIGH: '#A32D2D', CRITICAL: '#7F0000', UNKNOWN: '#888' }
-  const RISK_BG    = { LOW: '#EAF3DE', MEDIUM: '#FAEEDA', HIGH: '#FCEBEB', CRITICAL: '#F7C1C1', UNKNOWN: '#f0f0e8' }
-  const TABS = ['overview', 'scans', 'community', 'fssai', 'ml', 'scraper']
+  const RISK_COLOR = { LOW: '#639922', MEDIUM: '#854F0B', HIGH: '#A32D2D', CRITICAL: '#7F0000' }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'monospace', color: '#666', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 24 }}>🌿</div>
-      Loading FoodSafe Admin...
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 12, fontFamily: 'system-ui' }}>
+      <div style={{ fontSize: 36 }}>🌿</div>
+      <div style={{ color: '#888', fontSize: 14 }}>Loading FoodSafe Admin...</div>
     </div>
   )
 
   if (error && !stats) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'system-ui', color: '#A32D2D', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 32 }}>⚠️</div>
-      <div style={{ fontSize: 14 }}>{error}</div>
-      <button onClick={load} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#1a3d2b', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16, fontFamily: 'system-ui' }}>
+      <div style={{ fontSize: 36 }}>⚠️</div>
+      <div style={{ color: '#A32D2D', fontSize: 14 }}>{error}</div>
+      <button onClick={load} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: '#1a3d2b', color: '#fff', fontSize: 13, cursor: 'pointer' }}>
         Retry
       </button>
     </div>
   )
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f8f9f6', minHeight: '100vh' }}>
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f7f5f0', minHeight: '100vh' }}>
 
-      {/* Top bar */}
-      <div style={{ background: '#0d2318', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ color: '#fff', fontSize: 16, fontWeight: 500 }}>🌿 FoodSafe Admin</div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {lastRefresh && (
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>
-              Updated {lastRefresh.toLocaleTimeString()}
-            </span>
-          )}
-          <button onClick={load} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', fontSize: 11, cursor: 'pointer' }}>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0d2818 0%, #1a3d2b 100%)',
+        padding: '16px 24px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(201,168,76,0.2)', border: '1px solid rgba(201,168,76,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🌿</div>
+          <div>
+            <div style={{ color: '#f5f0e8', fontSize: 15, fontWeight: 600 }}>FoodSafe Admin</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.06em' }}>DASHBOARD</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {lastRefresh && <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>{lastRefresh.toLocaleTimeString()}</span>}
+          <button onClick={load} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', fontSize: 11, cursor: 'pointer' }}>
             ↻ Refresh
           </button>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#95d5b2' }} />
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Live</span>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#95d5b2' }} />
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>Live</span>
           </div>
         </div>
       </div>
 
-      {/* Error banner */}
       {error && (
-        <div style={{ background: '#FCEBEB', border: '1px solid #f7c1c1', padding: '8px 24px', fontSize: 12, color: '#A32D2D' }}>
+        <div style={{ background: '#FCEBEB', borderBottom: '1px solid #f7c1c1', padding: '8px 24px', fontSize: 12, color: '#A32D2D' }}>
           ⚠️ {error}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ background: '#fff', borderBottom: '0.5px solid #e0e0d8', padding: '0 24px', display: 'flex', gap: 4, overflowX: 'auto' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #ece8df', padding: '0 24px', display: 'flex', gap: 2, overflowX: 'auto' }}>
         {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer',
-                     fontSize: 12, fontWeight: tab === t ? 500 : 400, whiteSpace: 'nowrap',
-                     color: tab === t ? '#1a3d2b' : '#888',
-                     borderBottom: tab === t ? '2px solid #1a3d2b' : '2px solid transparent' }}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-            {t === 'scans' && scans.length > 0 && (
-              <span style={{ marginLeft: 5, fontSize: 9, padding: '1px 5px', borderRadius: 6, background: '#EAF3DE', color: '#27500A' }}>
-                {scans.length}
-              </span>
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: tab === t.key ? 600 : 400, whiteSpace: 'nowrap',
+            color: tab === t.key ? '#1a3d2b' : '#999',
+            borderBottom: tab === t.key ? '2px solid #1a3d2b' : '2px solid transparent',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span>{t.icon}</span> {t.label}
+            {t.key === 'scans' && scans.length > 0 && (
+              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: '#EAF3DE', color: '#27500A' }}>{scans.length}</span>
             )}
-            {t === 'scraper' && scraper && (
-              <span style={{ marginLeft: 5, fontSize: 9, padding: '1px 5px', borderRadius: 6,
-                background: scraper.rag?.status === 'healthy' ? '#EAF3DE' : '#FAEEDA',
-                color: scraper.rag?.status === 'healthy' ? '#27500A' : '#854F0B' }}>
-                {scraper.rag?.indexed || 0}
-              </span>
+            {t.key === 'community' && reports.length > 0 && (
+              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: '#f0f8ff', color: '#185FA5' }}>{reports.length}</span>
             )}
           </button>
         ))}
@@ -177,103 +192,70 @@ export default function AdminDashboard() {
         {/* ── Overview ── */}
         {tab === 'overview' && stats && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-              <StatCard label="Total Scans"     value={stats.totalScans?.toLocaleString() ?? '0'} sub="all time" />
-              <StatCard label="Today"           value={stats.todayScans ?? 0}  sub="scans today" color='#1a3d2b' />
-              <StatCard label="High Risk Scans" value={stats.highRiskScans ?? 0}
-                sub={`${stats.totalScans ? Math.round((stats.highRiskScans / stats.totalScans) * 100) : 0}% of total`}
-                color='#A32D2D' />
-              <StatCard label="Active Users"    value={stats.activeUsers ?? 0} sub="scanned at least once" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              <StatCard icon="🔍" label="Total Scans"   value={stats.totalScans?.toLocaleString() ?? '0'} sub="all time" />
+              <StatCard icon="📅" label="Today"         value={stats.todayScans ?? 0} sub="scans today" color='#1a3d2b' />
+              <StatCard icon="⚠️" label="High Risk"     value={stats.highRiskScans ?? 0} sub={`${stats.totalScans ? Math.round((stats.highRiskScans / stats.totalScans) * 100) : 0}% of total`} color='#A32D2D' />
+              <StatCard icon="👤" label="Active Users"  value={stats.activeUsers ?? 0} sub="scanned at least once" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-              <StatCard label="Total Users"      value={stats.totalUsers ?? 0} sub="registered" />
-              <StatCard label="Avg Safety Score" value={`${stats.avgScore ?? 0}/100`} sub="across all scans" color='#854F0B' />
-              <StatCard label="Top Scanned Food" value={stats.topFood ?? '—'} sub="most popular" />
-              <StatCard label="Top City"         value={stats.topCity ?? '—'} sub="most scans" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              <StatCard icon="👥" label="Total Users"      value={stats.totalUsers ?? 0} sub="registered" />
+              <StatCard icon="⭐" label="Avg Safety Score" value={`${stats.avgScore ?? 0}/100`} sub="across all scans" color='#854F0B' />
+              <StatCard icon="🥘" label="Top Food"         value={stats.topFood ?? '—'} sub="most scanned" />
+              <StatCard icon="📍" label="Top City"         value={stats.topCity ?? '—'} sub="most scans" />
             </div>
-
-            {/* Weekly trend */}
-            <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-              <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Scans — Last 7 Days</div>
-              {(stats.weeklyTrend || []).length === 0 ? (
-                <p style={{ color: '#aaa', fontSize: 12, textAlign: 'center', padding: 16 }}>No scan data yet</p>
-              ) : (
-                <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 60 }}>
-                  {(stats.weeklyTrend || []).map((d, i) => {
-                    const max = Math.max(...(stats.weeklyTrend || []).map(x => x.count), 1)
-                    const h = Math.max((d.count / max) * 52, 2)
-                    return (
-                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <span style={{ fontSize: 9, color: '#aaa' }}>{d.count || ''}</span>
-                        <div style={{ width: '100%', height: h, background: '#1a3d2b', borderRadius: '3px 3px 0 0', opacity: 0.8 }} />
-                        <span style={{ fontSize: 9, color: '#aaa' }}>{d.day}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Risk breakdown */}
-            <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-              <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Risk Breakdown</div>
-              {Object.entries(stats.riskBreakdown || {}).length === 0 ? (
-                <p style={{ color: '#aaa', fontSize: 12 }}>No scan data yet</p>
-              ) : (
-                Object.entries(stats.riskBreakdown || {}).map(([level, count]) => (
-                  <div key={level} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 40px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: RISK_COLOR[level], fontWeight: 500 }}>{level}</span>
-                    <Bar value={count} max={stats.totalScans || 1} color={RISK_COLOR[level]} />
-                    <span style={{ fontSize: 10, color: '#aaa', textAlign: 'right' }}>
-                      {stats.totalScans ? Math.round((count / stats.totalScans) * 100) : 0}%
-                    </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>Scans — Last 7 Days</div>
+                <MiniChart data={stats.weeklyTrend} color='#1a3d2b' />
+              </div>
+              <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>Risk Breakdown</div>
+                {Object.entries(stats.riskBreakdown || {}).map(([level, count]) => (
+                  <div key={level} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 60px', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: RISK_COLOR[level], fontWeight: 600 }}>{level}</span>
+                    <ProgressBar value={count} max={stats.totalScans || 1} color={RISK_COLOR[level]} />
+                    <span style={{ fontSize: 10, color: '#aaa', textAlign: 'right' }}>{count} ({stats.totalScans ? Math.round((count / stats.totalScans) * 100) : 0}%)</span>
                   </div>
-                ))
-              )}
+                ))}
+                {!Object.keys(stats.riskBreakdown || {}).length && <p style={{ color: '#ccc', fontSize: 12 }}>No data yet</p>}
+              </div>
             </div>
-
-            {/* Extra stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <StatCard label="Community Reports" value={stats.communityReports ?? 0} sub="user submissions" color='#185FA5' />
-              <StatCard label="FSSAI Violations"  value={stats.fssaiViolations ?? 0} sub="in database" color='#854F0B' />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <StatCard icon="📋" label="Community Reports" value={stats.communityReports ?? 0} sub="user submissions" color='#185FA5' />
+              <StatCard icon="🏛️" label="FSSAI Violations"  value={stats.fssaiViolations ?? 0} sub="in database" color='#854F0B' />
             </div>
           </div>
         )}
 
         {/* ── Scans ── */}
         {tab === 'scans' && (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #e0e0d8' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Recent Scans (Live)</div>
-              <span style={{ fontSize: 11, color: '#888' }}>{scans.length} records</span>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ece8df', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f3ee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Recent Scans</div>
+              <span style={{ fontSize: 11, color: '#999', background: '#f7f5f0', padding: '3px 10px', borderRadius: 10 }}>{scans.length} records</span>
             </div>
             {scans.length === 0 ? (
-              <p style={{ color: '#aaa', textAlign: 'center', padding: 30, fontSize: 13 }}>No scans yet.</p>
+              <div style={{ padding: 40, textAlign: 'center', color: '#ccc', fontSize: 13 }}>No scans yet</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #f0f0e8' }}>
+                    <tr style={{ background: '#faf9f7' }}>
                       {['Food', 'Risk', 'Score', 'City', 'Type', 'Time'].map(h => (
-                        <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: '#888', fontWeight: 500 }}>{h}</th>
+                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#999', fontWeight: 600, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid #ece8df' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {scans.map((s, i) => (
-                      <tr key={i} style={{ borderBottom: '0.5px solid #f8f8f4' }}>
-                        <td style={{ padding: '8px 10px', fontWeight: 500 }}>{s.food}</td>
-                        <td style={{ padding: '8px 10px' }}>
-                          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                                          background: RISK_BG[s.risk] || '#f0f0e8',
-                                          color: RISK_COLOR[s.risk] || '#555' }}>
-                            {s.risk}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 10px', color: '#666' }}>{s.score ?? '—'}</td>
-                        <td style={{ padding: '8px 10px', color: '#666' }}>{s.city}</td>
-                        <td style={{ padding: '8px 10px', color: '#aaa', fontSize: 11 }}>{s.scan_type}</td>
-                        <td style={{ padding: '8px 10px', color: '#aaa' }}>{s.time}</td>
+                      <tr key={i} style={{ borderBottom: '1px solid #faf9f7' }}>
+                        <td style={{ padding: '10px 16px', fontWeight: 500, color: '#1a1a1a' }}>{s.food}</td>
+                        <td style={{ padding: '10px 16px' }}><RiskBadge risk={s.risk} /></td>
+                        <td style={{ padding: '10px 16px', color: '#666' }}>{s.score ?? '—'}</td>
+                        <td style={{ padding: '10px 16px', color: '#888' }}>{s.city}</td>
+                        <td style={{ padding: '10px 16px', color: '#aaa', fontSize: 11 }}>{s.scan_type}</td>
+                        <td style={{ padding: '10px 16px', color: '#bbb', fontSize: 11 }}>{s.time}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -285,235 +267,105 @@ export default function AdminDashboard() {
 
         {/* ── Community ── */}
         {tab === 'community' && (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #e0e0d8' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Community Reports</div>
-              <span style={{ fontSize: 11, color: '#888' }}>{reports.length} reports</span>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ece8df', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f3ee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Community Reports</div>
+              <span style={{ fontSize: 11, color: '#999', background: '#f7f5f0', padding: '3px 10px', borderRadius: 10 }}>{reports.length} reports</span>
             </div>
-            {reports.length === 0
-              ? <p style={{ color: '#aaa', textAlign: 'center', padding: 30 }}>No community reports yet.</p>
-              : reports.map((r, i) => (
-                <div key={i} style={{ padding: '10px 0', borderBottom: i < reports.length - 1 ? '0.5px solid #f0f0e8' : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 500, fontSize: 13 }}>{r.food_name}</span>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {r.verified && <span style={{ fontSize: 10, background: '#EAF3DE', color: '#27500A', padding: '1px 6px', borderRadius: 8 }}>Verified</span>}
-                      <span style={{ fontSize: 11, color: '#888' }}>👍 {r.upvotes}</span>
+            {reports.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ccc', fontSize: 13 }}>No community reports yet</div>
+            ) : (
+              <div style={{ padding: '0 20px' }}>
+                {reports.map((r, i) => (
+                  <div key={i} style={{ padding: '14px 0', borderBottom: i < reports.length - 1 ? '1px solid #f5f3ee' : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{r.food_name}</span>
+                        {r.brand && <span style={{ fontSize: 11, color: '#aaa', marginLeft: 8 }}>· {r.brand}</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {r.verified && <span style={{ fontSize: 10, background: '#EAF3DE', color: '#27500A', padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>✓ Verified</span>}
+                        <span style={{ fontSize: 11, color: '#aaa' }}>👍 {r.upvotes}</span>
+                      </div>
                     </div>
+                    <div style={{ fontSize: 11, color: '#aaa', marginTop: 3 }}>📍 {r.city}</div>
+                    <div style={{ fontSize: 12, color: '#666', marginTop: 6, lineHeight: 1.5 }}>{r.description}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>📍 {r.city} · {r.brand || 'Unknown brand'}</div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>{r.description}</div>
-                </div>
-              ))
-            }
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ── FSSAI ── */}
         {tab === 'fssai' && (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #e0e0d8' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>FSSAI Alerts</div>
-              <span style={{ fontSize: 11, color: '#888' }}>{alerts.length} alerts</span>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ece8df', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f3ee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>FSSAI Alerts</div>
+              <span style={{ fontSize: 11, color: '#999', background: '#f7f5f0', padding: '3px 10px', borderRadius: 10 }}>{alerts.length} alerts</span>
             </div>
-            {alerts.length === 0
-              ? <p style={{ color: '#aaa', textAlign: 'center', padding: 30 }}>No FSSAI alerts yet.</p>
-              : alerts.map((a, i) => (
-                <div key={i} style={{ padding: '10px 0', borderBottom: i < alerts.length - 1 ? '0.5px solid #f0f0e8' : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 500, fontSize: 13 }}>{a.product || a.title || 'Unknown'}</span>
-                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: '#FAEEDA', color: '#854F0B' }}>
-                      {a.state || '—'}
-                    </span>
+            {alerts.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ccc', fontSize: 13 }}>No FSSAI alerts yet</div>
+            ) : (
+              <div style={{ padding: '0 20px' }}>
+                {alerts.map((a, i) => (
+                  <div key={i} style={{ padding: '14px 0', borderBottom: i < alerts.length - 1 ? '1px solid #f5f3ee' : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{a.product || a.title || 'Unknown'}</span>
+                      <span style={{ fontSize: 10, padding: '3px 10px', borderRadius: 10, background: '#FAEEDA', color: '#854F0B', whiteSpace: 'nowrap', fontWeight: 600 }}>{a.state || '—'}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#666', marginTop: 5, lineHeight: 1.5 }}>{a.violation || a.description || '—'}</div>
+                    <div style={{ fontSize: 10, color: '#bbb', marginTop: 4 }}>{a.date}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: '#555', marginTop: 3 }}>{a.violation || a.description || '—'}</div>
-                  <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{a.date}</div>
-                </div>
-              ))
-            }
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── ML ── */}
+        {/* ── ML / AI ── */}
         {tab === 'ml' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8', marginBottom: 4 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>ML Model Status</div>
-              <div style={{ fontSize: 11, color: '#888' }}>Real-time status of all AI/ML components</div>
+            <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>AI & ML Components</div>
+              <div style={{ fontSize: 12, color: '#aaa' }}>Real-time status of all models and services</div>
             </div>
+
             {Object.entries(mlStatus).map(([key, m]) => (
-              <div key={key} style={{ background: '#fff', borderRadius: 10, padding: 14, border: '0.5px solid #e0e0d8',
-                                       display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{m.label}</div>
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                    {m.classes ? `${m.classes} food classes` :
-                     m.mappings ? `${m.mappings} Hindi/Marathi mappings` :
-                     m.categories ? `${m.categories} food categories` : 'ML model'}
+              <div key={key} style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: m.loaded ? '#EAF3DE' : '#f5f5f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                    {key === 'yolov8' ? '👁️' : key === 'indicbert' ? '🗣️' : key === 'prophet' ? '📈' : key === 'random_forest' ? '🌲' : '⚡'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{m.label}</div>
+                    <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
+                      {m.classes ? `${m.classes} food classes` : m.mappings ? `${m.mappings} Hindi/Marathi mappings` : m.categories ? `${m.categories} seasonal categories` : 'AI service'}
+                    </div>
                   </div>
                 </div>
-                <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10,
-                  background: m.loaded ? '#EAF3DE' : '#FAEEDA',
-                  color:      m.loaded ? '#27500A' : '#854F0B' }}>
-                  {m.loaded ? '✓ Running' : '✗ Not loaded'}
+                <span style={{ fontSize: 11, padding: '5px 12px', borderRadius: 20, fontWeight: 600, background: m.loaded ? '#EAF3DE' : '#f5f5f0', color: m.loaded ? '#27500A' : '#bbb' }}>
+                  {m.loaded ? '✓ Active' : '✗ Inactive'}
                 </span>
               </div>
             ))}
+
             {[
-              { name: 'Groq LLaMA 3.1 (Vision + Text)', metric: 'llama-3.1-8b-instant + llama-4-scout', ok: true },
-              { name: 'FastAPI Backend', metric: import.meta.env.VITE_API_URL || 'http://localhost:8000/api', ok: true },
+              { icon: '⚡', name: 'Groq LLaMA 3.1 (8B)', detail: 'Text scanning & food safety analysis' },
+              { icon: '👁️', name: 'Groq LLaMA 4 Scout',  detail: 'Image & label analysis (vision)' },
+              { icon: '🌐', name: 'FastAPI Backend',       detail: import.meta.env.VITE_API_URL || 'http://localhost:8000/api' },
             ].map((m, i) => (
-              <div key={i} style={{ background: '#fff', borderRadius: 10, padding: 14, border: '0.5px solid #e0e0d8',
-                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</div>
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{m.metric}</div>
+              <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: '#EAF3DE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{m.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</div>
+                    <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{m.detail}</div>
+                  </div>
                 </div>
-                <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10, background: '#EAF3DE', color: '#27500A' }}>
-                  ✓ Running
-                </span>
+                <span style={{ fontSize: 11, padding: '5px 12px', borderRadius: 20, fontWeight: 600, background: '#EAF3DE', color: '#27500A' }}>✓ Active</span>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* ── Scraper ── */}
-        {tab === 'scraper' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-            {scraper === null ? (
-              <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '0.5px solid #e0e0d8', textAlign: 'center' }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>🕷️</div>
-                <div style={{ fontSize: 13, color: '#888' }}>Scraper stats unavailable — scraper may not have run yet.</div>
-              </div>
-            ) : (
-              <>
-                {/* Top stat cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-                  <StatCard label="Total DB Records"  value={scraper?.totalRecords ?? '—'} sub="FSSAI violations" color='#1a3d2b' />
-                  <StatCard label="RAG Indexed"        value={scraper?.rag?.indexed ?? '—'} sub={`${scraper?.rag?.coverage ?? 0}% coverage`} color='#185FA5' />
-                  <StatCard label="RAG Status"         value={scraper?.rag?.status ?? '—'}
-                    color={scraper?.rag?.status === 'healthy' ? '#27500A' : '#A32D2D'} sub="ChromaDB" />
-                  <StatCard label="Last Scrape"
-                    value={scraper?.lastScrapeAt ? new Date(scraper.lastScrapeAt).toLocaleDateString('en-IN') : 'Never'}
-                    sub={scraper?.lastScrapeAt ? new Date(scraper.lastScrapeAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'} />
-                </div>
-
-                {/* Manual trigger */}
-                <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>Manual Scraper Trigger</div>
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                        Queues a full scrape + LLM parse + RAG index run via Celery. Takes ~3 minutes.
-                      </div>
-                    </div>
-                    <button onClick={triggerScraper} disabled={triggering}
-                      style={{ padding: '8px 18px', borderRadius: 8, border: 'none', cursor: triggering ? 'not-allowed' : 'pointer',
-                               background: triggering ? '#ccc' : '#1a3d2b', color: '#fff', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                      {triggering ? 'Queuing…' : '▶ Run Scraper'}
-                    </button>
-                  </div>
-                  {triggerMsg && (
-                    <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 12,
-                      background: triggerMsg.type === 'ok' ? '#EAF3DE' : '#FCEBEB',
-                      color: triggerMsg.type === 'ok' ? '#27500A' : '#A32D2D' }}>
-                      {triggerMsg.text}
-                    </div>
-                  )}
-                </div>
-
-                {/* Records added per day */}
-                <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Records Added — Last 7 Days</div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 60 }}>
-                    {(scraper?.dailyAdds || []).map((d, i) => {
-                      const max = Math.max(...(scraper?.dailyAdds || []).map(x => x.count), 1)
-                      const h = Math.max((d.count / max) * 52, 2)
-                      return (
-                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                          <span style={{ fontSize: 9, color: '#aaa' }}>{d.count || ''}</span>
-                          <div style={{ width: '100%', height: h, background: '#185FA5', borderRadius: '3px 3px 0 0', opacity: 0.8 }} />
-                          <span style={{ fontSize: 9, color: '#aaa' }}>{d.day}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  {/* Top products */}
-                  <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Top Flagged Products</div>
-                    {(scraper?.topProducts || []).map((p, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 3 }}>{p.product}</div>
-                          <MiniBar value={p.count} max={(scraper?.topProducts?.[0]?.count || 1)} color='#A32D2D' />
-                        </div>
-                        <span style={{ fontSize: 11, color: '#A32D2D', fontWeight: 600, minWidth: 20, textAlign: 'right' }}>{p.count}</span>
-                      </div>
-                    ))}
-                    {!scraper?.topProducts?.length && <p style={{ color: '#aaa', fontSize: 12 }}>No data yet</p>}
-                  </div>
-
-                  {/* Top states */}
-                  <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Top States with Violations</div>
-                    {(scraper?.topStates || []).map((s, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 3 }}>{s.state}</div>
-                          <MiniBar value={s.count} max={(scraper?.topStates?.[0]?.count || 1)} color='#EF9F27' />
-                        </div>
-                        <span style={{ fontSize: 11, color: '#854F0B', fontWeight: 600, minWidth: 20, textAlign: 'right' }}>{s.count}</span>
-                      </div>
-                    ))}
-                    {!scraper?.topStates?.length && <p style={{ color: '#aaa', fontSize: 12 }}>No data yet</p>}
-                  </div>
-                </div>
-
-                {/* Active sources */}
-                <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Data Sources</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {Object.entries(scraper?.sources || {}).map(([key, label]) => (
-                      <div key={key} style={{ padding: '5px 10px', borderRadius: 8, background: '#f0f8ff',
-                                              border: '0.5px solid #b5d4f4', fontSize: 11, color: '#185FA5' }}>
-                        ✓ {label}
-                      </div>
-                    ))}
-                    {!Object.keys(scraper?.sources || {}).length && (
-                      <p style={{ color: '#aaa', fontSize: 12 }}>No sources configured</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Recent records */}
-                <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '0.5px solid #e0e0d8' }}>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: '#666', marginBottom: 12 }}>Recent Violations (Last 10)</div>
-                  {(scraper?.recentRecords || []).length === 0
-                    ? <p style={{ color: '#aaa', fontSize: 12, textAlign: 'center', padding: 16 }}>No records yet — run the scraper</p>
-                    : (scraper?.recentRecords || []).map((r, i) => (
-                      <div key={i} style={{ padding: '9px 0', borderBottom: i < (scraper?.recentRecords?.length - 1) ? '0.5px solid #f0f0e8' : 'none' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <span style={{ fontWeight: 500, fontSize: 12 }}>{r.product}</span>
-                            {r.brand && r.brand !== 'Unknown' && (
-                              <span style={{ fontSize: 11, color: '#888', marginLeft: 6 }}>· {r.brand}</span>
-                            )}
-                          </div>
-                          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 8, background: '#FAEEDA', color: '#854F0B', whiteSpace: 'nowrap' }}>
-                            {r.state}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{r.date}</div>
-                      </div>
-                    ))
-                  }
-                </div>
-              </>
-            )}
           </div>
         )}
 

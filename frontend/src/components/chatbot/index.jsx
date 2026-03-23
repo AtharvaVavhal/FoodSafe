@@ -70,7 +70,7 @@ export default function Chatbot() {
       {open && (
         <div style={{
           position: 'fixed', bottom: 140, right: 'max(16px, calc(50vw - 224px))', zIndex: 1000,
-          width: 300, height: 420, background: '#fff',
+          width: 300, height: 420, background: '#dcdada',
           borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           display: 'flex', flexDirection: 'column',
           border: '0.5px solid #e0e0d8', overflow: 'hidden',
@@ -79,7 +79,7 @@ export default function Chatbot() {
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EAF3DE',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🌿</div>
             <div>
-              <div style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>FoodSafe AI</div>
+              <div style={{ color: '#a4a0a0', fontSize: 13, fontWeight: 500 }}>FoodSafe AI</div>
               <div style={{ color: '#a8c5a0', fontSize: 10 }}>Food safety assistant</div>
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function Chatbot() {
                   maxWidth: '80%', padding: '7px 10px', borderRadius: 10,
                   fontSize: 12, lineHeight: 1.5,
                   background: m.role === 'user' ? '#1a3d2b' : '#f5f5f0',
-                  color: m.role === 'user' ? '#fff' : '#333',
+                  color: m.role === 'user' ? '#bca9a9' : '#333',
                   borderBottomRightRadius: m.role === 'user' ? 2 : 10,
                   borderBottomLeftRadius: m.role === 'assistant' ? 2 : 10,
                 }}>

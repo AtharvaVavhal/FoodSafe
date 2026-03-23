@@ -74,7 +74,7 @@ export default function AuthPage() {
           style={{
             padding: 10, borderRadius: 8, border: 'none',
             background: loading ? '#ccc' : '#1a3d2b',
-            color: '#fff', fontSize: 13, fontWeight: 500,
+            color: '#333', fontSize: 13, fontWeight: 500,
             cursor: 'pointer', fontFamily: 'inherit',
           }}>
           {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
@@ -83,7 +83,7 @@ export default function AuthPage() {
 
       {/* Skip */}
       <button onClick={() => nav('/')}
-        style={{ fontSize: 11, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>
+        style={{ fontSize: 11, color: '#333', background: 'none', border: 'none', cursor: 'pointer' }}>
         Skip for now →
       </button>
     </div>

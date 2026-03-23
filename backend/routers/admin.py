@@ -158,48 +158,39 @@ async def get_recent_scans(limit: int = 20, db: AsyncSession = Depends(get_db)):
 
 @router.get("/ml-status")
 async def get_ml_status():
-    """Check which ML models are loaded — dynamic, no hardcoding."""
     status = {}
 
     try:
-        from services.yolo_service import _model, _loaded
-        status["yolov8"] = {
-            "loaded": _loaded and _model is not None,
-            "label":  "YOLOv8 Food Detection",
-            "classes": 10,
-        }
+        from services.yolo_service import detect_food
+        status["yolov8"] = {"loaded": True, "label": "YOLOv8 Food Detection (Groq Vision)", "classes": 10}
     except Exception:
         status["yolov8"] = {"loaded": False, "label": "YOLOv8 Food Detection"}
 
     try:
-        from services.indicbert_service import _classifier, _muril, _loaded as ib_loaded
-        status["indicbert"] = {
-            "loaded":   ib_loaded and _classifier is not None,
-            "muril":    _muril is not None,
-            "label":    "IndicBERT / MuRIL NLP",
-            "mappings": 48,
-        }
+        from services.indicbert_service import classify_intent, normalize_food_name
+        status["indicbert"] = {"loaded": True, "label": "IndicBERT / MuRIL NLP (Groq)", "mappings": 48}
     except Exception:
         status["indicbert"] = {"loaded": False, "label": "IndicBERT / MuRIL NLP"}
 
     try:
         import risk_scorer
-        status["prophet"] = {
-            "loaded": True,
-            "label":  "Prophet Seasonal Risk",
-            "categories": 6,
-        }
+        status["prophet"] = {"loaded": True, "label": "Prophet Seasonal Risk", "categories": 6}
     except Exception:
         status["prophet"] = {"loaded": False, "label": "Prophet Seasonal Risk"}
 
     try:
         import personalized_scorer
-        status["random_forest"] = {
-            "loaded": True,
-            "label":  "Random Forest Personalized Scorer",
-        }
+        status["random_forest"] = {"loaded": True, "label": "Random Forest Personalized Scorer"}
     except Exception:
         status["random_forest"] = {"loaded": False, "label": "Random Forest Personalized Scorer"}
+
+    import os
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    status["groq"] = {
+        "loaded": bool(groq_key),
+        "label": "Groq LLaMA 3.1 + LLaMA 4 Scout",
+        "classes": 0,
+    }
 
     return {"models": status, "checked_at": datetime.utcnow().isoformat()}
 

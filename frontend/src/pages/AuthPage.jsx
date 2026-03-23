@@ -126,7 +126,6 @@ export default function AuthPage() {
             fontSize: 12, color: '#aaa', background: 'none',
             border: 'none', cursor: 'pointer', fontFamily: 'inherit',
           }}>
-            Skip for now →
           </button>
         </div>
       </div>

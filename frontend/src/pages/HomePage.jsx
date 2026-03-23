@@ -399,7 +399,11 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [ticker, setTicker] = useState(0)
   const [fssaiAlerts, setFssaiAlerts] = useState(DEFAULT_ALERTS)
+  const [cameraOpen, setCameraOpen] = useState(false)
   const fileRef = useRef()
+  const cameraRef = useRef()
+  const canvasRef = useRef()
+  const streamRef = useRef()
 
   useEffect(() => {
     const interval = setInterval(() => setTicker(t => t + 1), 4000)
@@ -413,6 +417,36 @@ export default function HomePage() {
       .then(data => { if (data.alerts?.length > 0) setFssaiAlerts(data.alerts.map(a => a.title)) })
       .catch(() => {})
   }, [])
+
+  async function openCamera() {
+    setCameraOpen(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      streamRef.current = stream
+      cameraRef.current.srcObject = stream
+    } catch {
+      setCameraOpen(false)
+      setError('Camera access denied')
+    }
+  }
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    setCameraOpen(false)
+  }
+
+  async function capturePhoto() {
+    const video = cameraRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0)
+    stopCamera()
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' })
+      await handleImageUpload({ target: { files: [file], value: '' } })
+    }, 'image/jpeg', 0.9)
+  }
 
   async function handleScan() {
     const foodName = query.trim()
@@ -445,7 +479,7 @@ export default function HomePage() {
   async function handleImageUpload(e) {
     const file = e.target.files[0]
     if (!file) return
-    e.target.value = ''
+    if (e.target.value !== undefined) e.target.value = ''
     setLoading(true); setError('')
     try {
       const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
@@ -489,14 +523,37 @@ export default function HomePage() {
     setLoading(false)
   }
 
-
-
   const currentAlert = fssaiAlerts[ticker % fssaiAlerts.length]
 
   return (
     <div className="fs-root">
       <style>{PREMIUM_STYLES}</style>
       {loading && <ScanLoader food={query.trim()} lang={lang} />}
+
+      {/* Camera Modal */}
+      {cameraOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          zIndex: 999, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 12
+        }}>
+          <video ref={cameraRef} autoPlay playsInline
+            style={{ width: '90vw', maxWidth: 400, borderRadius: 12 }} />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={capturePhoto} style={{
+              padding: '10px 24px', borderRadius: 8, border: 'none',
+              background: '#c9a84c', color: '#0d2818', fontWeight: 600,
+              fontSize: 14, cursor: 'pointer'
+            }}>📸 Capture</button>
+            <button onClick={stopCamera} style={{
+              padding: '10px 24px', borderRadius: 8, border: 'none',
+              background: '#A32D2D', color: '#fff', fontWeight: 600,
+              fontSize: 14, cursor: 'pointer'
+            }}>Cancel</button>
+          </div>
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+        </div>
+      )}
 
       {/* Hero / Scan area */}
       <div className="fs-hero">
@@ -526,9 +583,11 @@ export default function HomePage() {
         {/* Mode buttons */}
         <div className="fs-mode-row">
           <button className="fs-mode-btn" onClick={() => fileRef.current.click()}>
-            📷 Photo
+            🖼️ Upload
           </button>
-
+          <button className="fs-mode-btn" onClick={openCamera}>
+            📷 Camera
+          </button>
           <input
             ref={fileRef}
             type="file"

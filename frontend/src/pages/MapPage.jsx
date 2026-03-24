@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_URL = '/api'
 
 // Maharashtra bounding box for SVG projection
 // lat: 15.6 (south) to 22.1 (north), lng: 72.6 (west) to 80.9 (east)

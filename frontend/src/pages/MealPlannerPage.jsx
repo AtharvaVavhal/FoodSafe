@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_URL = '/api'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500;600&display=swap');

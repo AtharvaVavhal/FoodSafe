@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_BASE = '/api'
 
 async function apiFetch(path) {
   const res = await fetch(`${API_BASE}${path}`)
@@ -353,7 +353,7 @@ export default function AdminDashboard() {
             {[
               { icon: '⚡', name: 'Groq LLaMA 3.1 (8B)', detail: 'Text scanning & food safety analysis' },
               { icon: '👁️', name: 'Groq LLaMA 4 Scout',  detail: 'Image & label analysis (vision)' },
-              { icon: '🌐', name: 'FastAPI Backend',       detail: import.meta.env.VITE_API_URL || 'http://localhost:8000/api' },
+              { icon: '🌐', name: 'FastAPI Backend',       detail: '/api' },
             ].map((m, i) => (
               <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid #ece8df', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
 
-const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8000/api'
+const API_URL = '/api'
 
 // ── Seed data (mirrors backend seed.py) ─────────────────────────────────────
 const ALL_BRANDS = [

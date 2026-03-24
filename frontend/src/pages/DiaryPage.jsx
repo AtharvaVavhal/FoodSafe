@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { useEffect, useRef, useState } from 'react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_URL = '/api'
 
 const RISK_COLOR = { LOW:'#639922', MEDIUM:'#e07c1a', HIGH:'#c0392b', CRITICAL:'#7F0000' }
 const RISK_BG    = { LOW:'#eaf3de', MEDIUM:'#fff8ed', HIGH:'#fff0f0', CRITICAL:'#f7c1c1' }

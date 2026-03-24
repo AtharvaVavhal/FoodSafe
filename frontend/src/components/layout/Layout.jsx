@@ -7,7 +7,7 @@ import PushNotificationBell from '../PushNotificationBell'
 const NAV = [
   { to: '/',       icon: '🔍', key: 'scan' },
   { to: '/diary',  icon: '📔', key: 'diary' },
-  { to: '/meal',   icon: '🥗', key: 'meal' },
+  { to: '/news',   icon: '📰', key: 'news' },
   { to: '/brands', icon: '🛒', key: 'brands' },
   { to: '/family', icon: '👨‍👩‍👧', key: 'family' },
 ]
@@ -52,7 +52,7 @@ export default function Layout({ children }) {
     <div style={{
       maxWidth: 480, margin: '0 auto', minHeight: '100vh',
       display: 'flex', flexDirection: 'column',
-      background: '#f7f5f0', position: 'relative',
+      background: '#0a0f16', position: 'relative',
       fontFamily: "'DM Sans', system-ui, sans-serif",
     }}>
       <style>{`
@@ -113,10 +113,11 @@ export default function Layout({ children }) {
 
       {/* Header */}
       <header style={{
-        background: 'linear-gradient(135deg, #1a3d2b 0%, #2d6647 100%)',
+        background: 'linear-gradient(135deg, #0d1a14 0%, #122a1e 50%, #1a3d2b 100%)',
         padding: '14px 16px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        boxShadow: '0 2px 12px rgba(26,61,43,0.2)',
+        boxShadow: '0 2px 20px rgba(0,0,0,0.4)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div onClick={() => nav('/')} style={{ cursor: 'pointer' }}>
           <div style={{
@@ -197,9 +198,12 @@ export default function Layout({ children }) {
       <nav style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480,
-        background: '#fff', borderTop: '1px solid #e8ede4',
+        background: 'rgba(10,15,22,0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
         display: 'flex', padding: '8px 0 10px',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+        boxShadow: '0 -4px 30px rgba(0,0,0,0.3)',
         zIndex: 100,
       }}>
         {NAV.map(({ to, icon, key }) => (
@@ -208,9 +212,10 @@ export default function Layout({ children }) {
             style={({ isActive }) => ({
               flex: 1, textAlign: 'center', textDecoration: 'none',
               fontSize: 8.5, fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#1a3d2b' : '#aab',
+              color: isActive ? '#00e09c' : 'rgba(255,255,255,0.35)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               fontFamily: 'inherit', letterSpacing: '0.03em',
+              transition: 'color 0.2s ease',
             })}>
             <span style={{ fontSize: 19 }}>{icon}</span>
             {t(lang, key)}

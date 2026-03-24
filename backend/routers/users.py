@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
+import hashlib, secrets
 from jose import JWTError, jwt
 
 from app.core.config import settings
@@ -13,7 +13,19 @@ from app.db.database import get_db
 from models.models import User, ScanRecord
 
 router  = APIRouter()
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# hashlib-based password hashing (bcrypt C-ext crashes on Python 3.14)
+def _hash_pw(password: str) -> str:
+    salt = secrets.token_hex(16)
+    h = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}${h}"
+
+def _verify_pw(password: str, hashed: str) -> bool:
+    if not hashed or '$' not in hashed:
+        return False
+    salt, h = hashed.split('$', 1)
+    return hashlib.sha256((salt + password).encode()).hexdigest() == h
+
 bearer  = HTTPBearer(auto_error=False)
 
 # ── Schemas ───────────────────────────────────────────────
@@ -79,7 +91,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     user = User(
         name      = req.name,
         email     = req.email,
-        hashed_pw = pwd_ctx.hash(req.password),
+        hashed_pw = _hash_pw(req.password),
         city      = req.city,
         lang      = req.lang,
     )
@@ -97,7 +109,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user   = result.scalar_one_or_none()
-    if not user or not pwd_ctx.verify(req.password, user.hashed_pw or ""):
+    if not user or not _verify_pw(req.password, user.hashed_pw or ""):
         raise HTTPException(401, "Invalid email or password")
     return TokenResponse(
         access_token = create_token(user.id),

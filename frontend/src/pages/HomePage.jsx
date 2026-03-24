@@ -27,7 +27,7 @@ const PREMIUM_STYLES = `
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: #f7f5f0;
+    background: #0a0f16;
     min-height: 100vh;
     padding: 0 0 80px;
   }
@@ -54,7 +54,7 @@ const PREMIUM_STYLES = `
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 20px;
-    background: #f7f5f0;
+    background: #0a0f16;
     border-radius: 20px 20px 0 0;
   }
 
@@ -149,6 +149,12 @@ const PREMIUM_STYLES = `
 
   .fs-scan-btn:not(:disabled):active { transform: scale(0.98); }
 
+  @keyframes scanGlow {
+    0%, 100% { box-shadow: 0 4px 16px rgba(201,168,76,0.35); }
+    50% { box-shadow: 0 4px 30px rgba(201,168,76,0.6), 0 0 60px rgba(201,168,76,0.15); }
+  }
+  .fs-scan-btn:not(:disabled) { animation: scanGlow 3s ease infinite; }
+
   .fs-mode-row {
     display: flex;
     gap: 8px;
@@ -177,14 +183,15 @@ const PREMIUM_STYLES = `
 
   .fs-ticker {
     margin: 0 16px;
-    background: #fff;
+    background: rgba(255,255,255,0.04);
     border-radius: 12px;
     padding: 10px 14px;
-    border: 1px solid #ece8df;
+    border: 1px solid rgba(255,255,255,0.08);
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
   }
 
   .fs-ticker-dot {
@@ -212,7 +219,7 @@ const PREMIUM_STYLES = `
 
   .fs-ticker-text {
     font-size: 11.5px;
-    color: #3d2c0a;
+    color: rgba(255,255,255,0.7);
     line-height: 1.45;
     font-weight: 400;
   }
@@ -224,7 +231,7 @@ const PREMIUM_STYLES = `
   .fs-section-label {
     font-size: 10px;
     font-weight: 600;
-    color: #888;
+    color: rgba(255,255,255,0.35);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     margin-bottom: 8px;
@@ -232,15 +239,20 @@ const PREMIUM_STYLES = `
   }
 
   .fs-card {
-    background: #fff;
+    background: rgba(255,255,255,0.04);
     border-radius: 16px;
-    border: 1px solid #ece8df;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
     overflow: hidden;
-    transition: box-shadow 0.15s;
+    transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
+    backdrop-filter: blur(10px);
   }
 
-  .fs-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); }
+  .fs-card:hover {
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.12);
+  }
 
   .fs-quick-grid {
     display: grid;
@@ -249,20 +261,23 @@ const PREMIUM_STYLES = `
   }
 
   .fs-quick-btn {
-    background: #fff;
+    background: rgba(255,255,255,0.04);
     border-radius: 14px;
-    border: 1px solid #ece8df;
+    border: 1px solid rgba(255,255,255,0.08);
     padding: 14px;
     cursor: pointer;
     text-align: left;
     font-family: 'DM Sans', sans-serif;
-    transition: all 0.15s;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
   }
 
   .fs-quick-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
   }
 
   .fs-quick-icon {
@@ -274,13 +289,13 @@ const PREMIUM_STYLES = `
   .fs-quick-title {
     font-size: 12px;
     font-weight: 600;
-    color: #1a3d2b;
+    color: rgba(255,255,255,0.9);
     margin-bottom: 2px;
   }
 
   .fs-quick-sub {
     font-size: 10px;
-    color: #999;
+    color: rgba(255,255,255,0.4);
     font-weight: 300;
   }
 
@@ -298,21 +313,21 @@ const PREMIUM_STYLES = `
   .fs-combo-title {
     font-size: 12px;
     font-weight: 600;
-    color: #1a3d2b;
+    color: rgba(255,255,255,0.9);
   }
 
   .fs-combo-sub {
     font-size: 10px;
-    color: #999;
+    color: rgba(255,255,255,0.4);
     font-weight: 300;
     margin-top: 1px;
   }
 
   .fs-combo-clear {
     font-size: 10px;
-    color: #A32D2D;
-    background: #fff0f0;
-    border: 1px solid #f7c1c1;
+    color: #ff6450;
+    background: rgba(255,80,60,0.1);
+    border: 1px solid rgba(255,80,60,0.3);
     border-radius: 6px;
     padding: 3px 8px;
     cursor: pointer;
@@ -320,34 +335,35 @@ const PREMIUM_STYLES = `
   }
 
   .fs-chip {
-    background: #eaf3de;
-    color: #27500A;
+    background: rgba(0,200,150,0.12);
+    color: #00e09c;
     font-size: 11px;
     padding: 4px 10px;
     border-radius: 20px;
     font-weight: 500;
+    border: 1px solid rgba(0,200,150,0.2);
   }
 
   .fs-add-food {
     font-size: 11px;
     padding: 4px 10px;
     border-radius: 20px;
-    border: 1.5px dashed #c0dd97;
+    border: 1.5px dashed rgba(0,200,150,0.3);
     background: none;
     cursor: pointer;
-    color: #27500A;
+    color: #00e09c;
     font-family: 'DM Sans', sans-serif;
     transition: background 0.15s;
   }
 
-  .fs-add-food:hover { background: #f0f9e5; }
+  .fs-add-food:hover { background: rgba(0,200,150,0.08); }
 
   .fs-family-wrap { padding: 14px 16px; }
 
   .fs-family-title {
     font-size: 12px;
     font-weight: 600;
-    color: #1a3d2b;
+    color: rgba(255,255,255,0.9);
     margin-bottom: 10px;
   }
 
@@ -375,12 +391,12 @@ const PREMIUM_STYLES = `
 
   .fs-error {
     font-size: 11px;
-    color: #A32D2D;
-    background: #fff0f0;
+    color: #ff6450;
+    background: rgba(255,80,60,0.1);
     padding: 7px 12px;
     border-radius: 8px;
     margin-bottom: 10px;
-    border: 1px solid #f7c1c1;
+    border: 1px solid rgba(255,80,60,0.3);
   }
 
   @keyframes tickerIn {
@@ -447,7 +463,7 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+    const API = '/api'
     fetch(`${API}/fssai/alerts`)
       .then(r => r.json())
       .then(data => { if (data.alerts?.length > 0) setFssaiAlerts(data.alerts.map(a => a.title)) })
@@ -518,7 +534,7 @@ export default function HomePage() {
     if (e.target.value !== undefined) e.target.value = ''
     setLoading(true); setError('')
     try {
-      const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+      const API = '/api'
       const formData = new FormData()
       formData.append('file', file)
       formData.append('lang', lang)

@@ -12,6 +12,7 @@ import FestivalPage from './pages/FestivalPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AuthPage from './pages/AuthPage'
 import MealPlannerPage from './pages/MealPlannerPage'
+import NewsPage from './pages/NewsPage'
 import Chatbot from './components/chatbot'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageTransition from './components/PageTransition'
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/symptoms" element={<ProtectedRoute><ErrorBoundary><SymptomPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/festival" element={<ProtectedRoute><ErrorBoundary><FestivalPage /></ErrorBoundary></ProtectedRoute>} />
         <Route path="/meal"     element={<ProtectedRoute><ErrorBoundary><MealPlannerPage /></ErrorBoundary></ProtectedRoute>} />
+        <Route path="/news"     element={<ErrorBoundary><NewsPage /></ErrorBoundary>} />
         <Route path="/admin"    element={<ProtectedRoute><ErrorBoundary showError><AdminDashboard /></ErrorBoundary></ProtectedRoute>} />
       </Routes>
     </PageTransition>

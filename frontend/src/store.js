@@ -32,7 +32,7 @@ export const useStore = create(
                 safety_score: scan.safety_score,
                 scanned_at:   scan.date,
               }),
-            }).catch(() => {})
+            }).catch(err => console.warn('Scan sync failed:', err))
           })
         }
       },
@@ -73,7 +73,7 @@ export const useStore = create(
               safety_score: scan.safety_score,
               scanned_at:   newScan.date,
             }),
-          }).catch(() => {}) // Silent fail — localStorage is the fallback
+          }).catch(err => console.warn('Scan sync failed:', err))
         }
       },
 

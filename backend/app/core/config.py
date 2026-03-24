@@ -24,6 +24,12 @@ class Settings(BaseSettings):
         env_file = ".env"
 
     def model_post_init(self, __context):
+        # Fail-fast if SECRET_KEY is not set in production
+        if self.APP_ENV != "development" and self.SECRET_KEY == "dev-secret-key-change-in-production":
+            raise RuntimeError(
+                "FATAL: SECRET_KEY must be changed in production! "
+                "Set SECRET_KEY in your .env file."
+            )
         if isinstance(self.CORS_ORIGINS, str):
             try:
                 object.__setattr__(self, 'CORS_ORIGINS', json.loads(self.CORS_ORIGINS))

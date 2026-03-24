@@ -66,7 +66,15 @@ async def get_reports(
     limit: int = 50,
     db:    AsyncSession = Depends(get_db),
 ):
-    query  = select(CommunityReport).order_by(CommunityReport.created_at.desc()).limit(limit)
+    query = select(CommunityReport).order_by(CommunityReport.created_at.desc())
+    if city:
+        query = query.where(CommunityReport.city.ilike(f"%{city}%"))
+    if state:
+        query = query.where(CommunityReport.state.ilike(f"%{state}%"))
+    if food:
+        query = query.where(CommunityReport.food_name.ilike(f"%{food}%"))
+    query = query.limit(min(limit, 200))
+
     result = await db.execute(query)
     reports = result.scalars().all()
 
@@ -85,9 +93,6 @@ async def get_reports(
             "created_at":  r.created_at.isoformat(),
         }
         for r in reports
-        if (not city  or (r.city      and city.lower()  in r.city.lower()))
-        and (not state or (r.state     and state.lower() in r.state.lower()))
-        and (not food  or (r.food_name and food.lower()  in r.food_name.lower()))
     ]
     return {"reports": data, "total": len(data)}
 
@@ -215,9 +220,15 @@ async def city_risk(db: AsyncSession = Depends(get_db)):
     return {"cities": cities, "total": len(cities)}
 
 
-# ── Seed sample reports (dev only — remove before production) ─────────────────
+# ── Seed sample reports (dev only) ─────────────────────────────────────────
 @router.post("/seed")
-async def seed_reports(db: AsyncSession = Depends(get_db)):
+async def seed_reports(
+    db:   AsyncSession = Depends(get_db),
+    user: User         = Depends(get_required_user),
+):
+    if settings.APP_ENV != "development":
+        raise HTTPException(403, "Seed endpoint is disabled in production")
+
     samples = [
         {"food_name": "Turmeric Powder", "brand": "Local brand",  "city": "Nagpur",
          "state": "Maharashtra", "description": "Found yellow synthetic color, tasted bitter."},

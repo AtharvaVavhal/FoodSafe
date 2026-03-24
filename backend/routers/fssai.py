@@ -63,23 +63,34 @@ async def get_alerts(db: AsyncSession = Depends(get_db)):
     return {"alerts": alerts}
 
 
+# ── Violations (with SQL-side filtering + pagination) ─────────────────────────
 @router.get("/violations")
-async def get_violations(state: str = "", product: str = "", db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(FssaiViolation).order_by(FssaiViolation.created_at.desc())
-    )
+async def get_violations(
+    state:  str = "",
+    product: str = "",
+    limit:  int = 50,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(FssaiViolation).order_by(FssaiViolation.date.desc())
+    if state:
+        query = query.where(FssaiViolation.state.ilike(f"%{state}%"))
+    if product:
+        query = query.where(FssaiViolation.product.ilike(f"%{product}%"))
+    query = query.limit(min(limit, 200)).offset(offset)
+
+    result = await db.execute(query)
     violations = result.scalars().all()
     data = [
         {
-            "id":        v.id,
-            "brand":     v.brand,
-            "product":   v.product,
-            "violation": v.violation,
-            "state":     v.state,
-            "date":      v.date.isoformat() if v.date else None,
+            "id":         v.id,
+            "brand":      v.brand,
+            "product":    v.product,
+            "violation":  v.violation,
+            "state":      v.state,
+            "date":       v.date.isoformat() if v.date else None,
+            "source_url": v.source_url,
         }
         for v in violations
-        if (not state   or (v.state   and state.lower()   in v.state.lower()))
-        and (not product or (v.product and product.lower() in v.product.lower()))
     ]
-    return {"violations": data, "total": len(data)}
+    return {"violations": data, "count": len(data), "offset": offset}

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
-import base64, httpx
+import base64, re, httpx
 from services.ai_service import scan_food_text, scan_combination, analyze_label_image
 from services.yolo_service import detect_food
 from services.overconsumption_service import check_overconsumption
@@ -181,11 +181,11 @@ async def scan_text(
         )
         db.add(record)
         await db.flush()
-        await db.commit()
         result["scanId"] = record.id
 
-        # Overconsumption check — only for authenticated users (needs scan history)
+        # Overconsumption check BEFORE commit so it can see current scan
         await _attach_overconsumption(result, req.food_name, user, db)
+        await db.commit()
     else:
         result["overconsumptionWarnings"] = None
 
@@ -201,7 +201,10 @@ async def scan_image(
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(400, "Image must be JPEG, PNG, or WebP")
 
-    data = await file.read()
+    MAX_SIZE = 5 * 1024 * 1024  # 5MB
+    data = await file.read(MAX_SIZE + 1)
+    if len(data) > MAX_SIZE:
+        raise HTTPException(413, "Image too large (max 5MB)")
     b64  = base64.b64encode(data).decode()
     yolo = detect_food(data)
 
@@ -243,6 +246,9 @@ async def scan_image(
 # ── Barcode scan (public) ─────────────────────────────────────────────────────
 @router.get("/barcode/{barcode}")
 async def scan_barcode(barcode: str, lang: str = "en"):
+    if not re.match(r'^\d{8,14}$', barcode):
+        raise HTTPException(400, "Invalid barcode format (expected 8-14 digits)")
+
     async with httpx.AsyncClient() as client:
         r = await client.get(f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json")
     data = r.json()

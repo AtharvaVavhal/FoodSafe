@@ -16,6 +16,7 @@ Changes from v1:
 
 import json
 import logging
+import time
 
 import httpx
 
@@ -32,27 +33,54 @@ VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # ── Groq helpers ──────────────────────────────────────────────────────────────
 
-def _call_groq(system: str, user: str, max_tokens: int = 1500) -> dict:
-    response = httpx.post(
-        GROQ_URL,
-        headers={
-            "Authorization": f"Bearer {GROQ_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": MODEL,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user",   "content": user},
-            ],
-            "temperature": 0.3,
-            "max_tokens": max_tokens,
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
-    text = response.json()["choices"][0]["message"]["content"]
-    return _parse(text)
+def _call_groq(system: str, user: str, max_tokens: int = 1500, _retries: int = 3) -> dict:
+    """Call Groq LLM with retry + exponential backoff."""
+    last_err = None
+    for attempt in range(1, _retries + 1):
+        try:
+            t0 = time.time()
+            response = httpx.post(
+                GROQ_URL,
+                headers={
+                    "Authorization": f"Bearer {GROQ_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": MODEL,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user",   "content": user},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": max_tokens,
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            elapsed = int((time.time() - t0) * 1000)
+            data = response.json()
+            usage = data.get("usage", {})
+            logger.info(
+                "Groq call: %dms, %d tokens in / %d tokens out",
+                elapsed,
+                usage.get("prompt_tokens", 0),
+                usage.get("completion_tokens", 0),
+            )
+            text = data["choices"][0]["message"]["content"]
+            return _parse(text)
+        except (httpx.TimeoutException, httpx.HTTPStatusError) as e:
+            last_err = e
+            if attempt < _retries:
+                wait = 2 ** attempt
+                logger.warning(
+                    "Groq attempt %d/%d failed (%s), retrying in %ds...",
+                    attempt, _retries, e, wait,
+                )
+                time.sleep(wait)
+            else:
+                logger.error("Groq failed after %d attempts: %s", _retries, e)
+                raise
+    raise last_err  # should not reach here
 
 
 def _parse(text: str) -> dict:

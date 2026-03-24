@@ -5,26 +5,31 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
-import hashlib, secrets
+import hashlib, hmac, secrets, logging
 from jose import JWTError, jwt
 
 from app.core.config import settings
 from app.db.database import get_db
 from models.models import User, ScanRecord
 
+logger = logging.getLogger(__name__)
+
 router  = APIRouter()
 
-# hashlib-based password hashing (bcrypt C-ext crashes on Python 3.14)
+# PBKDF2-based password hashing (no C extensions needed, OWASP recommended)
+_PW_ITERATIONS = 260_000
+
 def _hash_pw(password: str) -> str:
     salt = secrets.token_hex(16)
-    h = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"{salt}${h}"
+    h = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), _PW_ITERATIONS)
+    return f"{salt}${h.hex()}"
 
 def _verify_pw(password: str, hashed: str) -> bool:
     if not hashed or '$' not in hashed:
         return False
     salt, h = hashed.split('$', 1)
-    return hashlib.sha256((salt + password).encode()).hexdigest() == h
+    computed = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), _PW_ITERATIONS)
+    return hmac.compare_digest(computed.hex(), h)
 
 bearer  = HTTPBearer(auto_error=False)
 
@@ -85,12 +90,19 @@ async def get_current_user(
 # ── Register ──────────────────────────────────────────────
 @router.post("/register", response_model=TokenResponse)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    if not req.email or not req.email.strip():
+        raise HTTPException(400, "Email is required")
+    if not req.password or len(req.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    if not req.name or not req.name.strip():
+        raise HTTPException(400, "Name is required")
+
     result = await db.execute(select(User).where(User.email == req.email))
     if result.scalar_one_or_none():
         raise HTTPException(400, "Email already registered")
     user = User(
-        name      = req.name,
-        email     = req.email,
+        name      = req.name.strip(),
+        email     = req.email.strip().lower(),
         hashed_pw = _hash_pw(req.password),
         city      = req.city,
         lang      = req.lang,
@@ -98,6 +110,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.flush()
     await db.commit()
+    logger.info("User registered: %s (%s)", user.email, user.id)
     return TokenResponse(
         access_token = create_token(user.id),
         user_id      = user.id,
@@ -107,10 +120,12 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 # ── Login ─────────────────────────────────────────────────
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == req.email))
+    result = await db.execute(select(User).where(User.email == req.email.strip().lower()))
     user   = result.scalar_one_or_none()
     if not user or not _verify_pw(req.password, user.hashed_pw or ""):
+        logger.warning("Failed login attempt for: %s", req.email)
         raise HTTPException(401, "Invalid email or password")
+    logger.info("User logged in: %s (%s)", user.email, user.id)
     return TokenResponse(
         access_token = create_token(user.id),
         user_id      = user.id,
@@ -190,9 +205,15 @@ async def get_scan_history(
         "total": len(scans),
     }
 
-# ── Stats ─────────────────────────────────────────────────
+# ── Stats (requires auth — only own stats) ───────────────
 @router.get("/{user_id}/stats")
-async def get_stats(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_stats(
+    user_id: str,
+    db:   AsyncSession = Depends(get_db),
+    user: User         = Depends(get_current_user),
+):
+    if user.id != user_id:
+        raise HTTPException(403, "Cannot access another user's stats")
     result = await db.execute(
         select(ScanRecord).where(ScanRecord.user_id == user_id)
     )

@@ -18,77 +18,78 @@ _cache: dict = {"data": None, "ts": 0}
 CACHE_TTL = 1800  # 30 minutes
 
 
-def _scrape_food_safety_news() -> list[dict]:
-    """Scrape real food safety news from public sources."""
-    import requests
+async def _scrape_food_safety_news() -> list[dict]:
+    """Scrape real food safety news from public sources (async)."""
+    import httpx
     from bs4 import BeautifulSoup
 
     articles = []
+    headers = {"User-Agent": "FoodSafe-Research-Bot/1.0"}
 
-    # ── Source 1: FSSAI portal notices ─────────────────────
-    try:
-        resp = requests.get(
-            "https://www.fssai.gov.in/cms/food-recall-portal.php",
-            timeout=10,
-            headers={"User-Agent": "FoodSafe-Research-Bot/1.0"},
-        )
-        if resp.ok:
-            soup = BeautifulSoup(resp.text, "html.parser")
-            rows = soup.select("table tr")[1:15]  # skip header
-            for row in rows:
-                cols = row.find_all("td")
-                if len(cols) >= 3:
-                    title = cols[1].get_text(strip=True)[:200]
-                    date_str = cols[0].get_text(strip=True)
-                    if title:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=12) as client:
+        # ── Source 1: FSSAI portal notices ─────────────────────
+        try:
+            resp = await client.get(
+                "https://www.fssai.gov.in/cms/food-recall-portal.php",
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                rows = soup.select("table tr")[1:15]  # skip header
+                for row in rows:
+                    cols = row.find_all("td")
+                    if len(cols) >= 3:
+                        title = cols[1].get_text(strip=True)[:200]
+                        date_str = cols[0].get_text(strip=True)
+                        if title:
+                            articles.append({
+                                "title": title,
+                                "summary": f"FSSAI recall notice: {title}",
+                                "severity": _infer_severity(title),
+                                "date": date_str or datetime.now().strftime("%d %b %Y"),
+                                "source": "FSSAI Food Recall Portal",
+                                "source_url": "https://www.fssai.gov.in/cms/food-recall-portal.php",
+                                "category": "recall",
+                            })
+        except Exception as e:
+            logger.warning("FSSAI scrape failed: %s", e)
+
+        # ── Source 2: Google News RSS for Indian food safety ───
+        try:
+            rss_url = "https://news.google.com/rss/search?q=food+adulteration+India+FSSAI&hl=en-IN&gl=IN&ceid=IN:en"
+            resp = await client.get(rss_url, headers=headers)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "xml")
+                items = soup.find_all("item")[:10]
+                for item in items:
+                    title = item.find("title").text if item.find("title") else ""
+                    pub_date = item.find("pubDate").text if item.find("pubDate") else ""
+                    link = item.find("link").text if item.find("link") else ""
+                    source_tag = item.find("source")
+                    source_name = source_tag.text if source_tag else "Google News"
+
+                    if title and any(kw in title.lower() for kw in [
+                        "food", "fssai", "adulter", "safety", "contamin", "recall",
+                        "milk", "spice", "honey", "oil", "pesticide", "ban",
+                    ]):
+                        # Clean date
+                        try:
+                            dt = datetime.strptime(pub_date[:25], "%a, %d %b %Y %H:%M:%S")
+                            date_clean = dt.strftime("%d %b %Y")
+                        except Exception:
+                            date_clean = pub_date[:16] if pub_date else datetime.now().strftime("%d %b %Y")
+
                         articles.append({
-                            "title": title,
-                            "summary": f"FSSAI recall notice: {title}",
+                            "title": title[:200],
+                            "summary": f"Reported by {source_name}",
                             "severity": _infer_severity(title),
-                            "date": date_str or datetime.now().strftime("%d %b %Y"),
-                            "source": "FSSAI Food Recall Portal",
-                            "source_url": "https://www.fssai.gov.in/cms/food-recall-portal.php",
-                            "category": "recall",
+                            "date": date_clean,
+                            "source": source_name,
+                            "source_url": link,
+                            "category": "news",
                         })
-    except Exception as e:
-        logger.warning(f"FSSAI scrape failed: {e}")
-
-    # ── Source 2: Google News RSS for Indian food safety ───
-    try:
-        rss_url = "https://news.google.com/rss/search?q=food+adulteration+India+FSSAI&hl=en-IN&gl=IN&ceid=IN:en"
-        resp = requests.get(rss_url, timeout=10, headers={"User-Agent": "FoodSafe/1.0"})
-        if resp.ok:
-            soup = BeautifulSoup(resp.text, "xml")
-            items = soup.find_all("item")[:10]
-            for item in items:
-                title = item.find("title").text if item.find("title") else ""
-                pub_date = item.find("pubDate").text if item.find("pubDate") else ""
-                link = item.find("link").text if item.find("link") else ""
-                source_tag = item.find("source")
-                source_name = source_tag.text if source_tag else "Google News"
-
-                if title and any(kw in title.lower() for kw in [
-                    "food", "fssai", "adulter", "safety", "contamin", "recall",
-                    "milk", "spice", "honey", "oil", "pesticide", "ban",
-                ]):
-                    # Clean date
-                    try:
-                        dt = datetime.strptime(pub_date[:25], "%a, %d %b %Y %H:%M:%S")
-                        date_clean = dt.strftime("%d %b %Y")
-                    except Exception:
-                        date_clean = pub_date[:16] if pub_date else datetime.now().strftime("%d %b %Y")
-
-                    articles.append({
-                        "title": title[:200],
-                        "summary": f"Reported by {source_name}",
-                        "severity": _infer_severity(title),
-                        "date": date_clean,
-                        "source": source_name,
-                        "source_url": link,
-                        "category": "news",
-                    })
-    except Exception as e:
-        logger.warning(f"Google News RSS scrape failed: {e}")
+        except Exception as e:
+            logger.warning("Google News RSS scrape failed: %s", e)
 
     return articles
 
@@ -168,7 +169,7 @@ async def get_news_feed(severity: Optional[str] = None, limit: int = 20):
         articles = _cache["data"]
     else:
         # Try scraping first
-        articles = _scrape_food_safety_news()
+        articles = await _scrape_food_safety_news()
 
         # Fallback to AI if scraping yields nothing
         if not articles:

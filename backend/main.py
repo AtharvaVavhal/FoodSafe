@@ -31,6 +31,14 @@ async def lifespan(app: FastAPI):
         print("✅ Personalized risk scorer loaded")
     except Exception as e:
         print(f"⚠ Personalized risk scorer not loaded: {e}")
+    try:
+        from services.rag_service import rag
+        if rag.record_count == 0:
+            print("⚠️ RAG index is empty — run 'python scripts/run_scraper.py' to populate")
+        else:
+            print(f"✅ RAG index loaded: {rag.record_count} violations")
+    except Exception as e:
+        print(f"⚠ RAG service check failed: {e}")
     yield
     print("🌿 FoodSafe API shutting down...")
 

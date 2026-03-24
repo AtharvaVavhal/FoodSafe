@@ -60,7 +60,7 @@ uvicorn main:app --reload
 1. Can multimodal AI detect food adulteration more accurately than single-modality approaches?
 2. How does regional NLP (Hindi/Marathi) improve food safety awareness vs English-only?
 3. Can time-series ML on FSSAI data predict seasonal adulteration spikes?
-4. What is the impact of personalized toxin exposure scoring on dietary behaviour?
+4. What is the impact of personalized toxin exposure scoring on dietary behaviour??
 
 ## 📄 License
 

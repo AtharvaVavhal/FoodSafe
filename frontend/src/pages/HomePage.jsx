@@ -5,6 +5,7 @@ import { t } from '../i18n/translations'
 import { analyzeLabel } from '../services/claude'
 import { scanFoodAPI, scanCombinationAPI } from '../services/api'
 import ScanLoader from '../components/ScanLoader'
+import { Camera, Image as ImageIcon, Mic, Search as SearchIcon, X, Sparkles, HeartPulse, MapPin, ShieldCheck, Plus, CheckCircle2 } from 'lucide-react'
 
 const DEFAULT_ALERTS = [
   "MDH spices flagged for pesticide residue — Apr 2024",
@@ -17,396 +18,6 @@ const DEFAULT_ALERTS = [
   "Synthetic milk adulteration in Mawa/Khoya — Maharashtra",
 ]
 
-const PREMIUM_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-  * { box-sizing: border-box; }
-
-  .fs-root {
-    font-family: 'DM Sans', sans-serif;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background: #0a0f16;
-    min-height: 100vh;
-    padding: 0 0 80px;
-  }
-
-  .fs-hero {
-    background: linear-gradient(160deg, #0d2818 0%, #1a3d2b 60%, #1e4d34 100%);
-    padding: 24px 16px 32px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .fs-hero::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .fs-hero::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 20px;
-    background: #0a0f16;
-    border-radius: 20px 20px 0 0;
-  }
-
-  .fs-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  .fs-brand-icon {
-    width: 36px; height: 36px;
-    background: rgba(201,168,76,0.2);
-    border: 1px solid rgba(201,168,76,0.4);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-
-  .fs-brand-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 600;
-    color: #f5f0e8;
-    letter-spacing: -0.01em;
-  }
-
-  .fs-brand-sub {
-    font-size: 10px;
-    color: rgba(245,240,232,0.5);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 300;
-    margin-top: 1px;
-  }
-
-  .fs-search-wrap {
-    position: relative;
-    margin-bottom: 12px;
-  }
-
-  .fs-search-input {
-    width: 100%;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(245,240,232,0.2);
-    border-radius: 14px;
-    padding: 14px 48px 14px 18px;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    color: #f5f0e8;
-    outline: none;
-    transition: border-color 0.2s, background 0.2s;
-    backdrop-filter: blur(8px);
-  }
-
-  .fs-search-input::placeholder { color: rgba(245,240,232,0.4); }
-  .fs-search-input:focus {
-    border-color: rgba(201,168,76,0.5);
-    background: rgba(255,255,255,0.12);
-  }
-
-  .fs-search-clear {
-    position: absolute; right: 14px; top: 50%;
-    transform: translateY(-50%);
-    background: none; border: none;
-    color: rgba(245,240,232,0.5); font-size: 18px;
-    cursor: pointer; padding: 0; line-height: 1;
-  }
-
-  .fs-scan-btn {
-    width: 100%;
-    padding: 14px;
-    border-radius: 12px;
-    border: none;
-    background: linear-gradient(135deg, #c9a84c 0%, #e0c068 100%);
-    color: #0d2818;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    letter-spacing: 0.02em;
-    transition: opacity 0.2s, transform 0.1s;
-    box-shadow: 0 4px 16px rgba(201,168,76,0.35);
-  }
-
-  .fs-scan-btn:disabled {
-    background: rgba(255,255,255,0.1);
-    color: rgba(245,240,232,0.3);
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-
-  .fs-scan-btn:not(:disabled):active { transform: scale(0.98); }
-
-  @keyframes scanGlow {
-    0%, 100% { box-shadow: 0 4px 16px rgba(201,168,76,0.35); }
-    50% { box-shadow: 0 4px 30px rgba(201,168,76,0.6), 0 0 60px rgba(201,168,76,0.15); }
-  }
-  .fs-scan-btn:not(:disabled) { animation: scanGlow 3s ease infinite; }
-
-  .fs-mode-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .fs-mode-btn {
-    flex: 1;
-    padding: 9px 4px;
-    border-radius: 10px;
-    border: 1px solid rgba(245,240,232,0.15);
-    background: rgba(255,255,255,0.06);
-    color: rgba(245,240,232,0.7);
-    font-size: 11px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    backdrop-filter: blur(4px);
-  }
-
-  .fs-mode-btn:hover {
-    background: rgba(255,255,255,0.12);
-    border-color: rgba(245,240,232,0.3);
-  }
-
-  .fs-ticker {
-    margin: 0 16px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 12px;
-    padding: 10px 14px;
-    border: 1px solid rgba(255,255,255,0.08);
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    backdrop-filter: blur(10px);
-  }
-
-  .fs-ticker-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #c9a84c;
-    flex-shrink: 0;
-    margin-top: 5px;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .fs-ticker-label {
-    font-size: 9px;
-    font-weight: 600;
-    color: #c9a84c;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-  }
-
-  .fs-ticker-text {
-    font-size: 11.5px;
-    color: rgba(255,255,255,0.7);
-    line-height: 1.45;
-    font-weight: 400;
-  }
-
-  .fs-section {
-    padding: 0 16px;
-  }
-
-  .fs-section-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.35);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-    margin-left: 2px;
-  }
-
-  .fs-card {
-    background: rgba(255,255,255,0.04);
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    overflow: hidden;
-    transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
-    backdrop-filter: blur(10px);
-  }
-
-  .fs-card:hover {
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-    transform: translateY(-2px);
-    border-color: rgba(255,255,255,0.12);
-  }
-
-  .fs-quick-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .fs-quick-btn {
-    background: rgba(255,255,255,0.04);
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.08);
-    padding: 14px;
-    cursor: pointer;
-    text-align: left;
-    font-family: 'DM Sans', sans-serif;
-    transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    backdrop-filter: blur(10px);
-  }
-
-  .fs-quick-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    border-color: rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.07);
-  }
-
-  .fs-quick-icon {
-    font-size: 22px;
-    margin-bottom: 6px;
-    display: block;
-  }
-
-  .fs-quick-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.9);
-    margin-bottom: 2px;
-  }
-
-  .fs-quick-sub {
-    font-size: 10px;
-    color: rgba(255,255,255,0.4);
-    font-weight: 300;
-  }
-
-  .fs-combo-wrap {
-    padding: 14px 16px;
-  }
-
-  .fs-combo-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-
-  .fs-combo-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.9);
-  }
-
-  .fs-combo-sub {
-    font-size: 10px;
-    color: rgba(255,255,255,0.4);
-    font-weight: 300;
-    margin-top: 1px;
-  }
-
-  .fs-combo-clear {
-    font-size: 10px;
-    color: #ff6450;
-    background: rgba(255,80,60,0.1);
-    border: 1px solid rgba(255,80,60,0.3);
-    border-radius: 6px;
-    padding: 3px 8px;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .fs-chip {
-    background: rgba(0,200,150,0.12);
-    color: #00e09c;
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 500;
-    border: 1px solid rgba(0,200,150,0.2);
-  }
-
-  .fs-add-food {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1.5px dashed rgba(0,200,150,0.3);
-    background: none;
-    cursor: pointer;
-    color: #00e09c;
-    font-family: 'DM Sans', sans-serif;
-    transition: background 0.15s;
-  }
-
-  .fs-add-food:hover { background: rgba(0,200,150,0.08); }
-
-  .fs-family-wrap { padding: 14px 16px; }
-
-  .fs-family-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.9);
-    margin-bottom: 10px;
-  }
-
-  .fs-member-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
-    transition: all 0.15s;
-  }
-
-  .fs-member-avatar {
-    width: 24px; height: 24px;
-    border-radius: 50%;
-    background: #1a3d2b;
-    color: #fff;
-    font-size: 9px;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  .fs-error {
-    font-size: 11px;
-    color: #ff6450;
-    background: rgba(255,80,60,0.1);
-    padding: 7px 12px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    border: 1px solid rgba(255,80,60,0.3);
-  }
-
-  @keyframes tickerIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .ticker-anim { animation: tickerIn 0.35s ease; }
-`
-
 export default function HomePage() {
   const { lang, family, activeMember, setActiveMember, addScan, setLastResult, combinationFoods, addCombinationFood, clearCombination } = useStore()
   const nav = useNavigate()
@@ -417,6 +28,7 @@ export default function HomePage() {
   const [fssaiAlerts, setFssaiAlerts] = useState(DEFAULT_ALERTS)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [listening, setListening]   = useState(false)
+  
   const fileRef   = useRef()
   const cameraRef = useRef()
   const canvasRef = useRef()
@@ -445,8 +57,7 @@ export default function HomePage() {
     recognition.maxAlternatives = 1
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript
-      setQuery(transcript)
+      setQuery(event.results[0][0].transcript)
       setListening(false)
     }
     recognition.onerror = () => setListening(false)
@@ -463,8 +74,7 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    const API = '/api'
-    fetch(`${API}/fssai/alerts`)
+    fetch('/api/fssai/alerts')
       .then(r => r.json())
       .then(data => { if (data.alerts?.length > 0) setFssaiAlerts(data.alerts.map(a => a.title)) })
       .catch(() => {})
@@ -475,7 +85,7 @@ export default function HomePage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       streamRef.current = stream
-      cameraRef.current.srcObject = stream
+      if (cameraRef.current) cameraRef.current.srcObject = stream
     } catch {
       setCameraOpen(false)
       setError('Camera access denied')
@@ -490,6 +100,7 @@ export default function HomePage() {
   async function capturePhoto() {
     const video = cameraRef.current
     const canvas = canvasRef.current
+    if (!video || !canvas) return
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     canvas.getContext('2d').drawImage(video, 0, 0)
@@ -534,11 +145,10 @@ export default function HomePage() {
     if (e.target.value !== undefined) e.target.value = ''
     setLoading(true); setError('')
     try {
-      const API = '/api'
       const formData = new FormData()
       formData.append('file', file)
       formData.append('lang', lang)
-      const res = await fetch(`${API}/scan/image`, { method: 'POST', body: formData })
+      const res = await fetch('/api/scan/image', { method: 'POST', body: formData })
       if (!res.ok) throw new Error('Backend image scan failed')
       const result = await res.json()
       if (result.foodName || result.food_name) {
@@ -578,188 +188,208 @@ export default function HomePage() {
   const currentAlert = fssaiAlerts[ticker % fssaiAlerts.length]
 
   return (
-    <div className="fs-root">
-      <style>{PREMIUM_STYLES}</style>
+    <div className="flex flex-col gap-6 animate-fade-up">
       {loading && <ScanLoader food={query.trim()} lang={lang} />}
 
       {/* Camera Modal */}
       {cameraOpen && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-          zIndex: 999, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 12
-        }}>
-          <video ref={cameraRef} autoPlay playsInline
-            style={{ width: '90vw', maxWidth: 400, borderRadius: 12 }} />
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={capturePhoto} style={{
-              padding: '10px 24px', borderRadius: 8, border: 'none',
-              background: '#c9a84c', color: '#0d2818', fontWeight: 600,
-              fontSize: 14, cursor: 'pointer'
-            }}>📸 {t(lang, 'capture')}</button>
-            <button onClick={stopCamera} style={{
-              padding: '10px 24px', borderRadius: 8, border: 'none',
-              background: '#A32D2D', color: '#fff', fontWeight: 600,
-              fontSize: 14, cursor: 'pointer'
-            }}>{t(lang, 'cancel')}</button>
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-xl z-[999] flex flex-col items-center justify-center p-4">
+          <div className="relative w-full max-w-md rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+            <video ref={cameraRef} autoPlay playsInline className="w-full h-[60vh] object-cover" />
+            <div className="absolute inset-0 border-2 border-brand/40 rounded-3xl pointer-events-none m-4 
+                            after:absolute after:top-0 after:left-1/4 after:w-1/2 after:h-1 after:bg-brand after:animate-pulse-slow" />
+            <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex justify-center gap-4">
+              <button onClick={stopCamera} className="w-14 h-14 rounded-full bg-surface-200 border border-white/20 flex items-center justify-center text-white/70 hover:bg-surface-300 hover:text-white transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+              <button onClick={capturePhoto} className="w-16 h-16 rounded-full bg-brand shadow-[0_0_30px_rgba(0,224,156,0.4)] flex items-center justify-center hover:scale-105 transition-transform border-4 border-white/20">
+                <div className="w-12 h-12 rounded-full border-2 border-black/20" />
+              </button>
+            </div>
           </div>
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <canvas ref={canvasRef} className="hidden" />
         </div>
       )}
 
-      {/* Hero / Scan area */}
-      <div className="fs-hero">
-        {/* Brand */}
-        <div className="fs-brand">
-          <div className="fs-brand-icon">🌿</div>
-          <div>
-            <div className="fs-brand-name">FoodSafe</div>
-            <div className="fs-brand-sub">{t(lang, 'protectPlate') || "PROTECT YOUR FAMILY'S PLATE"}</div>
+      {/* Hero Interactive Surface */}
+      <div className="relative p-7 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden backdrop-blur-2xl mt-2">
+        {/* Glow Effects */}
+        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-brand/10 blur-[100px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-blue-500/10 blur-[80px] rounded-full pointer-events-none translate-y-1/2 -translate-x-1/2" />
+
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex flex-col">
+            <h2 className="font-serif text-3xl md:text-4xl text-white font-medium tracking-tight mb-2">What's in your food?</h2>
+            <p className="font-sans text-[13px] md:text-sm text-white/50">{t(lang, 'placeholder') || 'Search paneer, complex spices, or ingredients...'}</p>
           </div>
-        </div>
 
-        {/* Search */}
-        <div className="fs-search-wrap">
-          <input
-            className="fs-search-input"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleScan()}
-            placeholder={t(lang, 'placeholder') || 'Search any food — paneer, oil, spices…'}
-          />
-          {query && (
-            <button className="fs-search-clear" onClick={() => setQuery('')}>×</button>
-          )}
-        </div>
+          {/* Intelligent Search Bar */}
+          <div className="relative group w-full">
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-brand transition-colors" />
+            <input
+              className="w-full bg-surface-200 border border-white/10 rounded-2xl py-4 pl-12 pr-12 text-sm text-white placeholder-white/40 focus:bg-surface-300 focus:border-brand/40 focus:outline-none focus:ring-4 focus:ring-brand/10 transition-all shadow-inner"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleScan()}
+              placeholder="E.g. Turmeric powder, Amul Milk..."
+            />
+            {query && (
+              <button 
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                onClick={() => setQuery('')}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-        {/* Mode buttons */}
-        <div className="fs-mode-row">
-          <button className="fs-mode-btn" onClick={() => fileRef.current.click()}>
-            🖼️ {t(lang, 'uploadBtn')}
-          </button>
-          <button className="fs-mode-btn" onClick={openCamera}>
-            📷 {t(lang, 'cameraBtn')}
-          </button>
-          <button
-            className={`fs-mode-btn${listening ? ' fs-mic-active' : ''}`}
-            onClick={toggleVoice}
-            style={listening ? { background: 'rgba(220,30,60,0.3)', borderColor: 'rgba(220,30,60,0.5)', color: '#ff6450' } : {}}
-          >
-            {listening ? '⏹️' : '🎤'} {t(lang, 'voiceInput')}
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handleImageUpload}
-          />
-        </div>
+          {/* Multi-modal Inputs */}
+          <div className="flex gap-3 h-20">
+            <button className="flex-1 rounded-2xl border border-white/10 bg-surface-100 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-200 hover:border-white/20 transition-all hover:-translate-y-1 group" onClick={() => fileRef.current.click()}>
+              <ImageIcon className="w-5 h-5 text-white/60 group-hover:text-gold transition-colors" />
+              <span className="text-[11px] font-medium text-white/60 group-hover:text-white">{t(lang, 'uploadBtn')}</span>
+            </button>
+            <button className="flex-1 rounded-2xl border border-white/10 bg-surface-100 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-200 hover:border-white/20 transition-all hover:-translate-y-1 group" onClick={openCamera}>
+              <Camera className="w-5 h-5 text-white/60 group-hover:text-blue-400 transition-colors" />
+              <span className="text-[11px] font-medium text-white/60 group-hover:text-white">{t(lang, 'cameraBtn')}</span>
+            </button>
+            <button 
+              className={`flex-1 rounded-2xl border transition-all hover:-translate-y-1 group flex flex-col items-center justify-center gap-1.5
+                ${listening ? 'bg-red-500/10 border-red-500/30' : 'bg-surface-100 border-white/10 hover:bg-surface-200 hover:border-white/20'}`}
+              onClick={toggleVoice}
+            >
+              <Mic className={`w-5 h-5 transition-colors ${listening ? 'text-red-400 animate-pulse' : 'text-white/60 group-hover:text-purple-400'}`} />
+              <span className={`text-[11px] font-medium ${listening ? 'text-red-400' : 'text-white/60 group-hover:text-white'}`}>
+                {listening ? 'Listening...' : t(lang, 'voiceInput')}
+              </span>
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+          </div>
 
-        {error && <div className="fs-error">{error}</div>}
-
-        {/* Scan button */}
-        <button
-          className="fs-scan-btn"
-          onClick={handleScan}
-          disabled={loading || !query.trim()}
-        >
-          🔍 {t(lang, 'scanNow') || 'Scan Now'}
-        </button>
-      </div>
-
-      {/* FSSAI Ticker */}
-      <div className="fs-section" style={{ marginTop: 4 }}>
-        <div key={ticker} className="fs-ticker ticker-anim">
-          <div className="fs-ticker-dot" />
-          <div>
-            <div className="fs-ticker-label">
-              {t(lang, 'fssaiAlert')} {ticker + 1}/{fssaiAlerts.length}
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-[12px] text-red-400">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              {error}
             </div>
-            <div className="fs-ticker-text">{currentAlert}</div>
-          </div>
+          )}
+
+          {/* Primary Action Button */}
+          <button
+            className={`w-full py-4 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2
+              ${query.trim() 
+                ? 'bg-brand text-background shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] border border-brand-light' 
+                : 'bg-surface-100 text-white/30 border border-white/5 cursor-not-allowed'}`}
+            onClick={handleScan}
+            disabled={loading || !query.trim()}
+          >
+            <SearchIcon className="w-4 h-4" />
+            {t(lang, 'scanNow') || 'Analyze Food Context'}
+          </button>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="fs-section">
-        <div className="fs-section-label">{t(lang, 'quickActions')}</div>
-        <div className="fs-quick-grid">
+      {/* FSSAI Pulse Ticker */}
+      <div className="relative group overflow-hidden rounded-[24px] bg-surface-100 border border-surface-200 p-4 flex gap-4 items-center shadow-lg hover:bg-surface-200 transition-colors cursor-pointer">
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 shrink-0">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <div className="absolute inset-0 rounded-full border border-red-500/50 animate-ping opacity-50" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-red-400">{t(lang, 'fssaiAlert')}</span>
+            <span className="text-[10px] text-white/30">{ticker % fssaiAlerts.length + 1}/{fssaiAlerts.length}</span>
+          </div>
+          <p className="text-[12px] text-white/80 font-medium truncate group-hover:text-white transition-colors" key={ticker}>
+             {currentAlert}
+          </p>
+        </div>
+      </div>
+
+      {/* Grid Features */}
+      <div>
+        <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] mb-4 pl-1">{t(lang, 'quickActions')}</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { icon: '🎉', titleKey: 'festivalGuide', subKey: 'festivalGuideSub', to: '/festival' },
-            { icon: '🩺', titleKey: 'symptomCheck', subKey: 'symptomCheckSub', to: '/symptoms' },
-            { icon: '🗺️', titleKey: 'foodSafetyMap', subKey: 'foodSafetyMapSub', to: '/map' },
-          ].map(({ icon, titleKey, subKey, to }) => (
-            <button key={to} className="fs-quick-btn" onClick={() => nav(to)}>
-              <span className="fs-quick-icon">{icon}</span>
-              <div className="fs-quick-title">{t(lang, titleKey)}</div>
-              <div className="fs-quick-sub">{t(lang, subKey)}</div>
+            { icon: Sparkles, color: 'text-gold', bg: 'bg-gold/10', border: 'group-hover:border-gold/30', title: 'festivalGuide', sub: 'festivalGuideSub', to: '/festival' },
+            { icon: HeartPulse, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'group-hover:border-blue-400/30', title: 'symptomCheck', sub: 'symptomCheckSub', to: '/symptoms' },
+            { icon: MapPin, color: 'text-brand', bg: 'bg-brand/10', border: 'group-hover:border-brand/30', title: 'foodSafetyMap', sub: 'foodSafetyMapSub', to: '/map' },
+          ].map(({ icon: Icon, color, bg, border, title, sub, to }) => (
+            <button key={to} onClick={() => nav(to)} className={`p-4 rounded-[20px] bg-surface-100 border border-surface-200 shadow-sm flex flex-col gap-3 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-surface-200 group ${border}`}>
+              <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>
+                <Icon className={`w-4.5 h-4.5 ${color}`} />
+              </div>
+              <div className="space-y-0.5">
+                <div className="text-[13px] font-semibold text-white/90 group-hover:text-white">{t(lang, title)}</div>
+                <div className="text-[10px] text-white/40 leading-snug">{t(lang, sub)}</div>
+              </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Combination Risk */}
-      <div className="fs-section">
-        <div className="fs-section-label">{t(lang, 'combinationRisk')}</div>
-        <div className="fs-card">
-          <div className="fs-combo-wrap">
-            <div className="fs-combo-header">
-              <div>
-                <div className="fs-combo-title">⚗️ {t(lang, 'combinationRisk') || 'Combination Risk'}</div>
-                <div className="fs-combo-sub">{t(lang, 'combinationSub')}</div>
+      {/* Combination Builder (Glass Card) */}
+      <div>
+        <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] mb-4 pl-1">{t(lang, 'combinationRisk') || 'Combination Analysis'}</h3>
+        <div className="p-5 rounded-[24px] bg-glass-gradient border border-surface-200 shadow-xl backdrop-blur-xl">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand" />
+                <h4 className="text-[13px] font-semibold text-white">Meal Safety Stack</h4>
               </div>
-              {combinationFoods.length > 0 && (
-                <button className="fs-combo-clear" onClick={clearCombination}>{t(lang, 'clear')}</button>
-              )}
+              <p className="text-[11px] text-white/40 mt-1">{t(lang, 'combinationSub')}</p>
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              {combinationFoods.map((f, i) => (
-                <span key={i} className="fs-chip">{f}</span>
-              ))}
-              <button
-                className="fs-add-food"
-                onClick={() => { if (query.trim()) { addCombinationFood(query.trim()); setQuery('') } }}
-              >
-                + {t(lang, 'addFood') || 'Add Food'}
+            {combinationFoods.length > 0 && (
+              <button className="text-[10px] font-semibold text-red-400 bg-red-400/10 px-2.5 py-1 rounded-md hover:bg-red-400/20 transition-colors" onClick={clearCombination}>
+                {t(lang, 'clear')}
               </button>
-            </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {combinationFoods.map((f, i) => (
+              <span key={i} className="flex items-center gap-1.5 bg-brand/10 border border-brand/20 text-brand text-[11px] font-semibold px-3 py-1.5 rounded-full shadow-sm">
+                <CheckCircle2 className="w-3 h-3" />
+                {f}
+              </span>
+            ))}
+            <button 
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-white/50 border border-dashed border-white/20 px-3 py-1.5 rounded-full hover:border-white/40 hover:text-white transition-colors"
+              onClick={() => { if (query.trim()) { addCombinationFood(query.trim()); setQuery('') } }}
+            >
+              <Plus className="w-3 h-3" />
+              {t(lang, 'addFood') || 'Add Query'}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Family Selector */}
+      {/* Family Profiles */}
       {family.length > 0 && (
-        <div className="fs-section">
-          <div className="fs-section-label">{t(lang, 'scanFor')}</div>
-          <div className="fs-card">
-            <div className="fs-family-wrap">
-              <div className="fs-family-title">👨‍👩‍👧 {t(lang, 'scanFor') || 'Scan For'}</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {family.map(m => {
-                  const active = activeMember?.id === m.id
-                  return (
-                    <button
-                      key={m.id}
-                      className="fs-member-btn"
-                      onClick={() => setActiveMember(active ? null : m)}
-                      style={{
-                        border: `1.5px solid ${active ? '#1a3d2b' : '#e0e8da'}`,
-                        background: active ? '#EAF3DE' : '#f5f7f3',
-                        fontWeight: active ? 600 : 400,
-                        color: '#1a3d2b',
-                      }}
-                    >
-                      <div className="fs-member-avatar">
-                        {m.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      {m.name}
-                      {m.conditions?.length > 0 && ' 🩺'}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+        <div className="mb-8">
+          <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] mb-4 pl-1">{t(lang, 'scanFor')}</h3>
+          <div className="p-4 rounded-[24px] bg-surface-100 border border-surface-200 flex flex-wrap gap-2">
+            {family.map(m => {
+              const active = activeMember?.id === m.id
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setActiveMember(active ? null : m)}
+                  className={`
+                    flex items-center gap-2.5 px-3 py-1.5 rounded-full border transition-all duration-300
+                    ${active 
+                      ? 'bg-brand text-background border-brand shadow-[0_2px_12px_rgba(0,224,156,0.3)] scale-105 font-bold' 
+                      : 'bg-surface-200 border-white/5 text-white/60 hover:text-white hover:bg-surface-300 hover:border-white/20 font-medium'}
+                  `}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm
+                    ${active ? 'bg-background/20 text-background' : 'bg-background text-white/60'}`}>
+                    {m.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-[12px]">{m.name}</span>
+                  {m.conditions?.length > 0 && <HeartPulse className={`w-3 h-3 ${active ? 'text-background/70' : 'text-red-400'}`} />}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

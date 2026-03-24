@@ -27,13 +27,17 @@ async def test_barcode_not_found(client):
 async def test_community_reports(client):
     r = await client.get("/api/community/reports")
     assert r.status_code == 200
-    assert isinstance(r.json(), list)
+    data = r.json()
+    assert "reports" in data
+    assert isinstance(data["reports"], list)
 
 @pytest.mark.asyncio
 async def test_safe_brands(client):
     r = await client.get("/api/brands/safe?food=turmeric")
     assert r.status_code == 200
-    assert isinstance(r.json(), list)
+    data = r.json()
+    assert "brands" in data
+    assert isinstance(data["brands"], list)
 
 @pytest.mark.asyncio
 async def test_fssai_alerts(client):

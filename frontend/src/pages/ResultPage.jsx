@@ -30,6 +30,7 @@ function shiftColor(hex, amount) {
 
 function ShareButton({ result }) {
   const canvasRef = useRef()
+  const { lang } = useStore()
 
   async function generateCard() {
     const canvas = canvasRef.current

@@ -15,12 +15,19 @@ FESTIVAL_CALENDAR = {
 }
 
 @router.get("/current")
-async def get_current_festival():
+async def get_current_festival(lang: str = "en"):
     month = datetime.now().month
     festival = FESTIVAL_CALENDAR.get(month, {"name": "General Season", "icon": "🍽"})
     month_name = datetime.now().strftime("%B")
 
-    system = "You are a food safety expert for India. Respond ONLY with valid JSON, no markdown."
+    lang_note = (
+        "Respond with all text values in Hindi."
+        if lang == "hi"
+        else "Respond with all text values in Marathi."
+        if lang == "mr"
+        else ""
+    )
+    system = f"You are a food safety expert for India. Respond ONLY with valid JSON, no markdown. {lang_note}"
     user = f"""It is {month_name} in India. The festival/season is: {festival['name']}.
 
 Return food safety guidance for this season as ONLY this JSON:

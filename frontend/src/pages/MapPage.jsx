@@ -287,12 +287,19 @@ const STYLES = `
 `
 
 export default function MapPage() {
-  const { lang } = useStore()
+  const { lang, token } = useStore()
   const [cities, setCities] = useState([])
   const [mappedCities, setMappedCities] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [filter, setFilter] = useState('ALL')
+  const [showForm, setShowForm] = useState(false)
+  const [reportFood, setReportFood] = useState('')
+  const [reportCity, setReportCity] = useState('')
+  const [reportDesc, setReportDesc] = useState('')
+  const [reportBrand, setReportBrand] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitMsg, setSubmitMsg] = useState('')
 
   // Fetch city risk data from DB
   useEffect(() => {
@@ -304,6 +311,39 @@ export default function MapPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // Submit community report
+  async function submitReport() {
+    if (!reportFood.trim() || !reportCity.trim() || !reportDesc.trim()) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`${API_URL}/community/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          food_name: reportFood.trim(),
+          city: reportCity.trim(),
+          description: reportDesc.trim(),
+          brand: reportBrand.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setSubmitMsg(t(lang, 'reportSuccess'))
+      setReportFood(''); setReportCity(''); setReportDesc(''); setReportBrand('')
+      setTimeout(() => { setShowForm(false); setSubmitMsg('') }, 1500)
+      // Refresh map data
+      const r2 = await fetch(`${API_URL}/community/city-risk`)
+      const d2 = await r2.json()
+      if (d2.cities) setCities(d2.cities)
+    } catch {
+      setSubmitMsg(t(lang, 'reportFailed'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   // Geocode each city via Nominatim — no hardcoded coords
   useEffect(() => {
@@ -502,6 +542,100 @@ export default function MapPage() {
           </div>
         )}
       </div>
+
+      {/* Report Adulteration FAB */}
+      <button
+        onClick={() => setShowForm(!showForm)}
+        style={{
+          position: 'fixed', bottom: 80, right: 20, zIndex: 100,
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #A32D2D, #dc3545)',
+          color: '#fff', border: 'none', boxShadow: '0 4px 16px rgba(163,45,45,0.4)',
+          fontSize: 22, cursor: 'pointer', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          transition: 'transform 0.2s',
+          transform: showForm ? 'rotate(45deg)' : 'none',
+        }}
+      >
+        +
+      </button>
+
+      {/* Report Form Overlay */}
+      {showForm && (
+        <div style={{
+          position: 'fixed', bottom: 70, left: 0, right: 0, zIndex: 99,
+          maxWidth: 480, margin: '0 auto', padding: '0 12px',
+          animation: 'fadeUp 0.3s ease forwards',
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '16px 16px 12px',
+            boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', border: '1px solid #ece8df',
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a3d2b', marginBottom: 10 }}>
+              ⚠️ {t(lang, 'reportAdulteration')}
+            </div>
+
+            {submitMsg && (
+              <div style={{ fontSize: 12, color: submitMsg.includes('✓') || submitMsg === t(lang, 'reportSuccess') ? '#27500A' : '#A32D2D', marginBottom: 8, fontWeight: 500 }}>
+                {submitMsg}
+              </div>
+            )}
+
+            <input
+              value={reportFood} onChange={e => setReportFood(e.target.value)}
+              placeholder={t(lang, 'foodNameLabel')}
+              style={{
+                width: '100%', padding: '8px 12px', borderRadius: 8,
+                border: '1px solid #ddd', fontSize: 13, marginBottom: 6,
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            />
+            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+              <input
+                value={reportCity} onChange={e => setReportCity(e.target.value)}
+                placeholder={t(lang, 'city')}
+                style={{
+                  flex: 1, padding: '8px 12px', borderRadius: 8,
+                  border: '1px solid #ddd', fontSize: 13,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              />
+              <input
+                value={reportBrand} onChange={e => setReportBrand(e.target.value)}
+                placeholder={`${t(lang, 'brands')} (${t(lang, 'cancel').toLowerCase()})`}
+                style={{
+                  flex: 1, padding: '8px 12px', borderRadius: 8,
+                  border: '1px solid #ddd', fontSize: 13,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              />
+            </div>
+            <textarea
+              value={reportDesc} onChange={e => setReportDesc(e.target.value)}
+              placeholder={t(lang, 'descriptionLabel')}
+              rows={2}
+              style={{
+                width: '100%', padding: '8px 12px', borderRadius: 8,
+                border: '1px solid #ddd', fontSize: 13, marginBottom: 8,
+                fontFamily: "'DM Sans',sans-serif", resize: 'none',
+              }}
+            />
+            <button
+              onClick={submitReport}
+              disabled={submitting || !reportFood.trim() || !reportCity.trim() || !reportDesc.trim()}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10,
+                border: 'none', background: 'linear-gradient(135deg, #1a3d2b, #2d6647)',
+                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                fontFamily: "'DM Sans',sans-serif",
+                opacity: submitting || !reportFood.trim() ? 0.5 : 1,
+              }}
+            >
+              {submitting ? '⏳...' : `📢 ${t(lang, 'submitReport')}`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

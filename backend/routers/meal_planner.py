@@ -9,13 +9,21 @@ class MealPlanRequest(BaseModel):
     plan_type: str = "single"
     member_profile: Optional[dict] = None
     high_risk_foods: list[str] = []
+    lang: str = "en"
 
 @router.post("/generate")
 async def generate_meal_plan(req: MealPlanRequest):
     avoid = ", ".join(req.high_risk_foods[:8]) if req.high_risk_foods else "none"
     profile_ctx = f"Health profile: {req.member_profile}" if req.member_profile else "General healthy adult"
 
-    system = "You are a Maharashtra-based nutritionist and food safety expert. Respond ONLY with valid JSON, no markdown."
+    lang_note = (
+        "Respond with all text values in Hindi."
+        if req.lang == "hi"
+        else "Respond with all text values in Marathi."
+        if req.lang == "mr"
+        else ""
+    )
+    system = f"You are a Maharashtra-based nutritionist and food safety expert. Respond ONLY with valid JSON, no markdown. {lang_note}"
 
     if req.plan_type == "weekly":
         user = f"""Create a safe 7-day Maharashtra meal plan.

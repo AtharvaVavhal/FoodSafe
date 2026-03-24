@@ -65,7 +65,7 @@ export default function SymptomPage() {
       const res = await fetch(`${API_URL}/symptoms/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: symptoms.trim(), recent_foods: recentFoods }),
+        body: JSON.stringify({ symptoms: symptoms.trim(), recent_foods: recentFoods, lang }),
       })
       if (!res.ok) throw new Error('Analysis failed')
       const data = await res.json()

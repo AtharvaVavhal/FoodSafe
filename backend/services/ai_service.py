@@ -208,8 +208,15 @@ Return ONLY this JSON structure:
 
 # ── Combination risk ───────────────────────────────────────────────────────────
 
-def scan_combination(foods: list[str], member_profile: dict | None) -> dict:
-    system = "You are a food safety and toxicology expert. Respond ONLY with valid JSON, no markdown."
+def scan_combination(foods: list[str], member_profile: dict | None, lang: str = "en") -> dict:
+    lang_note = (
+        "Respond with all text values in Hindi."
+        if lang == "hi"
+        else "Respond with all text values in Marathi."
+        if lang == "mr"
+        else ""
+    )
+    system = f"You are a food safety and toxicology expert. Respond ONLY with valid JSON, no markdown. {lang_note}"
     user = f"""Analyse combined adulteration + toxin exposure for: {', '.join(foods)}
 {f"Health profile: {json.dumps(member_profile)}" if member_profile else ""}
 
@@ -226,8 +233,15 @@ Return ONLY this JSON:
 
 # ── Symptom reverse lookup ─────────────────────────────────────────────────────
 
-def analyze_symptoms(symptoms: str, recent_foods: list[str]) -> dict:
-    system = "You are a food safety and public health expert. Respond ONLY with valid JSON, no markdown."
+def analyze_symptoms(symptoms: str, recent_foods: list[str], lang: str = "en") -> dict:
+    lang_note = (
+        "Respond with all text values in Hindi."
+        if lang == "hi"
+        else "Respond with all text values in Marathi."
+        if lang == "mr"
+        else ""
+    )
+    system = f"You are a food safety and public health expert. Respond ONLY with valid JSON, no markdown. {lang_note}"
     user = f"""Symptoms: "{symptoms}"
 Recent foods: {', '.join(recent_foods) if recent_foods else 'unknown'}
 

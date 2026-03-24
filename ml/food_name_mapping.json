@@ -1,50 +1,233 @@
 {
   "हल्दी": "turmeric",
   "हल्दी पाउडर": "turmeric",
+  "हळद": "turmeric",
+  "हळदी": "turmeric",
+  "हळद पावडर": "turmeric",
+
   "दूध": "milk",
   "गाय का दूध": "milk",
   "भैंस का दूध": "milk",
+  "गायीचे दूध": "milk",
+  "म्हशीचे दूध": "milk",
+  "दुध": "milk",
+  "फुल क्रीम दुध": "milk",
+
   "सरसों तेल": "mustard oil",
   "सरसों का तेल": "mustard oil",
+  "मोहरीचे तेल": "mustard oil",
+  "मोहरी तेल": "mustard oil",
+  "मस्टर्ड ऑइल": "mustard oil",
+
   "शहद": "honey",
   "मधु": "honey",
+  "मध": "honey",
+  "हनी": "honey",
+  "शहत": "honey",
+
   "पनीर": "paneer",
   "छेना": "paneer",
+  "छाना": "paneer",
+  "पनिर": "paneer",
+
   "मिर्च": "chilli powder",
   "लाल मिर्च": "chilli powder",
+  "मिर्च पाउडर": "chilli powder",
+  "तिखट": "chilli powder",
+  "मिरची": "chilli powder",
+  "मिरची पावडर": "chilli powder",
+  "लाल मिरची": "chilli powder",
+  "लालमिर्ची": "chilli powder",
+
   "घी": "ghee",
   "देसी घी": "ghee",
+  "तूप": "ghee",
+  "शुद्ध तूप": "ghee",
+  "गाय का घी": "ghee",
+  "भैंस का घी": "ghee",
+
   "चावल": "rice",
   "बासमती": "rice",
+  "तांदूळ": "rice",
+  "भात": "rice",
+  "बासमती चावल": "rice",
+  "सेला चावल": "rice",
+  "कोलम तांदूळ": "rice",
+
   "आटा": "wheat flour",
   "गेहूं का आटा": "wheat flour",
+  "गहू पीठ": "wheat flour",
+  "कणीक": "wheat flour",
+  "मैदा": "refined flour",
+  "मैदा पीठ": "refined flour",
+
   "दाल": "dal",
   "मसूर": "dal",
   "चना दाल": "dal",
+  "डाळ": "dal",
+  "वरण": "dal",
+  "तूर दाल": "tur dal",
+  "तूरडाळ": "tur dal",
+  "मूंग दाल": "moong dal",
+  "मूगडाळ": "moong dal",
+  "उड़द दाल": "urad dal",
+  "उडीदडाळ": "urad dal",
+  "अरहर दाल": "tur dal",
+  "मसूर दाल": "masoor dal",
+
   "खोया": "mawa",
   "मावा": "mawa",
   "खोवा": "mawa",
+  "खवा": "mawa",
+
   "गुड़": "jaggery",
   "गुड": "jaggery",
+  "गूळ": "jaggery",
+
   "बेसन": "besan",
   "चने का आटा": "besan",
+
   "तेल": "oil",
   "खाना तेल": "oil",
-  "हळद": "turmeric",
-  "हळदी": "turmeric",
-  "मोहरीचे तेल": "mustard oil",
-  "मोहरी तेल": "mustard oil",
-  "मध": "honey",
-  "छाना": "paneer",
-  "तिखट": "chilli powder",
-  "मिरची": "chilli powder",
-  "तूप": "ghee",
-  "तांदूळ": "rice",
-  "भात": "rice",
-  "गहू पीठ": "wheat flour",
-  "कणीक": "wheat flour",
-  "डाळ": "dal",
-  "वरण": "dal",
-  "खवा": "mawa",
-  "गूळ": "jaggery"
+  "रिफाइंड तेल": "refined oil",
+  "सोयाबीन तेल": "soybean oil",
+  "सूरजमुखी तेल": "sunflower oil",
+  "मूंगफली तेल": "groundnut oil",
+  "शेंगदाणा तेल": "groundnut oil",
+  "तीळ तेल": "sesame oil",
+  "नारियल तेल": "coconut oil",
+  "खोबरेल तेल": "coconut oil",
+
+  "चाय": "tea",
+  "चहा": "tea",
+  "चाय पत्ती": "tea",
+  "चहा पत्ती": "tea",
+
+  "कॉफी": "coffee",
+  "कॉफी पाउडर": "coffee",
+
+  "चीनी": "sugar",
+  "साखर": "sugar",
+  "शक्कर": "sugar",
+  "शुगर": "sugar",
+
+  "नमक": "salt",
+  "मीठ": "salt",
+  "सेंधा नमक": "rock salt",
+  "काला नमक": "black salt",
+
+  "धनिया": "coriander",
+  "धनिया पाउडर": "coriander powder",
+  "धने": "coriander",
+  "कोथिंबीर": "coriander",
+
+  "जीरा": "cumin",
+  "जीरा पाउडर": "cumin powder",
+  "जिरे": "cumin",
+
+  "काली मिर्च": "black pepper",
+  "काली मिरी": "black pepper",
+  "मिरपूड": "black pepper",
+
+  "सौंफ": "fennel",
+  "बडीशेप": "fennel",
+
+  "इलायची": "cardamom",
+  "वेलची": "cardamom",
+  "छोटी इलायची": "green cardamom",
+
+  "दालचीनी": "cinnamon",
+  "तज": "cinnamon",
+
+  "लौंग": "cloves",
+  "लवंग": "cloves",
+
+  "अदरक": "ginger",
+  "आले": "ginger",
+  "सोंठ": "dry ginger",
+  "सुंठ": "dry ginger",
+
+  "लहसुन": "garlic",
+  "लसूण": "garlic",
+
+  "प्याज": "onion",
+  "कांदा": "onion",
+
+  "टमाटर": "tomato",
+  "टोमॅटो": "tomato",
+
+  "आलू": "potato",
+  "बटाटा": "potato",
+
+  "गरम मसाला": "garam masala",
+  "गरम मसाले": "garam masala",
+
+  "सब्जी मसाला": "sabji masala",
+  "किचन किंग": "kitchen king masala",
+
+  "अचार": "pickle",
+  "लोणचे": "pickle",
+  "आम का अचार": "mango pickle",
+  "आंब्याचे लोणचे": "mango pickle",
+
+  "पापड़": "papad",
+  "पापड": "papad",
+
+  "मक्खन": "butter",
+  "लोणी": "butter",
+  "बटर": "butter",
+
+  "दही": "curd",
+  "दही (योगर्ट)": "curd",
+
+  "श्रीखंड": "shrikhand",
+  "बासुंदी": "basundi",
+
+  "केसर": "saffron",
+  "केशर": "saffron",
+  "जाफरान": "saffron",
+
+  "हींग": "asafoetida",
+  "हिंग": "asafoetida",
+
+  "सूजी": "semolina",
+  "रवा": "semolina",
+
+  "पोहा": "poha",
+  "पोहे": "poha",
+  "चिवडा": "poha",
+
+  "साबूदाना": "sago",
+  "साबुदाणा": "sago",
+
+  "मूंगफली": "peanut",
+  "शेंगदाणे": "peanut",
+
+  "काजू": "cashew",
+  "काजु": "cashew",
+
+  "बादाम": "almond",
+
+  "किशमिश": "raisin",
+  "मनुके": "raisin",
+
+  "नारियल": "coconut",
+  "खोबरे": "coconut",
+  "नारळ": "coconut",
+
+  "सोयाबीन": "soybean",
+  "सोयाबीन बडी": "soy chunks",
+  "सोया चंक्स": "soy chunks",
+
+  "मटन": "mutton",
+  "चिकन": "chicken",
+  "मांस": "meat",
+  "मच्छी": "fish",
+  "मासे": "fish",
+
+  "अंडा": "egg",
+  "अंडे": "egg",
+
+  "ब्रेड": "bread",
+  "पाव": "bread"
 }

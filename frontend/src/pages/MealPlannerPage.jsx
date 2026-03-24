@@ -183,6 +183,7 @@ export default function MealPlannerPage() {
           plan_type: planType,
           member_profile: activeMember || null,
           high_risk_foods: highRiskFoods,
+          lang,
         }),
       })
       const data = await res.json()

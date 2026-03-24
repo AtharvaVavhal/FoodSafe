@@ -5,6 +5,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.database import get_db
+from app.core.config import settings
 from models.models import CommunityReport, User
 
 router = APIRouter()
@@ -115,6 +116,47 @@ async def submit_report(
     db.add(report)
     await db.flush()
     await db.commit()
+
+    # ── Auto-alert: push notification when food hits 10+ reports in a city ────
+    try:
+        count_result = await db.execute(
+            select(func.count(CommunityReport.id))
+            .where(CommunityReport.food_name == req.food_name.strip())
+            .where(CommunityReport.city == req.city.strip())
+        )
+        report_count = count_result.scalar() or 0
+
+        if report_count >= 10 and report_count % 5 == 0:
+            # Trigger push to all subscribers
+            from routers.push import _subscriptions
+            if _subscriptions:
+                try:
+                    from pywebpush import webpush
+                    import json as _json
+                    payload = _json.dumps({
+                        "title": f"⚠️ {req.food_name} Alert — {req.city}",
+                        "body": f"{report_count} adulteration reports for {req.food_name} in {req.city}. Be cautious!",
+                        "url": "/map",
+                        "icon": "/pwa-192.png",
+                    })
+                    private_key = settings.VAPID_PRIVATE_KEY if hasattr(settings, 'VAPID_PRIVATE_KEY') else None
+                    vapid_email = getattr(settings, 'VAPID_EMAIL', 'mailto:admin@foodsafe.app')
+                    if private_key:
+                        for sub in _subscriptions[:]:
+                            try:
+                                webpush(
+                                    subscription_info={"endpoint": sub["endpoint"], "keys": sub["keys"]},
+                                    data=payload,
+                                    vapid_private_key=private_key,
+                                    vapid_claims={"sub": vapid_email},
+                                )
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     return {"success": True, "id": report.id, "message": "Report submitted successfully"}
 
 

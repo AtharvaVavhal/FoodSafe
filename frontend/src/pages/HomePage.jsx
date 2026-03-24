@@ -400,10 +400,46 @@ export default function HomePage() {
   const [ticker, setTicker] = useState(0)
   const [fssaiAlerts, setFssaiAlerts] = useState(DEFAULT_ALERTS)
   const [cameraOpen, setCameraOpen] = useState(false)
-  const fileRef = useRef()
+  const [listening, setListening]   = useState(false)
+  const fileRef   = useRef()
   const cameraRef = useRef()
   const canvasRef = useRef()
   const streamRef = useRef()
+  const recognitionRef = useRef(null)
+
+  // ── Voice input (Web Speech API) ──────────────────────────────
+  const LANG_MAP = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' }
+
+  function toggleVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setError('Voice input not supported in this browser')
+      return
+    }
+
+    if (listening && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setListening(false)
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = LANG_MAP[lang] || 'en-IN'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setQuery(transcript)
+      setListening(false)
+    }
+    recognition.onerror = () => setListening(false)
+    recognition.onend   = () => setListening(false)
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setListening(true)
+  }
 
   useEffect(() => {
     const interval = setInterval(() => setTicker(t => t + 1), 4000)
@@ -587,6 +623,13 @@ export default function HomePage() {
           </button>
           <button className="fs-mode-btn" onClick={openCamera}>
             📷 {t(lang, 'cameraBtn')}
+          </button>
+          <button
+            className={`fs-mode-btn${listening ? ' fs-mic-active' : ''}`}
+            onClick={toggleVoice}
+            style={listening ? { background: 'rgba(220,30,60,0.3)', borderColor: 'rgba(220,30,60,0.5)', color: '#ff6450' } : {}}
+          >
+            {listening ? '⏹️' : '🎤'} {t(lang, 'voiceInput')}
           </button>
           <input
             ref={fileRef}

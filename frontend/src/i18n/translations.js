@@ -37,6 +37,7 @@ const translations = {
     fssaiAlert: 'FSSAI Alert',
     noHistory: 'No scans yet. Start scanning!',
     reportGrade: 'Safety Grade',
+    downloadPDF: 'Download Report as PDF',
     quickActions: 'Quick Actions',
     festivalGuide: 'Festival Guide',
     festivalGuideSub: 'Safe foods for festivals',
@@ -199,6 +200,14 @@ const translations = {
     city: 'City',
     createAccount: 'Create Account',
     loginBtn: 'Login',
+
+    // ── Community Report ──
+    reportAdulteration: 'Report Adulteration',
+    submitReport: 'Submit Report',
+    reportSuccess: 'Report submitted! Thank you.',
+    reportFailed: 'Submission failed. Try again.',
+    foodNameLabel: 'Food name',
+    descriptionLabel: 'Describe the issue',
   },
 
   hi: {
@@ -239,6 +248,7 @@ const translations = {
     fssaiAlert: 'FSSAI अलर्ट',
     noHistory: 'अभी तक कोई स्कैन नहीं।',
     reportGrade: 'सुरक्षा ग्रेड',
+    downloadPDF: 'रिपोर्ट PDF डाउनलोड करें',
     quickActions: 'त्वरित कार्य',
     festivalGuide: 'त्योहार गाइड',
     festivalGuideSub: 'त्योहारों के लिए सुरक्षित खाना',
@@ -401,6 +411,14 @@ const translations = {
     city: 'शहर',
     createAccount: 'खाता बनाएं',
     loginBtn: 'लॉगिन करें',
+
+    // ── Community Report ──
+    reportAdulteration: 'मिलावट की रिपोर्ट करें',
+    submitReport: 'रिपोर्ट सबमिट करें',
+    reportSuccess: 'रिपोर्ट सबमिट! धन्यवाद।',
+    reportFailed: 'सबमिशन विफल। पुनः प्रयास करें।',
+    foodNameLabel: 'खाद्य पदार्थ का नाम',
+    descriptionLabel: 'समस्या का विवरण दें',
   },
 
   mr: {
@@ -441,6 +459,7 @@ const translations = {
     fssaiAlert: 'FSSAI अलर्ट',
     noHistory: 'अद्याप कोणतेही स्कॅन नाही.',
     reportGrade: 'सुरक्षा ग्रेड',
+    downloadPDF: 'अहवाल PDF डाउनलोड करा',
     quickActions: 'जलद क्रिया',
     festivalGuide: 'सण मार्गदर्शक',
     festivalGuideSub: 'सणांसाठी सुरक्षित अन्न',
@@ -603,6 +622,14 @@ const translations = {
     city: 'शहर',
     createAccount: 'खाते तयार करा',
     loginBtn: 'लॉगिन करा',
+
+    // ── Community Report ──
+    reportAdulteration: 'भेसळीची तक्रार करा',
+    submitReport: 'तक्रार सादर करा',
+    reportSuccess: 'तक्रार सादर! धन्यवाद.',
+    reportFailed: 'सादर अयशस्वी. पुन्हा प्रयत्न करा.',
+    foodNameLabel: 'खाद्यपदार्थाचे नाव',
+    descriptionLabel: 'समस्येचे वर्णन करा',
   }
 }
 

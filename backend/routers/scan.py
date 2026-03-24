@@ -274,7 +274,7 @@ async def scan_barcode(barcode: str, lang: str = "en"):
 async def combination_scan(req: CombinationRequest):
     if len(req.foods) < 2:
         raise HTTPException(400, "At least 2 foods required for combination scan")
-    return scan_combination(req.foods, req.member_profile)
+    return scan_combination(req.foods, req.member_profile, req.lang)
 
 
 # ── Feedback (requires auth) ──────────────────────────────────────────────────

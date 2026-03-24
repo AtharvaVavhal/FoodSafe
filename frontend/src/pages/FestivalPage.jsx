@@ -53,12 +53,13 @@ export default function FestivalPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`${API_URL}/festival/current`)
+    setLoading(true)
+    fetch(`${API_URL}/festival/current?lang=${lang}`)
       .then(r => r.json())
       .then(d => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [lang])
 
   if (loading) {
     return (

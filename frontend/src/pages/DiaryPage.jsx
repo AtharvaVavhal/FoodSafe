@@ -50,6 +50,16 @@ const STYLES = `
   .dp-week-label { font-size:8px; color:#aaa; font-weight:300; }
   @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .dp-fade { animation:fadeUp 0.3s ease forwards; }
+
+  @media print {
+    body, html { background: #fff !important; }
+    .dp-root { background: #fff !important; padding-bottom: 0 !important; }
+    .dp-header { background: #1a3d2b !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .dp-stat { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .dp-risk-pill { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .dp-legend-dot { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .dp-export-btn, nav, .chatbot-fab, button[style*="position: fixed"] { display: none !important; }
+  }
 `
 
 function DonutChart({ data, size = 100 }) {
@@ -194,6 +204,25 @@ export default function DiaryPage() {
           </div>
         </div>
       </div>
+
+      {/* Export PDF button */}
+      {total > 0 && (
+        <div style={{ padding: '0 16px' }}>
+          <button
+            className="dp-export-btn"
+            onClick={() => window.print()}
+            style={{
+              width: '100%', padding: '10px', borderRadius: 10,
+              border: '1px solid #ece8df', background: '#fff',
+              color: '#1a3d2b', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            📄 {t(lang, 'downloadPDF')}
+          </button>
+        </div>
+      )}
 
       {total === 0 ? (
         <div className="dp-empty">

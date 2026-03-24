@@ -314,7 +314,7 @@ export default function MapPage() {
       {/* Floating Action Button (FAB) */}
       <button
         onClick={() => setShowForm(!showForm)}
-        className={`fixed bottom-24 md:bottom-10 right-6 z-[100] w-14 h-14 rounded-full bg-brand hover:bg-brand-light text-background border border-brand-light/50 flex items-center justify-center shadow-[0_0_24px_rgba(0,224,156,0.4)] hover:shadow-[0_0_32px_rgba(0,224,156,0.6)] hover:scale-105 transition-all duration-300 \${showForm ? 'rotate-45 !bg-surface-300 !text-white !border-white/20 !shadow-lg' : ''}`}
+        className={`fixed bottom-24 md:bottom-10 right-6 z-[100] w-14 h-14 rounded-full bg-brand hover:bg-brand-light text-deep border border-brand-light/50 flex items-center justify-center shadow-[0_0_24px_rgba(0,224,156,0.4)] hover:shadow-[0_0_32px_rgba(0,224,156,0.6)] hover:scale-105 transition-all duration-300 \${showForm ? 'rotate-45 !bg-surface-300 !text-white !border-white/20 !shadow-lg' : ''}`}
       >
         <span className="text-3xl leading-none font-light mb-1">+</span>
       </button>
@@ -322,7 +322,7 @@ export default function MapPage() {
       {/* Report Form Modal / Overlay */}
       {showForm && (
         <>
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[90] animate-fade-up opacity-100" onClick={() => setShowForm(false)} />
+          <div className="fixed inset-0 bg-deep/80 backdrop-blur-sm z-[90] animate-fade-up opacity-100" onClick={() => setShowForm(false)} />
           <div className="fixed bottom-24 md:bottom-28 right-6 left-6 md:left-auto md:w-[420px] z-[95] animate-fade-up">
             <div className="bg-surface-100 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 relative overflow-hidden backdrop-blur-xl">
               <div className="flex items-center gap-3 mb-2">

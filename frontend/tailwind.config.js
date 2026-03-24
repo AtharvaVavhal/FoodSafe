@@ -9,12 +9,12 @@ export default {
         mono: ['DM Mono', 'monospace'],
       },
       colors: {
-        background: '#04090e',
+        deep: '#04090e',
         surface: {
-          50:  'rgba(255,255,255,0.02)',
-          100: 'rgba(255,255,255,0.04)',
-          200: 'rgba(255,255,255,0.08)',
-          300: 'rgba(255,255,255,0.12)',
+          50:  '#080c11',
+          100: '#0f141a',
+          200: '#171c22',
+          300: '#1f252b',
         },
         brand: {
           light: '#6effd9',

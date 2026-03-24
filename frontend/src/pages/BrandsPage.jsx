@@ -117,7 +117,7 @@ export default function BrandsPage() {
             key={cat}
             className={`px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 border
               ${activeCat === cat 
-                ? 'bg-brand text-background border-brand shadow-[0_4px_16px_rgba(0,224,156,0.3)] scale-105' 
+                ? 'bg-brand text-deep border-brand shadow-[0_4px_16px_rgba(0,224,156,0.3)] scale-105' 
                 : 'bg-surface-100 text-white/60 border-white/10 hover:bg-surface-200 hover:text-white hover:border-white/20'}`}
             onClick={() => handleCatChange(cat)}
           >

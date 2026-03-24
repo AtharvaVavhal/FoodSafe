@@ -93,7 +93,7 @@ export default function SymptomPage() {
               className={`w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2 mt-2
                 \${!symptoms.trim() || loading 
                   ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' 
-                  : 'bg-brand text-background hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
+                  : 'bg-brand text-deep hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
               onClick={analyze}
               disabled={loading || !symptoms.trim()}
             >

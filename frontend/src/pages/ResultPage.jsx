@@ -242,7 +242,7 @@ export default function ResultPage() {
 
   if (!lastResult) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center animate-fade-up">
+      <div className="min-h-screen bg-deep flex flex-col items-center justify-center p-6 text-center animate-fade-up">
         <ShieldAlert className="w-16 h-16 text-white/20 mb-4" />
         <p className="text-white/40 text-sm mb-6">{t(lang, 'noResult')}</p>
         <button 
@@ -512,7 +512,7 @@ export default function ResultPage() {
       <div className="mt-10 flex flex-col md:flex-row gap-4 items-center">
         <button 
           onClick={() => nav('/brands')}
-          className="w-full md:w-auto flex-1 bg-brand hover:bg-brand-light text-background font-bold text-sm py-4 px-6 rounded-2xl transition-all duration-300 shadow-[0_4px_24px_rgba(0,224,156,0.2)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] flex items-center justify-center gap-2"
+          className="w-full md:w-auto flex-1 bg-brand hover:bg-brand-light text-deep font-bold text-sm py-4 px-6 rounded-2xl transition-all duration-300 shadow-[0_4px_24px_rgba(0,224,156,0.2)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] flex items-center justify-center gap-2"
         >
           {t(lang, 'brandCompare') || 'Compare Brands'}
         </button>

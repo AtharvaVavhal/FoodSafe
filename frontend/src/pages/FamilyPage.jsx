@@ -105,7 +105,7 @@ export default function FamilyPage() {
               </div>
             </div>
             <button 
-              className="w-full mt-2 py-3.5 rounded-xl bg-brand text-background font-bold text-sm shadow-[0_4px_16px_rgba(0,224,156,0.2)] hover:shadow-[0_4px_24px_rgba(0,224,156,0.3)] transition-all flex justify-center items-center"
+              className="w-full mt-2 py-3.5 rounded-xl bg-brand text-deep font-bold text-sm shadow-[0_4px_16px_rgba(0,224,156,0.2)] hover:shadow-[0_4px_24px_rgba(0,224,156,0.3)] transition-all flex justify-center items-center"
               onClick={save}
             >
               <Plus className="w-4 h-4 mr-1.5" /> {t(lang, 'saveMember')}

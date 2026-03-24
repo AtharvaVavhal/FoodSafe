@@ -32,7 +32,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden animate-fade-up">
+    <div className="min-h-screen bg-deep flex flex-col items-center justify-center p-6 relative overflow-hidden animate-fade-up">
       {/* Background ambient lighting */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-brand/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
@@ -119,7 +119,7 @@ export default function AuthPage() {
             className={`w-full mt-4 py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2
               ${loading
                 ? 'bg-surface-200 text-white/30 cursor-not-allowed border border-white/5'
-                : 'bg-brand text-background hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
+                : 'bg-brand text-deep hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
           >
             {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
             {!loading && <ArrowRight className="w-4 h-4" />}

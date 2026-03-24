@@ -166,10 +166,10 @@ export default function ScanLoader({ food = '', lang = 'en' }) {
       {/* Cycling message */}
       <div key={msgIdx} style={{
         fontFamily: "'DM Sans', sans-serif",
-        fontSize: 12, fontWeight: 300,
-        color: 'rgba(245,240,232,0.55)',
-        letterSpacing: '0.02em',
-        minHeight: 20,
+        fontSize: 14, fontWeight: 500,
+        color: 'rgba(255,255,255,0.85)',
+        letterSpacing: '0.01em',
+        minHeight: 24,
         animation: 'fadeMsg 0.9s ease forwards',
         marginBottom: 24,
         textAlign: 'center',

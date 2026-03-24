@@ -55,7 +55,7 @@ export default function Layout({ children }) {
 
   // Desktop App Layout wrapper
   return (
-    <div className="flex h-screen w-full bg-background overflow-hidden font-sans text-white antialiased">
+    <div className="flex h-screen w-full bg-deep overflow-hidden font-sans text-white antialiased">
       {/* Abstract Background Elements */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-halo-green opacity-20 blur-[120px] rounded-full mix-blend-screen" />
@@ -109,7 +109,7 @@ export default function Layout({ children }) {
               {['en', 'hi', 'mr'].map(l => (
                 <button key={l} onClick={() => setLang(l)} className={`
                   text-[10px] px-2.5 py-1 rounded-full font-medium tracking-wide transition-all duration-300
-                  ${lang === l ? 'bg-white text-background shadow-sm' : 'text-white/50 hover:text-white/80'}
+                  ${lang === l ? 'bg-white text-deep shadow-sm' : 'text-white/50 hover:text-white/80'}
                 `}>
                   {l.toUpperCase()}
                 </button>
@@ -150,7 +150,7 @@ export default function Layout({ children }) {
       <main className="flex-1 flex flex-col h-full relative z-10 w-full md:w-[calc(100%-260px)] lg:w-[calc(100%-280px)]">
         
         {/* Mobile Header */}
-        <header className="md:hidden sticky top-0 z-50 px-5 py-3 flex items-center justify-between bg-background/60 backdrop-blur-2xl border-b border-white/5">
+        <header className="md:hidden sticky top-0 z-50 px-5 py-3 flex items-center justify-between bg-deep/60 backdrop-blur-2xl border-b border-white/5">
           <div className="flex flex-col cursor-pointer" onClick={() => nav('/')}>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-brand" />
@@ -178,7 +178,7 @@ export default function Layout({ children }) {
               {['en', 'hi', 'mr'].map(l => (
                 <button key={l} onClick={() => setLang(l)} className={`
                   text-[10px] px-3 py-1 rounded-full font-medium tracking-wide transition-all duration-300
-                  ${lang === l ? 'bg-white text-background shadow-sm' : 'text-white/50 hover:text-white/80'}
+                  ${lang === l ? 'bg-white text-deep shadow-sm' : 'text-white/50 hover:text-white/80'}
                 `}>
                   {l.toUpperCase()}
                 </button>
@@ -194,7 +194,7 @@ export default function Layout({ children }) {
         </div>
 
         {/* ── MOBILE BOTTOM NAV ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-3 bg-background/80 backdrop-blur-xl border-t border-white/10">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-3 bg-deep/80 backdrop-blur-xl border-t border-white/10">
           <div className="flex items-center justify-between max-w-md mx-auto relative">
             {NAV.map(({ to, icon: Icon, key }) => {
               const isActive = pathname === to || (to !== '/' && pathname.startsWith(to))
@@ -236,7 +236,7 @@ export default function Layout({ children }) {
                 <p className="text-[11px] text-white/50 leading-tight mt-0.5">Add to home screen for fast offline scanning.</p>
               </div>
               <div className="flex flex-col gap-2 flex-shrink-0">
-                <button onClick={handleInstall} className="px-3 py-1.5 bg-brand text-background rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">Install</button>
+                <button onClick={handleInstall} className="px-3 py-1.5 bg-brand text-deep rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">Install</button>
                 <button onClick={() => setShowBanner(false)} className="text-[10px] text-white/40 hover:text-white/80 transition-colors uppercase tracking-widest font-semibold">Dismiss</button>
               </div>
             </div>

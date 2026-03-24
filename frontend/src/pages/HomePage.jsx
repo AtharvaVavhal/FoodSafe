@@ -193,7 +193,7 @@ export default function HomePage() {
 
       {/* Camera Modal */}
       {cameraOpen && (
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-xl z-[999] flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 bg-deep/90 backdrop-blur-xl z-[999] flex flex-col items-center justify-center p-4">
           <div className="relative w-full max-w-md rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
             <video ref={cameraRef} autoPlay playsInline className="w-full h-[60vh] object-cover" />
             <div className="absolute inset-0 border-2 border-brand/40 rounded-3xl pointer-events-none m-4 
@@ -277,7 +277,7 @@ export default function HomePage() {
           <button
             className={`w-full py-4 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2
               ${query.trim() 
-                ? 'bg-brand text-background shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] border border-brand-light' 
+                ? 'bg-brand text-deep shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] border border-brand-light' 
                 : 'bg-surface-100 text-white/30 border border-white/5 cursor-not-allowed'}`}
             onClick={handleScan}
             disabled={loading || !query.trim()}
@@ -377,16 +377,16 @@ export default function HomePage() {
                   className={`
                     flex items-center gap-2.5 px-3 py-1.5 rounded-full border transition-all duration-300
                     ${active 
-                      ? 'bg-brand text-background border-brand shadow-[0_2px_12px_rgba(0,224,156,0.3)] scale-105 font-bold' 
+                      ? 'bg-brand text-deep border-brand shadow-[0_2px_12px_rgba(0,224,156,0.3)] scale-105 font-bold' 
                       : 'bg-surface-200 border-white/5 text-white/60 hover:text-white hover:bg-surface-300 hover:border-white/20 font-medium'}
                   `}
                 >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm
-                    ${active ? 'bg-background/20 text-background' : 'bg-background text-white/60'}`}>
+                    ${active ? 'bg-deep/20 text-deep' : 'bg-deep text-white/60'}`}>
                     {m.name.slice(0, 2).toUpperCase()}
                   </div>
                   <span className="text-[12px]">{m.name}</span>
-                  {m.conditions?.length > 0 && <HeartPulse className={`w-3 h-3 ${active ? 'text-background/70' : 'text-red-400'}`} />}
+                  {m.conditions?.length > 0 && <HeartPulse className={`w-3 h-3 ${active ? 'text-deep/70' : 'text-red-400'}`} />}
                 </button>
               )
             })}

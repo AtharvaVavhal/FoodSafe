@@ -75,25 +75,28 @@ export default function Chatbot() {
           display: 'flex', flexDirection: 'column',
           border: '0.5px solid #e0e0d8', overflow: 'hidden',
         }}>
-          <div style={{ background: '#1a3d2b', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EAF3DE',
+          <div style={{ background: '#00a674', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🌿</div>
             <div>
-              <div style={{ color: '#a4a0a0', fontSize: 13, fontWeight: 500 }}>FoodSafe AI</div>
-              <div style={{ color: '#a8c5a0', fontSize: 10 }}>Food safety assistant</div>
+              <div style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>FoodSafe AI</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Safety Assistant</div>
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10, background: '#080c11' }}>
             {messages.map((m, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{
-                  maxWidth: '80%', padding: '7px 10px', borderRadius: 10,
-                  fontSize: 12, lineHeight: 1.5,
-                  background: m.role === 'user' ? '#1a3d2b' : '#f5f5f0',
-                  color: m.role === 'user' ? '#bca9a9' : '#333',
-                  borderBottomRightRadius: m.role === 'user' ? 2 : 10,
-                  borderBottomLeftRadius: m.role === 'assistant' ? 2 : 10,
+                  maxWidth: '85%', padding: '10px 14px', borderRadius: 16,
+                  fontSize: 13, lineHeight: 1.5,
+                  background: m.role === 'user' ? '#00e09c' : '#1f252b',
+                  color: m.role === 'user' ? '#04090e' : '#fff',
+                  border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                  borderBottomRightRadius: m.role === 'user' ? 4 : 16,
+                  borderBottomLeftRadius: m.role === 'assistant' ? 4 : 16,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  fontWeight: 500
                 }}>
                   {m.content}
                 </div>
@@ -101,7 +104,7 @@ export default function Chatbot() {
             ))}
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div style={{ padding: '7px 12px', borderRadius: 10, background: '#f5f5f0', fontSize: 12, color: '#888' }}>
+                <div style={{ padding: '8px 14px', borderRadius: 16, background: '#1f252b', border: '1px solid rgba(255,255,255,0.05)', fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
                   Thinking...
                 </div>
               </div>
@@ -110,33 +113,35 @@ export default function Chatbot() {
           </div>
 
           {messages.length <= 1 && (
-            <div style={{ padding: '0 10px 8px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <div style={{ padding: '4px 10px 10px', display: 'flex', gap: 6, flexWrap: 'wrap', background: '#080c11' }}>
               {(SUGGESTIONS[lang] || SUGGESTIONS.en).map((s, i) => (
                 <button key={i} onClick={() => sendMessage(s)} style={{
-                  fontSize: 10, padding: '3px 8px', borderRadius: 12,
-                  border: '1px solid #ddd', background: '#f8f9f6',
-                  cursor: 'pointer', color: '#1a3d2b',
+                  fontSize: 10, padding: '5px 10px', borderRadius: 20,
+                  border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)',
+                  cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontWeight: 600,
+                  transition: 'all 0.2s'
                 }}>{s}</button>
               ))}
             </div>
           )}
 
-          <div style={{ padding: '8px 10px', borderTop: '0.5px solid #e0e0d8', display: 'flex', gap: 6 }}>
+          <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 8, background: '#0f141a' }}>
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMessage()}
               placeholder={lang === 'hi' ? 'कुछ पूछें...' : lang === 'mr' ? 'विचारा...' : 'Ask anything...'}
               style={{
-                flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid #ddd',
-                fontSize: 12, outline: 'none', fontFamily: 'inherit', color: '#333',
-                background: '#fff',
+                flex: 1, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
+                fontSize: 13, outline: 'none', fontFamily: 'inherit', color: '#fff',
+                background: '#171c22',
               }}
             />
             <button onClick={() => sendMessage()} disabled={loading || !input.trim()} style={{
-              padding: '6px 10px', borderRadius: 8, border: 'none',
-              background: loading || !input.trim() ? '#ccc' : '#1a3d2b',
-              color: '#fff', fontSize: 12, cursor: 'pointer',
+              width: 38, height: 38, borderRadius: 12, border: 'none',
+              background: loading || !input.trim() ? 'rgba(255,255,255,0.05)' : '#00e09c',
+              color: loading || !input.trim() ? 'rgba(255,255,255,0.2)' : '#04090e', fontSize: 14, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>➤</button>
           </div>
         </div>

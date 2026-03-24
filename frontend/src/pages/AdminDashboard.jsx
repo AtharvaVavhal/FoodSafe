@@ -147,7 +147,7 @@ export default function AdminDashboard() {
     <div className="flex flex-col min-h-screen pb-32 animate-fade-up">
       
       {/* Top App Bar */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-white/5 py-4 px-4 md:px-8 flex justify-between items-center shadow-sm">
+      <div className="sticky top-0 z-40 bg-deep/80 backdrop-blur-xl border-b border-white/5 py-4 px-4 md:px-8 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
             <Activity className="w-5 h-5 text-gold" />

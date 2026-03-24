@@ -96,7 +96,7 @@ export default function MealPlannerPage() {
         {/* Generate Action */}
         <button 
           className={`w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2 shadow-lg
-            \${loading ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' : 'bg-gold hover:bg-[#e0c068] text-background hover:scale-[1.02] shadow-[0_4px_24px_rgba(201,168,76,0.3)] hover:shadow-[0_8px_32px_rgba(201,168,76,0.5)] border border-[#e0c068]'}`}
+            \${loading ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' : 'bg-gold hover:bg-[#e0c068] text-deep hover:scale-[1.02] shadow-[0_4px_24px_rgba(201,168,76,0.3)] hover:shadow-[0_8px_32px_rgba(201,168,76,0.5)] border border-[#e0c068]'}`}
           onClick={generate} 
           disabled={loading}
         >

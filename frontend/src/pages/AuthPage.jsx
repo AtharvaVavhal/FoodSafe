@@ -7,13 +7,13 @@ import { User, Mail, Lock, MapPin, ArrowRight, ShieldCheck } from 'lucide-react'
 export default function AuthPage() {
   const { setAuth } = useStore()
   const nav = useNavigate()
-  const [mode, setMode]         = useState('login')
-  const [name, setName]         = useState('')
-  const [email, setEmail]       = useState('')
+  const [mode, setMode] = useState('login')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [city, setCity]         = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState('')
+  const [city, setCity] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleSubmit() {
     if (!email || !password) return
@@ -48,7 +48,7 @@ export default function AuthPage() {
 
       {/* Authentication Card */}
       <div className="w-full max-w-sm bg-glass-gradient backdrop-blur-2xl rounded-[32px] border border-surface-200 shadow-2xl p-8 relative z-10">
-        
+
         {/* Toggle Controls */}
         <div className="flex bg-surface-100/50 rounded-2xl p-1.5 mb-8 border border-white/5">
           {['login', 'register'].map(m => (
@@ -56,8 +56,8 @@ export default function AuthPage() {
               key={m}
               onClick={() => { setMode(m); setError('') }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300
-                ${mode === m 
-                  ? 'bg-surface-200 text-brand shadow-sm border border-white/10' 
+                ${mode === m
+                  ? 'bg-surface-200 text-brand shadow-sm border border-white/10'
                   : 'text-white/40 hover:text-white/70'}`}
             >
               {m}
@@ -117,8 +117,8 @@ export default function AuthPage() {
           <button
             onClick={handleSubmit} disabled={loading}
             className={`w-full mt-4 py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2
-              ${loading 
-                ? 'bg-surface-200 text-white/30 cursor-not-allowed border border-white/5' 
+              ${loading
+                ? 'bg-surface-200 text-white/30 cursor-not-allowed border border-white/5'
                 : 'bg-brand text-background hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
           >
             {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
@@ -126,9 +126,9 @@ export default function AuthPage() {
           </button>
         </div>
       </div>
-      
+
       {/* Skip option */}
-      <button 
+      <button
         onClick={() => nav('/scan')}
         className="mt-8 text-xs font-bold text-white/30 hover:text-white transition-colors uppercase tracking-[0.2em]"
       >

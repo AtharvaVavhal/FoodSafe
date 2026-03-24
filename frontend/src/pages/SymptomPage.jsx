@@ -1,53 +1,21 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
+import { Stethoscope, Clock, ShieldAlert, CheckCircle2, ArrowRight } from 'lucide-react'
 
 const API_URL = '/api'
 
 const URGENCY_CONFIG = {
-  MONITOR:        { bg:'#eaf3de', color:'#27500A', border:'#c0dd97', icon:'🟢', label:'Monitor at home' },
-  CONSULT_DOCTOR: { bg:'#fff8ed', color:'#633806', border:'#fac775', icon:'🟡', label:'Visit a doctor' },
-  EMERGENCY:      { bg:'#fff0f0', color:'#791F1F', border:'#f7c1c1', icon:'🔴', label:'Seek emergency care' },
+  MONITOR:        { bg:'bg-brand/10', color:'text-brand', border:'border-brand/30', icon: '🟢', label:'Monitor at home' },
+  CONSULT_DOCTOR: { bg:'bg-orange-500/10', color:'text-orange-400', border:'border-orange-500/30', icon: '🟡', label:'Visit a doctor' },
+  EMERGENCY:      { bg:'bg-red-500/10', color:'text-red-400', border:'border-red-500/30', icon: '🔴', label:'Seek emergency care' },
 }
 
 const CONF_COLOR = {
-  HIGH:   '#791F1F',
-  MEDIUM: '#854F0B',
-  LOW:    '#27500A',
+  HIGH:   'bg-red-500/10 text-red-400 border-red-500/20',
+  MEDIUM: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  LOW:    'bg-brand/10 text-brand border-brand/20',
 }
-
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
-  * { box-sizing:border-box; }
-  .sp-root { font-family:'DM Sans',sans-serif; background:#f7f5f0; min-height:100vh; display:flex; flex-direction:column; gap:10px; padding-bottom:80px; }
-  .sp-header { background:linear-gradient(160deg,#0d2818 0%,#1a3d2b 100%); padding:20px 16px 28px; position:relative; overflow:hidden; }
-  .sp-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:18px; background:#f7f5f0; border-radius:18px 18px 0 0; }
-  .sp-title { font-family:'Playfair Display',serif; font-size:20px; font-weight:600; color:#f5f0e8; margin-bottom:2px; }
-  .sp-sub { font-size:11px; color:rgba(245,240,232,0.5); font-weight:300; letter-spacing:0.04em; margin-bottom:14px; }
-  .sp-recent { font-size:11px; color:rgba(245,240,232,0.5); margin-top:10px; font-weight:300; }
-  .sp-recent span { color:rgba(245,240,232,0.8); }
-  .sp-textarea { width:100%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:12px 16px; font-size:13px; font-family:'DM Sans',sans-serif; color:#f5f0e8; outline:none; resize:none; transition:border-color 0.2s; line-height:1.55; }
-  .sp-textarea::placeholder { color:rgba(245,240,232,0.35); }
-  .sp-textarea:focus { border-color:rgba(201,168,76,0.5); }
-  .sp-btn { width:100%; padding:13px; border-radius:12px; border:none; background:linear-gradient(135deg,#c9a84c,#e0c068); color:#0d2818; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; box-shadow:0 3px 12px rgba(201,168,76,0.3); transition:opacity 0.15s,transform 0.1s; margin-top:10px; }
-  .sp-btn:disabled { background:rgba(255,255,255,0.1); color:rgba(245,240,232,0.3); box-shadow:none; cursor:not-allowed; }
-  .sp-btn:not(:disabled):active { transform:scale(0.98); }
-  .sp-section { padding:0 16px; }
-  .sp-section-label { font-size:9px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#999; margin-bottom:6px; margin-left:2px; }
-  .sp-card { background:#fff; border-radius:16px; border:1px solid #ece8df; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-  .sp-urgency { border-radius:14px; padding:14px 16px; border:1px solid; margin-bottom:0; }
-  .sp-urgency-label { font-size:16px; font-weight:600; font-family:'Playfair Display',serif; }
-  .sp-cause-row { padding:11px 16px; border-bottom:1px solid #f4f1eb; }
-  .sp-cause-row:last-child { border-bottom:none; }
-  .sp-cause-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
-  .sp-cause-name { font-size:13px; font-weight:600; color:#1a3d2b; }
-  .sp-conf { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; }
-  .sp-cause-desc { font-size:11px; color:#666; line-height:1.5; }
-  .sp-rec { background:linear-gradient(135deg,#0d2818,#1a3d2b); border-radius:14px; padding:14px 16px; font-size:13px; color:#f5f0e8; font-weight:500; line-height:1.55; border:1px solid rgba(201,168,76,0.2); }
-  .sp-disclaimer { font-size:10px; color:#aaa; line-height:1.6; padding:0 16px; }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .sp-fade { animation:fadeUp 0.3s ease forwards; }
-`
 
 export default function SymptomPage() {
   const { scanHistory, lang } = useStore()
@@ -80,70 +48,92 @@ export default function SymptomPage() {
   const urgencyCfg = result?.urgency ? (URGENCY_CONFIG[result.urgency] || URGENCY_CONFIG.MONITOR) : null
 
   return (
-    <div className="sp-root">
-      <style>{STYLES}</style>
-
-      <div className="sp-header">
-        <div className="sp-title">{t(lang, 'symptomChecker')}</div>
-        <div className="sp-sub">{t(lang, 'symptomSub')}</div>
-
-        <textarea
-          className="sp-textarea"
-          rows={4}
-          value={symptoms}
-          onChange={e => setSymptoms(e.target.value)}
-          placeholder={t(lang, 'symptomPlaceholder')}
-        />
-
-        {recentFoods.length > 0 && (
-          <div className="sp-recent">
-            {t(lang, 'recentFoods')}: <span>{recentFoods.join(', ')}</span>
+    <div className="flex flex-col animate-fade-up px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">
+      
+      {/* Header Form */}
+      <div className="relative p-6 md:p-8 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden mb-6 backdrop-blur-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 blur-[50px] rounded-full pointer-events-none" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand border border-brand/20 flex items-center justify-center">
+              <Stethoscope className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif font-bold text-white mb-0.5">{t(lang, 'symptomChecker')}</h1>
+              <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.15em]">{t(lang, 'symptomSub')}</p>
+            </div>
           </div>
-        )}
 
-        {error && (
-          <div style={{ fontSize:11, color:'#f7c1c1', marginTop:8 }}>{error}</div>
-        )}
+          <div className="flex flex-col gap-4">
+            <textarea
+              className="w-full bg-surface-200/50 border border-white/10 rounded-2xl py-4 px-5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/10 transition-all shadow-inner block"
+              rows={4}
+              value={symptoms}
+              onChange={e => setSymptoms(e.target.value)}
+              placeholder={t(lang, 'symptomPlaceholder') || "E.g. I have a stomach ache after eating outside paneer..."}
+            />
 
-        <button
-          className="sp-btn"
-          onClick={analyze}
-          disabled={loading || !symptoms.trim()}
-        >
-          {loading ? `⏳ ${t(lang, 'analyzingSymptoms')}` : `🩺 ${t(lang, 'analyzeSymptoms')}`}
-        </button>
+            {recentFoods.length > 0 && (
+              <div className="flex items-start gap-2 text-xs text-white/40 p-3 bg-surface-100 rounded-xl border border-white/5">
+                <Clock className="w-4 h-4 shrink-0 mt-0.5 text-brand" />
+                <div>
+                  <span className="font-bold uppercase tracking-wider">{t(lang, 'recentFoods')}:</span> <span className="text-white/70">{recentFoods.join(', ')}</span>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> {error}
+              </div>
+            )}
+
+            <button
+              className={`w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2 mt-2
+                \${!symptoms.trim() || loading 
+                  ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' 
+                  : 'bg-brand text-background hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
+              onClick={analyze}
+              disabled={loading || !symptoms.trim()}
+            >
+              {loading ? <Clock className="w-4 h-4 animate-spin" /> : <Stethoscope className="w-4 h-4" />}
+              {loading ? t(lang, 'analyzingSymptoms') : t(lang, 'analyzeSymptoms')}
+            </button>
+          </div>
+        </div>
       </div>
 
+      {/* Analysis Results */}
       {result && !result.error && (
-        <>
+        <div className="flex flex-col gap-6 animate-fade-up">
+          
           {/* Urgency banner */}
           {urgencyCfg && (
-            <div className="sp-section sp-fade">
-              <div className="sp-urgency" style={{
-                background: urgencyCfg.bg,
-                borderColor: urgencyCfg.border,
-                color: urgencyCfg.color,
-              }}>
-                <div className="sp-urgency-label">{urgencyCfg.icon} {urgencyCfg.label}</div>
-              </div>
+            <div className={`flex items-center gap-4 p-5 rounded-[20px] border \${urgencyCfg.bg} \${urgencyCfg.border} \${urgencyCfg.color} shadow-lg`}>
+              <span className="text-2xl">{urgencyCfg.icon}</span>
+              <span className="font-serif text-lg font-bold">{urgencyCfg.label}</span>
             </div>
           )}
 
           {/* Possible causes */}
           {result.possibleCauses?.length > 0 && (
-            <div className="sp-section sp-fade">
-              <div className="sp-section-label">{t(lang, 'possibleCauses')}</div>
-              <div className="sp-card">
+            <div>
+              <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                <ShieldAlert className="w-3.5 h-3.5" /> {t(lang, 'possibleCauses')}
+              </h3>
+              <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden divide-y divide-white/5">
                 {result.possibleCauses.map((c, i) => (
-                  <div key={i} className="sp-cause-row">
-                    <div className="sp-cause-top">
-                      <span className="sp-cause-name">{c.adulterant}</span>
-                      <span className="sp-conf" style={{
-                        color: CONF_COLOR[c.confidence] || '#666',
-                        background: c.confidence === 'HIGH' ? '#fff0f0' : c.confidence === 'MEDIUM' ? '#fff8ed' : '#eaf3de',
-                      }}>{c.confidence}</span>
+                  <div key={i} className="p-4 md:p-5 hover:bg-surface-200/50 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-sm text-white/90">{c.adulterant}</h4>
+                      <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border \${CONF_COLOR[c.confidence]}`}>
+                        {c.confidence} Confidence
+                      </span>
                     </div>
-                    <div className="sp-cause-desc">via {c.food} — {c.explanation}</div>
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      Typically found in <strong className="text-white/70">{c.food}</strong> — {c.explanation}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -152,16 +142,26 @@ export default function SymptomPage() {
 
           {/* Recommendation */}
           {result.recommendation && (
-            <div className="sp-section sp-fade">
-              <div className="sp-section-label">{t(lang, 'recommendation')}</div>
-              <div className="sp-rec">💡 {result.recommendation}</div>
+            <div>
+              <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {t(lang, 'recommendation')}
+              </h3>
+              <div className="p-5 rounded-[24px] bg-black/20 border border-white/5 backdrop-blur-md">
+                <p className="text-[13px] text-white/80 leading-relaxed flex items-start gap-3">
+                  <ArrowRight className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+                  {result.recommendation}
+                </p>
+              </div>
             </div>
           )}
 
           {result.disclaimer && (
-            <div className="sp-disclaimer sp-fade">{result.disclaimer}</div>
+            <p className="text-[10px] text-white/30 text-center uppercase tracking-widest px-4 leading-relaxed mt-2">
+              {result.disclaimer}
+            </p>
           )}
-        </>
+
+        </div>
       )}
     </div>
   )

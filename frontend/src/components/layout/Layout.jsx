@@ -3,12 +3,14 @@ import { useStore } from '../../store'
 import { t } from '../../i18n/translations'
 import { useEffect, useState } from 'react'
 import PushNotificationBell from '../PushNotificationBell'
-import { Search, BookOpen, Newspaper, ShieldCheck, Users, Menu, Bell, LogOut, LogIn, ChevronRight } from 'lucide-react'
+import { Search, BookOpen, Newspaper, ShieldCheck, Users, Map, Calendar, Menu, Bell, LogOut, LogIn, ChevronRight } from 'lucide-react'
 
 // Premium Lucide Icons replacement
 const NAV = [
   { to: '/',       icon: Search,      key: 'scan' },
   { to: '/diary',  icon: BookOpen,    key: 'diary' },
+  { to: '/meal',   icon: Calendar,    key: 'mealPlanner' },
+  { to: '/map',    icon: Map,         key: 'riskMap' },
   { to: '/brands', icon: ShieldCheck, key: 'brands' },
   { to: '/family', icon: Users,       key: 'family' },
   { to: '/news',   icon: Newspaper,   key: 'news' },

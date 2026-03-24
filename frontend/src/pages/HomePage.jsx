@@ -544,12 +544,12 @@ export default function HomePage() {
               padding: '10px 24px', borderRadius: 8, border: 'none',
               background: '#c9a84c', color: '#0d2818', fontWeight: 600,
               fontSize: 14, cursor: 'pointer'
-            }}>📸 Capture</button>
+            }}>📸 {t(lang, 'capture')}</button>
             <button onClick={stopCamera} style={{
               padding: '10px 24px', borderRadius: 8, border: 'none',
               background: '#A32D2D', color: '#fff', fontWeight: 600,
               fontSize: 14, cursor: 'pointer'
-            }}>Cancel</button>
+            }}>{t(lang, 'cancel')}</button>
           </div>
           <canvas ref={canvasRef} style={{ display: 'none' }} />
         </div>
@@ -562,7 +562,7 @@ export default function HomePage() {
           <div className="fs-brand-icon">🌿</div>
           <div>
             <div className="fs-brand-name">FoodSafe</div>
-            <div className="fs-brand-sub">Protect your family's plate</div>
+            <div className="fs-brand-sub">{t(lang, 'protectPlate') || "PROTECT YOUR FAMILY'S PLATE"}</div>
           </div>
         </div>
 
@@ -583,10 +583,10 @@ export default function HomePage() {
         {/* Mode buttons */}
         <div className="fs-mode-row">
           <button className="fs-mode-btn" onClick={() => fileRef.current.click()}>
-            🖼️ Upload
+            🖼️ {t(lang, 'uploadBtn')}
           </button>
           <button className="fs-mode-btn" onClick={openCamera}>
-            📷 Camera
+            📷 {t(lang, 'cameraBtn')}
           </button>
           <input
             ref={fileRef}
@@ -615,7 +615,7 @@ export default function HomePage() {
           <div className="fs-ticker-dot" />
           <div>
             <div className="fs-ticker-label">
-              FSSAI Alert {ticker + 1}/{fssaiAlerts.length}
+              {t(lang, 'fssaiAlert')} {ticker + 1}/{fssaiAlerts.length}
             </div>
             <div className="fs-ticker-text">{currentAlert}</div>
           </div>
@@ -624,17 +624,17 @@ export default function HomePage() {
 
       {/* Quick Actions */}
       <div className="fs-section">
-        <div className="fs-section-label">Quick Actions</div>
+        <div className="fs-section-label">{t(lang, 'quickActions')}</div>
         <div className="fs-quick-grid">
           {[
-            { icon: '🎉', title: 'Festival Guide', sub: 'Safe foods for festivals', to: '/festival' },
-            { icon: '🩺', title: 'Symptom Check', sub: 'Identify food poisoning', to: '/symptoms' },
-            { icon: '🗺️', title: 'Food Safety Map', sub: 'Alerts near your city', to: '/map' },
-          ].map(({ icon, title, sub, to }) => (
+            { icon: '🎉', titleKey: 'festivalGuide', subKey: 'festivalGuideSub', to: '/festival' },
+            { icon: '🩺', titleKey: 'symptomCheck', subKey: 'symptomCheckSub', to: '/symptoms' },
+            { icon: '🗺️', titleKey: 'foodSafetyMap', subKey: 'foodSafetyMapSub', to: '/map' },
+          ].map(({ icon, titleKey, subKey, to }) => (
             <button key={to} className="fs-quick-btn" onClick={() => nav(to)}>
               <span className="fs-quick-icon">{icon}</span>
-              <div className="fs-quick-title">{title}</div>
-              <div className="fs-quick-sub">{sub}</div>
+              <div className="fs-quick-title">{t(lang, titleKey)}</div>
+              <div className="fs-quick-sub">{t(lang, subKey)}</div>
             </button>
           ))}
         </div>
@@ -642,16 +642,16 @@ export default function HomePage() {
 
       {/* Combination Risk */}
       <div className="fs-section">
-        <div className="fs-section-label">Combination Risk</div>
+        <div className="fs-section-label">{t(lang, 'combinationRisk')}</div>
         <div className="fs-card">
           <div className="fs-combo-wrap">
             <div className="fs-combo-header">
               <div>
                 <div className="fs-combo-title">⚗️ {t(lang, 'combinationRisk') || 'Combination Risk'}</div>
-                <div className="fs-combo-sub">Check multiple foods together</div>
+                <div className="fs-combo-sub">{t(lang, 'combinationSub')}</div>
               </div>
               {combinationFoods.length > 0 && (
-                <button className="fs-combo-clear" onClick={clearCombination}>Clear</button>
+                <button className="fs-combo-clear" onClick={clearCombination}>{t(lang, 'clear')}</button>
               )}
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -672,7 +672,7 @@ export default function HomePage() {
       {/* Family Selector */}
       {family.length > 0 && (
         <div className="fs-section">
-          <div className="fs-section-label">Scan For</div>
+          <div className="fs-section-label">{t(lang, 'scanFor')}</div>
           <div className="fs-card">
             <div className="fs-family-wrap">
               <div className="fs-family-title">👨‍👩‍👧 {t(lang, 'scanFor') || 'Scan For'}</div>

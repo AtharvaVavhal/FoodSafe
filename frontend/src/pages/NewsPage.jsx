@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
+import { Newspaper, BellRing, ChevronRight, RefreshCw, Layers } from 'lucide-react'
 
 const SEVERITY_COLORS = {
-  HIGH:   { bg: 'rgba(255,80,60,0.1)',  border: 'rgba(255,80,60,0.3)',   text: '#ff6450', dot: '#ff6450', label: 'High' },
-  MEDIUM: { bg: 'rgba(245,180,40,0.1)', border: 'rgba(245,180,40,0.3)',  text: '#f5c842', dot: '#f5c842', label: 'Medium' },
-  LOW:    { bg: 'rgba(0,200,120,0.1)',   border: 'rgba(0,200,120,0.3)',   text: '#00e09c', dot: '#00e09c', label: 'Low' },
+  HIGH:   { bg: 'bg-red-500/10',    border: 'border-red-500/30',    text: 'text-red-400',  dot: 'bg-red-500',   label: 'High' },
+  MEDIUM: { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400', dot: 'bg-orange-400', label: 'Medium' },
+  LOW:    { bg: 'bg-brand/10',      border: 'border-brand/30',      text: 'text-brand',    dot: 'bg-brand',     label: 'Low' },
 }
 
 const TABS = [
   { key: null,     label: 'All' },
-  { key: 'HIGH',   label: '🔴 High' },
-  { key: 'MEDIUM', label: '🟡 Medium' },
-  { key: 'LOW',    label: '🟢 Low' },
+  { key: 'HIGH',   label: '🔴 High Risk' },
+  { key: 'MEDIUM', label: '🟡 Medium Risk' },
+  { key: 'LOW',    label: '🟢 Low Risk' },
 ]
 
 const CATEGORY_ICONS = {
@@ -46,7 +47,6 @@ export default function NewsPage() {
       setLastUpdated(data.last_updated ? new Date(data.last_updated) : new Date())
     } catch {
       setError('Could not load news. Retrying...')
-      // Try static fallback after 2s
       setTimeout(() => fetchNews(), 2000)
     } finally {
       setLoading(false)
@@ -63,137 +63,52 @@ export default function NewsPage() {
   }, [fetchNews])
 
   return (
-    <div style={{
-      fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-      minHeight: '100vh',
-      padding: '0 0 90px',
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        .news-card {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 16px;
-          padding: 18px 16px;
-          backdrop-filter: blur(12px);
-          transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
-          cursor: default;
-          position: relative;
-          overflow: hidden;
-        }
-        .news-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-          border-color: rgba(255,255,255,0.15);
-        }
-        .news-card::before {
-          content: '';
-          position: absolute;
-          left: 0; top: 0; bottom: 0;
-          width: 3px;
-          border-radius: 0 3px 3px 0;
-        }
-        .news-tab {
-          padding: 8px 18px;
-          border-radius: 30px;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.5);
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          font-family: inherit;
-          transition: all 0.2s ease;
-        }
-        .news-tab:hover {
-          background: rgba(255,255,255,0.08);
-          color: rgba(255,255,255,0.8);
-        }
-        .news-tab.active {
-          background: rgba(0,200,150,0.15);
-          border-color: rgba(0,200,150,0.3);
-          color: #00e09c;
-          font-weight: 600;
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .news-skeleton {
-          background: linear-gradient(90deg,
-            rgba(255,255,255,0.04) 25%,
-            rgba(255,255,255,0.08) 50%,
-            rgba(255,255,255,0.04) 75%
-          );
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 10px;
-        }
-      `}</style>
-
+    <div className="flex flex-col animate-fade-up px-3 md:px-8 py-6 max-w-4xl mx-auto w-full pb-32">
+      
       {/* Header */}
-      <div style={{
-        padding: '24px 16px 16px',
-        background: 'linear-gradient(180deg, rgba(0,200,150,0.06) 0%, transparent 100%)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <div>
-            <h1 style={{
-              fontSize: 24, fontWeight: 800, color: 'rgba(255,255,255,0.95)',
-              margin: 0, display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              📰 Food Safety News
-              <div className="live-dot" />
-              <span style={{
-                fontSize: 10, fontWeight: 600, color: '#00e09c',
-                background: 'rgba(0,224,156,0.12)',
-                padding: '3px 10px', borderRadius: 20,
-                border: '1px solid rgba(0,224,156,0.2)',
-              }}>LIVE</span>
-            </h1>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: '4px 0 0', fontWeight: 300 }}>
-              Real-time FSSAI alerts & Indian food safety updates
-            </p>
+      <div className="relative p-6 md:p-8 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden mb-6 backdrop-blur-xl">
+        <div className="absolute top-0 right-1/4 w-40 h-40 bg-brand/10 blur-[50px] rounded-full pointer-events-none transform -translate-y-1/2" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-surface-200 border border-white/10 flex items-center justify-center relative">
+              <Newspaper className="w-6 h-6 text-white" />
+              <div className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand shadow-[0_0_8px_rgba(0,224,156,0.8)] border border-background"></span>
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif font-bold text-white mb-1">
+                {t(lang, 'news') || 'Food Safety News'}
+              </h1>
+              <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.15em] flex items-center gap-2">
+                Real-time FSSAI alerts {lastUpdated && `• Last sync: \${lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`}
+              </p>
+            </div>
           </div>
-          <button onClick={() => fetchNews(true)} style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 12,
-            padding: '8px 14px',
-            color: 'rgba(255,255,255,0.6)',
-            fontSize: 13, fontWeight: 500,
-            cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 6,
-            transition: 'all 0.15s',
-          }}>
-            <span style={{
-              display: 'inline-block',
-              animation: refreshing ? 'spin 1s linear infinite' : 'none',
-            }}>🔄</span>
-            Refresh
+          
+          <button 
+            onClick={() => fetchNews(true)}
+            disabled={refreshing}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-[11px] font-bold uppercase tracking-widest transition-all
+              \${refreshing ? 'bg-surface-300 text-white/30 cursor-not-allowed' : 'bg-surface-100 hover:bg-surface-200 text-white/70 hover:text-white'}`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 \${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Syncing...' : 'Refresh'}
           </button>
         </div>
-
-        {lastUpdated && (
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>
-            Last updated: {lastUpdated.toLocaleTimeString('en-IN')}
-          </div>
-        )}
       </div>
 
       {/* Tabs */}
-      <div style={{
-        display: 'flex', gap: 8,
-        padding: '0 16px 16px',
-        overflowX: 'auto',
-      }}>
+      <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar custom-scrollbar w-full mb-2">
         {TABS.map(tab => (
           <button
             key={tab.label}
-            className={`news-tab ${activeTab === tab.key ? 'active' : ''}`}
+            className={`shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold transition-all border
+              \${activeTab === tab.key 
+                ? 'bg-brand/10 text-brand border-brand/30 shadow-[0_0_12px_rgba(0,224,156,0.1)]' 
+                : 'bg-surface-100 text-white/40 border-white/5 hover:bg-surface-200 hover:text-white/80'}`}
             onClick={() => setActiveTab(tab.key)}
           >
             {tab.label}
@@ -202,102 +117,89 @@ export default function NewsPage() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '0 16px' }}>
+      <div className="flex flex-col flex-1 w-full">
         {/* Loading skeleton */}
         {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="flex flex-col gap-4">
             {[1,2,3,4,5].map(i => (
-              <div key={i} className="news-skeleton" style={{ height: 110, opacity: 1 - i * 0.15 }} />
+              <div key={i} className="h-32 rounded-[24px] bg-surface-100/50 border border-white/5 animate-pulse-slow p-6 flex flex-col justify-between overflow-hidden relative">
+                <div className="absolute top-0 left-0 bottom-0 w-1 bg-surface-300" />
+                <div className="h-3 bg-surface-300 rounded w-1/4 mb-4" />
+                <div className="h-4 bg-surface-300 rounded w-3/4 mb-3" />
+                <div className="h-3 bg-surface-300 rounded w-1/2" />
+              </div>
             ))}
           </div>
         )}
 
         {/* Error */}
         {error && !loading && (
-          <div style={{
-            padding: 20, textAlign: 'center',
-            background: 'rgba(255,80,60,0.08)',
-            border: '1px solid rgba(255,80,60,0.2)',
-            borderRadius: 14, color: '#ff6450', fontSize: 13,
-          }}>
-            {error}
+          <div className="p-5 text-center bg-red-500/10 border border-red-500/20 rounded-[20px] text-red-400 text-sm font-medium flex flex-col items-center gap-3">
+             <BellRing className="w-6 h-6 animate-pulse" /> {error}
           </div>
         )}
 
-        {/* Articles */}
+        {/* Articles List */}
         {!loading && !error && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="flex flex-col gap-4">
             {articles.length === 0 && (
-              <div style={{
-                textAlign: 'center', padding: 40,
-                color: 'rgba(255,255,255,0.3)', fontSize: 14,
-              }}>
-                No news found for this filter.
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center border border-dashed border-white/10 rounded-[32px] bg-surface-100/30">
+                <Layers className="w-12 h-12 text-white/10 mb-4" />
+                <p className="text-white/40 text-sm font-medium">No alerts found for this filter criteria.</p>
               </div>
             )}
+            
             {articles.map((article, i) => {
               const sev = SEVERITY_COLORS[article.severity] || SEVERITY_COLORS.MEDIUM
-              const catIcon = CATEGORY_ICONS[article.category] || '📰'
+              const catIcon = CATEGORY_ICONS[article.category] || '🗞'
+              
               return (
-                <div key={i} className="news-card" style={{
-                  animation: `slideUp 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 0.06}s both`,
-                  borderLeftColor: sev.border,
-                }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: sev.dot, borderRadius: '0 3px 3px 0' }} />
-
-                  {/* Top row: category + severity + date */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 14 }}>{catIcon}</span>
-                      <span style={{
-                        fontSize: 10, fontWeight: 600,
-                        padding: '2px 10px', borderRadius: 20,
-                        background: sev.bg, border: `1px solid ${sev.border}`,
-                        color: sev.text, letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                      }}>{sev.label} Risk</span>
+                <div 
+                  key={i} 
+                  className={`bg-surface-100 border border-white/10 rounded-[24px] p-5 md:p-6 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:bg-surface-200/50 group`}
+                  style={{ animation: `fadeUp 0.5s ease forwards \${i * 0.05}s`, opacity: 0 }}
+                >
+                  {/* Left severity indicator line */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 \${sev.dot} shadow-[0_0_8px_\${sev.bg}]`} />
+                  
+                  {/* Top row */}
+                  <div className="flex justify-between items-center mb-4 pl-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg bg-surface-300 w-8 h-8 rounded-lg flex items-center justify-center border border-white/5">{catIcon}</span>
+                      <span className={`text-[9px] font-bold px-2.5 py-1 rounded-md border uppercase tracking-widest \${sev.bg} \${sev.border} \${sev.text}`}>
+                        {sev.label} Risk
+                      </span>
                     </div>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>
+                    <span className="text-[10px] text-white/30 font-medium tracking-wider bg-surface-300 px-2 py-1 rounded-lg border border-white/5">
                       {article.date}
                     </span>
                   </div>
 
-                  {/* Title */}
-                  <h3 style={{
-                    fontSize: 14, fontWeight: 600,
-                    color: 'rgba(255,255,255,0.9)',
-                    lineHeight: 1.45, margin: '0 0 6px',
-                  }}>
-                    {article.title}
-                  </h3>
+                  {/* Title & Summary */}
+                  <div className="pl-2">
+                    <h3 className="text-[15px] font-bold text-white/90 leading-snug mb-2 group-hover:text-white transition-colors">
+                      {article.title}
+                    </h3>
+                    {article.summary && (
+                      <p className="text-xs text-white/50 leading-relaxed font-medium mb-4 line-clamp-2">
+                        {article.summary}
+                      </p>
+                    )}
+                  </div>
 
-                  {/* Summary */}
-                  {article.summary && (
-                    <p style={{
-                      fontSize: 12, color: 'rgba(255,255,255,0.4)',
-                      lineHeight: 1.5, margin: '0 0 10px', fontWeight: 300,
-                    }}>
-                      {article.summary}
-                    </p>
-                  )}
-
-                  {/* Footer: source + link */}
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    paddingTop: 8,
-                    borderTop: '1px solid rgba(255,255,255,0.05)',
-                  }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontWeight: 400 }}>
-                      📍 {article.source}
+                  {/* Footer */}
+                  <div className="flex justify-between items-center pt-4 border-t border-white/5 mt-auto pl-2">
+                    <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      📍 {article.source || 'FSSAI Notification'}
                     </span>
                     {article.source_url && (
-                      <a href={article.source_url} target="_blank" rel="noopener noreferrer"
-                        style={{
-                          fontSize: 10, color: '#00c896', textDecoration: 'none',
-                          fontWeight: 600, letterSpacing: '0.03em',
-                          transition: 'opacity 0.15s',
-                        }}>
-                        Read More →
+                      <a 
+                        href={article.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-bold text-brand hover:text-brand-light uppercase tracking-widest flex items-center gap-1 transition-colors"
+                      >
+                        Read More <ChevronRight className="w-3.5 h-3.5" />
                       </a>
                     )}
                   </div>

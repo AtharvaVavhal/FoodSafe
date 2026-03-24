@@ -1,27 +1,24 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
+import { Map as MapIcon, Database, AlertCircle, AlertOctagon, MapPin, Search, ChevronRight, CheckCircle2 } from 'lucide-react'
 
 const API_URL = '/api'
 
-// Maharashtra bounding box for SVG projection
-// lat: 15.6 (south) to 22.1 (north), lng: 72.6 (west) to 80.9 (east)
 const MH_BOUNDS = { latMin:15.6, latMax:22.1, lngMin:72.6, lngMax:80.9 }
-const SVG_W = 520, SVG_H = 430
+const SVG_W = 560, SVG_H = 460
 
 function latLngToXY(lat, lng) {
-  const x = ((lng - MH_BOUNDS.lngMin) / (MH_BOUNDS.lngMax - MH_BOUNDS.lngMin)) * (SVG_W - 60) + 30
-  const y = ((MH_BOUNDS.latMax - lat) / (MH_BOUNDS.latMax - MH_BOUNDS.latMin)) * (SVG_H - 60) + 30
+  const x = ((lng - MH_BOUNDS.lngMin) / (MH_BOUNDS.lngMax - MH_BOUNDS.lngMin)) * (SVG_W - 80) + 40
+  const y = ((MH_BOUNDS.latMax - lat) / (MH_BOUNDS.latMax - MH_BOUNDS.latMin)) * (SVG_H - 80) + 40
   return { x: Math.round(x), y: Math.round(y) }
 }
 
-// Geocoding cache — fetches from Nominatim once per city, persists in memory
 const _geoCache = {}
-
 async function geocodeCity(cityName) {
   if (_geoCache[cityName]) return _geoCache[cityName]
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName + ', Maharashtra, India')}&format=json&limit=1`
+    const url = `https://nominatim.openstreetmap.org/search?q=\${encodeURIComponent(cityName + ', Maharashtra, India')}&format=json&limit=1`
     const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
     const data = await res.json()
     if (data?.[0]) {
@@ -34,257 +31,13 @@ async function geocodeCity(cityName) {
 }
 
 const RISK_CONFIG = {
-  LOW:      { fill: '#eaf3de', stroke: '#639922', text: '#27500A', dot: '#639922',  label: 'Low Risk',      bar: '#639922' },
-  MEDIUM:   { fill: '#fff8ed', stroke: '#854F0B', text: '#633806', dot: '#EF9F27',  label: 'Medium Risk',   bar: '#e07c1a' },
-  HIGH:     { fill: '#fff0f0', stroke: '#A32D2D', text: '#791F1F', dot: '#E24B4A',  label: 'High Risk',     bar: '#c0392b' },
-  CRITICAL: { fill: '#A32D2D', stroke: '#7F0000', text: '#fff',    dot: '#7F0000',  label: 'Critical Risk', bar: '#7F0000' },
+  LOW:      { bg: 'bg-brand/10', text: 'text-brand', border: 'border-brand/30', dot: '#00e09c', label: 'Low Risk' },
+  MEDIUM:   { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30', dot: '#fac775', label: 'Medium Risk' },
+  HIGH:     { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: '#f7c1c1', label: 'High Risk' },
+  CRITICAL: { bg: 'bg-red-900/40', text: 'text-red-500', border: 'border-red-600/50', dot: '#ff7b7b', label: 'Critical Risk' },
 }
 
 const RISK_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
-
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
-  * { box-sizing: border-box; }
-
-  .mp-root {
-    font-family: 'DM Sans', sans-serif;
-    background: #f7f5f0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding-bottom: 80px;
-  }
-
-  .mp-header {
-    background: linear-gradient(160deg, #0d2818 0%, #1a3d2b 100%);
-    padding: 20px 16px 28px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .mp-header::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 18px;
-    background: #f7f5f0;
-    border-radius: 18px 18px 0 0;
-  }
-
-  .mp-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 600;
-    color: #f5f0e8;
-    margin-bottom: 2px;
-  }
-
-  .mp-subtitle {
-    font-size: 11px;
-    color: rgba(245,240,232,0.5);
-    font-weight: 300;
-    letter-spacing: 0.04em;
-    margin-bottom: 14px;
-  }
-
-  .mp-stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .mp-stat {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 8px 10px;
-    backdrop-filter: blur(4px);
-  }
-
-  .mp-stat-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 600;
-    color: #c9a84c;
-    line-height: 1;
-    margin-bottom: 2px;
-  }
-
-  .mp-stat-label {
-    font-size: 9px;
-    color: rgba(245,240,232,0.5);
-    font-weight: 300;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .mp-section { padding: 0 16px; }
-
-  .mp-section-label {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #999;
-    margin-bottom: 6px;
-    margin-left: 2px;
-  }
-
-  .mp-pills {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-  }
-
-  .mp-pill {
-    font-size: 11px;
-    padding: 5px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    transition: all 0.15s;
-    border: 1px solid;
-  }
-
-  .mp-map-wrap {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #ece8df;
-    overflow: hidden;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  }
-
-  .mp-city-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #ece8df;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  }
-
-  .mp-city-header {
-    padding: 12px 16px 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #f4f1eb;
-  }
-
-  .mp-city-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 17px;
-    font-weight: 600;
-    color: #1a3d2b;
-  }
-
-  .mp-risk-badge {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 4px 12px;
-    border-radius: 20px;
-    letter-spacing: 0.04em;
-    border: 1px solid;
-  }
-
-  .mp-city-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-  }
-
-  .mp-city-stat {
-    padding: 10px 16px;
-  }
-
-  .mp-city-stat + .mp-city-stat {
-    border-left: 1px solid #f4f1eb;
-  }
-
-  .mp-city-stat-label {
-    font-size: 9px;
-    color: #aaa;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 3px;
-  }
-
-  .mp-city-stat-val {
-    font-size: 22px;
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
-    color: #1a3d2b;
-    line-height: 1;
-  }
-
-  .mp-city-stat-food {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1a3d2b;
-    line-height: 1;
-  }
-
-  .mp-list-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #ece8df;
-    overflow: hidden;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  }
-
-  .mp-list-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 16px;
-    cursor: pointer;
-    transition: background 0.12s;
-    border-bottom: 1px solid #f4f1eb;
-  }
-
-  .mp-list-row:last-child { border-bottom: none; }
-  .mp-list-row:hover { background: #faf8f4; }
-  .mp-list-row.active { background: #f4f1eb; }
-
-  .mp-list-city { font-size: 13px; font-weight: 600; color: #1a3d2b; }
-  .mp-list-food  { font-size: 11px; color: #999; font-weight: 300; margin-top: 1px; }
-
-  .mp-list-right { display: flex; align-items: center; gap: 8px; }
-  .mp-list-count { font-size: 12px; color: #888; font-weight: 300; }
-
-  .mp-sev {
-    font-size: 9px;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    border: 1px solid;
-  }
-
-  .mp-empty {
-    text-align: center;
-    padding: 32px 16px;
-    color: #aaa;
-    font-size: 13px;
-    font-weight: 300;
-  }
-
-  .mp-loading {
-    text-align: center;
-    padding: 20px;
-    color: #aaa;
-    font-size: 12px;
-    font-weight: 300;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .mp-fade { animation: fadeUp 0.3s ease forwards; }
-`
 
 export default function MapPage() {
   const { lang, token } = useStore()
@@ -301,51 +54,38 @@ export default function MapPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitMsg, setSubmitMsg] = useState('')
 
-  // Fetch city risk data from DB
   useEffect(() => {
     fetch(`${API_URL}/community/city-risk`)
       .then(r => r.json())
-      .then(data => {
-        if (data.cities?.length > 0) setCities(data.cities)
-      })
+      .then(data => { if (data.cities?.length > 0) setCities(data.cities) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  // Submit community report
   async function submitReport() {
     if (!reportFood.trim() || !reportCity.trim() || !reportDesc.trim()) return
     setSubmitting(true)
     try {
       const res = await fetch(`${API_URL}/community/report`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          food_name: reportFood.trim(),
-          city: reportCity.trim(),
-          description: reportDesc.trim(),
-          brand: reportBrand.trim() || null,
-        }),
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ food_name: reportFood.trim(), city: reportCity.trim(), description: reportDesc.trim(), brand: reportBrand.trim() || null }),
       })
       if (!res.ok) throw new Error('Failed')
-      setSubmitMsg(t(lang, 'reportSuccess'))
+      setSubmitMsg(t(lang, 'reportSuccess') || 'Report submitted secretly.')
       setReportFood(''); setReportCity(''); setReportDesc(''); setReportBrand('')
-      setTimeout(() => { setShowForm(false); setSubmitMsg('') }, 1500)
-      // Refresh map data
+      setTimeout(() => { setShowForm(false); setSubmitMsg('') }, 2000)
+      
       const r2 = await fetch(`${API_URL}/community/city-risk`)
       const d2 = await r2.json()
       if (d2.cities) setCities(d2.cities)
     } catch {
-      setSubmitMsg(t(lang, 'reportFailed'))
+      setSubmitMsg(t(lang, 'reportFailed') || 'Failed. Try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Geocode each city via Nominatim — no hardcoded coords
   useEffect(() => {
     if (cities.length === 0) return
     let cancelled = false
@@ -356,9 +96,7 @@ export default function MapPage() {
           return coords ? { ...city, ...coords } : null
         })
       )
-      if (!cancelled) {
-        setMappedCities(results.filter(Boolean))
-      }
+      if (!cancelled) setMappedCities(results.filter(Boolean))
     }
     geocodeAll()
     return () => { cancelled = true }
@@ -372,269 +110,273 @@ export default function MapPage() {
   const highCount = cities.filter(c => c.risk === 'HIGH').length
 
   return (
-    <div className="mp-root">
-      <style>{STYLES}</style>
-
+    <div className="flex flex-col animate-fade-up px-3 md:px-8 py-6 max-w-5xl mx-auto w-full pb-32">
+      
       {/* Header */}
-      <div className="mp-header">
-        <div className="mp-title">{t(lang, 'riskMap')}</div>
-        <div className="mp-subtitle">{t(lang, 'riskMapSub')}</div>
-        <div className="mp-stats-row">
-          <div className="mp-stat">
-            <div className="mp-stat-num">{totalReports}</div>
-            <div className="mp-stat-label">{t(lang, 'totalReports')}</div>
+      <div className="relative p-6 md:p-8 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden mb-6 backdrop-blur-xl">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 blur-[80px] rounded-full pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-surface-200 text-white border border-white/10 flex flex-col items-center justify-center shrink-0 shadow-inner">
+              <MapIcon className="w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif font-bold text-white mb-1">{t(lang, 'riskMap')}</h1>
+              <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.15em]">{t(lang, 'riskMapSub')}</p>
+            </div>
           </div>
-          <div className="mp-stat">
-            <div className="mp-stat-num">{cities.length}</div>
-            <div className="mp-stat-label">{t(lang, 'cities')}</div>
-          </div>
-          <div className="mp-stat">
-            <div className="mp-stat-num" style={{ color: '#E24B4A' }}>{criticalCount + highCount}</div>
-            <div className="mp-stat-label">{t(lang, 'highRisk')}</div>
-          </div>
-        </div>
-      </div>
 
-      {/* Filter pills */}
-      <div className="mp-section">
-        <div className="mp-pills">
-          {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(f => {
-            const active = filter === f
-            const cfg = f !== 'ALL' ? RISK_CONFIG[f] : null
-            return (
-              <button key={f} className="mp-pill" onClick={() => setFilter(f)} style={{
-                background: active ? (cfg?.dot || '#1a3d2b') : '#fff',
-                color: active ? '#fff' : '#666',
-                borderColor: active ? (cfg?.dot || '#1a3d2b') : '#ece8df',
-              }}>
-                {f === 'ALL' ? t(lang, 'allCities') : cfg.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Map */}
-      <div className="mp-section">
-        <div className="mp-map-wrap">
-          {loading ? (
-            <div className="mp-loading">{t(lang, 'loadingMap')}</div>
-          ) : (
-            <svg width="100%" viewBox="0 0 520 430" style={{ display: 'block' }}>
-              {/* Maharashtra outline */}
-              <polygon
-                points="80,200 90,160 120,120 160,90 210,80 270,90 330,80 390,90 440,110 470,150 460,200 450,240 420,270 400,300 360,330 310,360 270,380 230,390 190,380 160,370 130,350 100,320 80,280 70,240"
-                fill="#f8f6f1" stroke="#ece8df" strokeWidth="1.5"
-              />
-
-              {/* City dots */}
-              {mappedCities.map(city => {
-                const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
-                const isFiltered = filter !== 'ALL' && city.risk !== filter
-                const isSel = selected === city.city
-                const r = isSel ? 10 : city.reports > 25 ? 8 : city.reports > 15 ? 6 : 5
-                return (
-                  <g key={city.city} style={{ cursor: 'pointer' }}
-                    onClick={() => setSelected(isSel ? null : city.city)}>
-                    {city.risk === 'CRITICAL' && !isFiltered && (
-                      <circle cx={city.x} cy={city.y} r={16} fill={cfg.dot} opacity={0.15} />
-                    )}
-                    {isSel && (
-                      <circle cx={city.x} cy={city.y} r={r + 5} fill={cfg.dot} opacity={0.15} />
-                    )}
-                    <circle
-                      cx={city.x} cy={city.y} r={r}
-                      fill={isFiltered ? '#e0ddd8' : cfg.dot}
-                      stroke={isFiltered ? '#ccc' : isSel ? '#0d2818' : cfg.stroke}
-                      strokeWidth={isSel ? 2.5 : 1.5}
-                      opacity={isFiltered ? 0.35 : 1}
-                    />
-                    {!isFiltered && (
-                      <text
-                        x={city.x + 12} y={city.y + 4}
-                        fontSize={10} fill="#555"
-                        fontFamily="'DM Sans', system-ui, sans-serif"
-                        fontWeight={isSel ? '600' : '400'}
-                      >
-                        {city.city}
-                      </text>
-                    )}
-                  </g>
-                )
-              })}
-
-              {/* Legend */}
-              {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((r, i) => (
-                <g key={r}>
-                  <circle cx={22} cy={350 + i * 16} r={5} fill={RISK_CONFIG[r].dot} />
-                  <text x={33} y={354 + i * 16} fontSize={10} fill="#888"
-                    fontFamily="'DM Sans', system-ui, sans-serif">
-                    {RISK_CONFIG[r].label}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          )}
-        </div>
-      </div>
-
-      {/* Selected city card */}
-      {sel && (
-        <div className="mp-section mp-fade">
-          <div className="mp-city-card" style={{ borderColor: RISK_CONFIG[sel.risk]?.border || '#ece8df' }}>
-            <div className="mp-city-header">
-              <div className="mp-city-name">📍 {sel.city}</div>
-              <span className="mp-risk-badge" style={{
-                background: RISK_CONFIG[sel.risk].fill,
-                color: RISK_CONFIG[sel.risk].text,
-                borderColor: RISK_CONFIG[sel.risk].stroke,
-              }}>
-                {sel.risk} RISK
+          <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
+            <div className="bg-surface-200/50 border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center backdrop-blur-md">
+              <span className="text-xl font-serif font-bold text-brand leading-none mb-1">{totalReports}</span>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'totalReports')}</span>
+            </div>
+            <div className="bg-surface-200/50 border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center backdrop-blur-md">
+              <span className="text-xl font-serif font-bold text-white leading-none mb-1">{cities.length}</span>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'cities')}</span>
+            </div>
+            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 flex flex-col items-center justify-center backdrop-blur-md">
+              <span className="text-xl font-serif font-bold text-red-400 leading-none mb-1 flex items-center gap-1">
+                {criticalCount + highCount > 0 && <AlertOctagon className="w-3.5 h-3.5 text-red-500/80" />} {criticalCount + highCount}
               </span>
-            </div>
-            <div className="mp-city-stats">
-              <div className="mp-city-stat">
-                <div className="mp-city-stat-label">{t(lang, 'reports')}</div>
-                <div className="mp-city-stat-val">{sel.reports}</div>
-              </div>
-              <div className="mp-city-stat">
-                <div className="mp-city-stat-label">{t(lang, 'topRiskyFood')}</div>
-                <div className="mp-city-stat-food">{sel.topFood || 'Various'}</div>
-              </div>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'highRisk')}</span>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* City list */}
-      <div className="mp-section">
-        <div className="mp-section-label">{filtered.length} cities</div>
-        {loading ? (
-          <div className="mp-loading">{t(lang, 'loading')}</div>
-        ) : filtered.length === 0 ? (
-          <div className="mp-empty">{t(lang, 'noReports')}</div>
-        ) : (
-          <div className="mp-list-card">
-            {[...filtered]
-              .sort((a, b) => RISK_ORDER.indexOf(a.risk) - RISK_ORDER.indexOf(b.risk))
-              .map(city => (
-                <div
-                  key={city.city}
-                  className={`mp-list-row ${selected === city.city ? 'active' : ''}`}
-                  onClick={() => setSelected(selected === city.city ? null : city.city)}
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+        
+        {/* Map Area */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap gap-2 w-full">
+            {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(f => {
+              const active = filter === f
+              const cfg = f !== 'ALL' ? RISK_CONFIG[f] : null
+              return (
+                <button 
+                  key={f} 
+                  onClick={() => setFilter(f)} 
+                  className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border
+                    \${active 
+                      ? (cfg ? \`\${cfg.bg} \${cfg.text} \${cfg.border}\` : 'bg-surface-300 text-white border-white/20')
+                      : 'bg-surface-100/50 text-white/40 border-white/5 hover:bg-surface-200 hover:text-white/80'}`}
                 >
-                  <div>
-                    <div className="mp-list-city">{city.city}</div>
-                    <div className="mp-list-food">{city.topFood || 'Various'}</div>
+                  {f === 'ALL' ? t(lang, 'allCities') || 'All Cities' : cfg.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="bg-surface-100 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl relative p-4 flex justify-center backdrop-blur-sm min-h-[400px]">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center h-full absolute inset-0 text-white/30 text-xs font-bold uppercase tracking-widest gap-3">
+                 <MapPin className="w-8 h-8 animate-bounce opacity-50" /> {t(lang, 'loadingMap') || 'Loading Map...'}
+              </div>
+            ) : (
+              <svg width="100%" height="100%" viewBox="0 0 560 460" className="drop-shadow-2xl">
+                {/* Simplified Maharashtra Outline Geometry (unchanged conceptually) */}
+                <polygon
+                  points="90,210 100,170 130,130 170,100 220,90 280,100 340,90 400,100 450,120 480,160 470,210 460,250 430,280 410,310 370,340 320,370 280,390 240,400 200,390 170,380 140,360 110,330 90,290 80,250"
+                  fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinejoin="round"
+                />
+
+                {/* City nodes */}
+                {mappedCities.map(city => {
+                  const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
+                  const isFiltered = filter !== 'ALL' && city.risk !== filter
+                  const isSel = selected === city.city
+                  const r = isSel ? 12 : city.reports > 25 ? 9 : city.reports > 15 ? 7 : 5
+
+                  return (
+                    <g key={city.city} style={{ cursor: 'pointer' }} onClick={() => setSelected(isSel ? null : city.city)} className="transition-all duration-300">
+                      {city.risk === 'CRITICAL' && !isFiltered && (
+                        <circle cx={city.x} cy={city.y} r={20} fill={cfg.dot} opacity={0.2} className="animate-pulse-slow" />
+                      )}
+                      {isSel && (
+                        <circle cx={city.x} cy={city.y} r={r + 8} fill={cfg.dot} opacity={0.3} />
+                      )}
+                      
+                      <circle
+                        cx={city.x} cy={city.y} r={r}
+                        fill={isFiltered ? '#333' : cfg.dot}
+                        stroke={isFiltered ? '#444' : isSel ? '#fff' : 'rgba(0,0,0,0.5)'}
+                        strokeWidth={isSel ? 3 : 1.5}
+                        opacity={isFiltered ? 0.2 : 1}
+                        className="transition-all duration-300"
+                        style={!isFiltered ? { filter: `drop-shadow(0 0 8px \${cfg.dot})` } : {}}
+                      />
+                      
+                      {!isFiltered && (
+                        <text
+                          x={city.x + 14} y={city.y + 4}
+                          fontSize={11} fill={isSel ? '#fff' : 'rgba(255,255,255,0.6)'}
+                          fontFamily="Inter, sans-serif"
+                          fontWeight={isSel ? '700' : '500'}
+                          className="transition-all duration-300 drop-shadow-md"
+                        >
+                          {city.city}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })}
+
+                {/* Internal Legend overlay */}
+                <g transform="translate(20, 360)">
+                  <rect x="-10" y="-10" width="120" height="90" fill="rgba(0,0,0,0.4)" rx="12" stroke="rgba(255,255,255,0.05)" backdropFilter="blur(8px)" />
+                  {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((r, i) => (
+                    <g key={r} transform={`translate(0, \${i * 20})`}>
+                      <circle cx="8" cy="8" r="4" fill={RISK_CONFIG[r].dot} />
+                      <text x="20" y="12" fontSize={10} fill="rgba(255,255,255,0.6)" fontFamily="Inter, sans-serif" fontWeight="600" letterSpacing="0.05em">
+                        {RISK_CONFIG[r].label}
+                      </text>
+                    </g>
+                  ))}
+                </g>
+              </svg>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar Info & List */}
+        <div className="flex flex-col gap-6 w-full">
+          {sel && (
+             <div className={`p-6 bg-surface-100 border \${RISK_CONFIG[sel.risk]?.border || 'border-white/10'} rounded-[24px] shadow-2xl animate-fade-up flex flex-col gap-4 relative overflow-hidden backdrop-blur-md`}>
+                <div className={`absolute top-0 right-0 w-32 h-32 \${RISK_CONFIG[sel.risk]?.bg || 'bg-white/5'} blur-[40px] rounded-full pointer-events-none`} />
+                
+                <div className="flex justify-between items-start relative z-10">
+                  <h3 className="text-xl font-serif font-bold text-white flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-white/50" /> {sel.city}
+                  </h3>
+                  <span className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border shrink-0 \${RISK_CONFIG[sel.risk]?.bg} \${RISK_CONFIG[sel.risk]?.text} \${RISK_CONFIG[sel.risk]?.border}`}>
+                    {sel.risk} RISK
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-2 relative z-10">
+                  <div className="bg-surface-200/50 p-4 rounded-2xl border border-white/5">
+                    <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-1">{t(lang, 'reports')}</div>
+                    <div className="text-2xl font-serif font-bold text-white">{sel.reports}</div>
                   </div>
-                  <div className="mp-list-right">
-                    <span className="mp-list-count">{city.reports} {t(lang, 'reports')}</span>
-                    <span className="mp-sev" style={{
-                      background: RISK_CONFIG[city.risk].fill,
-                      color: RISK_CONFIG[city.risk].text,
-                      borderColor: RISK_CONFIG[city.risk].stroke,
-                    }}>
-                      {city.risk}
-                    </span>
+                  <div className="bg-surface-200/50 p-4 rounded-2xl border border-white/5">
+                    <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-1">{t(lang, 'topRiskyFood')}</div>
+                    <div className="text-base font-bold text-white/90 truncate pr-2">{sel.topFood || 'Various'}</div>
                   </div>
                 </div>
-              ))}
-          </div>
-        )}
-      </div>
+             </div>
+          )}
 
-      {/* Report Adulteration FAB */}
-      <button
-        onClick={() => setShowForm(!showForm)}
-        style={{
-          position: 'fixed', bottom: 80, right: 20, zIndex: 100,
-          width: 48, height: 48, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #A32D2D, #dc3545)',
-          color: '#fff', border: 'none', boxShadow: '0 4px 16px rgba(163,45,45,0.4)',
-          fontSize: 22, cursor: 'pointer', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          transition: 'transform 0.2s',
-          transform: showForm ? 'rotate(45deg)' : 'none',
-        }}
-      >
-        +
-      </button>
-
-      {/* Report Form Overlay */}
-      {showForm && (
-        <div style={{
-          position: 'fixed', bottom: 70, left: 0, right: 0, zIndex: 99,
-          maxWidth: 480, margin: '0 auto', padding: '0 12px',
-          animation: 'fadeUp 0.3s ease forwards',
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: 16, padding: '16px 16px 12px',
-            boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', border: '1px solid #ece8df',
-          }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a3d2b', marginBottom: 10 }}>
-              ⚠️ {t(lang, 'reportAdulteration')}
+          <div className="flex flex-col">
+            <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+              <Database className="w-3.5 h-3.5" /> {filtered.length} {t(lang, 'cities') || 'Cities'}
+            </h3>
+            
+            <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden shadow-xl min-h-[200px] flex flex-col">
+              {loading ? (
+                <div className="flex-1 flex items-center justify-center text-white/30 text-[11px] font-bold uppercase tracking-wider">{t(lang, 'loading')}</div>
+              ) : filtered.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-3">
+                  <Search className="w-8 h-8 text-white/10" />
+                  <p className="text-white/40 text-sm font-medium">{t(lang, 'noReports') || 'No reports found for this filter.'}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5 overflow-y-auto max-h-[500px] custom-scrollbar">
+                  {[...filtered].sort((a, b) => RISK_ORDER.indexOf(a.risk) - RISK_ORDER.indexOf(b.risk)).map(city => {
+                    const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
+                    return (
+                      <div
+                        key={city.city}
+                        onClick={() => setSelected(selected === city.city ? null : city.city)}
+                        className={`p-4 flex justify-between items-center cursor-pointer transition-all hover:bg-surface-200/50
+                          \${selected === city.city ? 'bg-surface-200' : ''}`}
+                      >
+                        <div className="min-w-0 pr-4">
+                          <h4 className="text-[13px] font-bold text-white/90 truncate">{city.city}</h4>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium mt-0.5 truncate">{city.topFood || 'Various'}</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-[11px] font-bold text-white/30">{city.reports} <span className="hidden sm:inline">{t(lang, 'reports') || 'reps'}</span></span>
+                          <span className={`w-3 h-3 rounded-full shrink-0 border border-black/20`} style={{ background: cfg.dot }} />
+                          <ChevronRight className={`w-4 h-4 text-white/20 transition-transform \${selected === city.city ? 'rotate-90' : ''}`} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-
-            {submitMsg && (
-              <div style={{ fontSize: 12, color: submitMsg.includes('✓') || submitMsg === t(lang, 'reportSuccess') ? '#27500A' : '#A32D2D', marginBottom: 8, fontWeight: 500 }}>
-                {submitMsg}
-              </div>
-            )}
-
-            <input
-              value={reportFood} onChange={e => setReportFood(e.target.value)}
-              placeholder={t(lang, 'foodNameLabel')}
-              style={{
-                width: '100%', padding: '8px 12px', borderRadius: 8,
-                border: '1px solid #ddd', fontSize: 13, marginBottom: 6,
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            />
-            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-              <input
-                value={reportCity} onChange={e => setReportCity(e.target.value)}
-                placeholder={t(lang, 'city')}
-                style={{
-                  flex: 1, padding: '8px 12px', borderRadius: 8,
-                  border: '1px solid #ddd', fontSize: 13,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              />
-              <input
-                value={reportBrand} onChange={e => setReportBrand(e.target.value)}
-                placeholder={`${t(lang, 'brands')} (${t(lang, 'cancel').toLowerCase()})`}
-                style={{
-                  flex: 1, padding: '8px 12px', borderRadius: 8,
-                  border: '1px solid #ddd', fontSize: 13,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              />
-            </div>
-            <textarea
-              value={reportDesc} onChange={e => setReportDesc(e.target.value)}
-              placeholder={t(lang, 'descriptionLabel')}
-              rows={2}
-              style={{
-                width: '100%', padding: '8px 12px', borderRadius: 8,
-                border: '1px solid #ddd', fontSize: 13, marginBottom: 8,
-                fontFamily: "'DM Sans',sans-serif", resize: 'none',
-              }}
-            />
-            <button
-              onClick={submitReport}
-              disabled={submitting || !reportFood.trim() || !reportCity.trim() || !reportDesc.trim()}
-              style={{
-                width: '100%', padding: '10px', borderRadius: 10,
-                border: 'none', background: 'linear-gradient(135deg, #1a3d2b, #2d6647)',
-                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                fontFamily: "'DM Sans',sans-serif",
-                opacity: submitting || !reportFood.trim() ? 0.5 : 1,
-              }}
-            >
-              {submitting ? '⏳...' : `📢 ${t(lang, 'submitReport')}`}
-            </button>
           </div>
         </div>
+      </div>
+
+      {/* Floating Action Button (FAB) */}
+      <button
+        onClick={() => setShowForm(!showForm)}
+        className={`fixed bottom-24 md:bottom-10 right-6 z-[100] w-14 h-14 rounded-full bg-brand hover:bg-brand-light text-background border border-brand-light/50 flex items-center justify-center shadow-[0_0_24px_rgba(0,224,156,0.4)] hover:shadow-[0_0_32px_rgba(0,224,156,0.6)] hover:scale-105 transition-all duration-300 \${showForm ? 'rotate-45 !bg-surface-300 !text-white !border-white/20 !shadow-lg' : ''}`}
+      >
+        <span className="text-3xl leading-none font-light mb-1">+</span>
+      </button>
+
+      {/* Report Form Modal / Overlay */}
+      {showForm && (
+        <>
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[90] animate-fade-up opacity-100" onClick={() => setShowForm(false)} />
+          <div className="fixed bottom-24 md:bottom-28 right-6 left-6 md:left-auto md:w-[420px] z-[95] animate-fade-up">
+            <div className="bg-surface-100 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 relative overflow-hidden backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-bold text-white uppercase tracking-wider">{t(lang, 'reportAdulteration')}</h3>
+              </div>
+
+              {submitMsg && (
+                <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-bold \${submitMsg.includes('Failed') ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-brand/10 text-brand border border-brand/20'}`}>
+                  {submitMsg.includes('Failed') ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />} {submitMsg}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3">
+                <input
+                  value={reportFood} onChange={e => setReportFood(e.target.value)}
+                  placeholder={t(lang, 'foodNameLabel') || 'Food Name *'}
+                  className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium"
+                />
+                <div className="flex gap-3">
+                  <input
+                    value={reportCity} onChange={e => setReportCity(e.target.value)}
+                    placeholder={t(lang, 'city') || 'City *'}
+                     className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium flex-1"
+                  />
+                  <input
+                    value={reportBrand} onChange={e => setReportBrand(e.target.value)}
+                    placeholder={`${t(lang, 'brands')} (opt)`}
+                    className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium flex-1"
+                  />
+                </div>
+                <textarea
+                  value={reportDesc} onChange={e => setReportDesc(e.target.value)}
+                  placeholder={t(lang, 'descriptionLabel') || 'Describe the issue... *'}
+                  rows={3}
+                  className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium resize-none"
+                />
+              </div>
+
+              <button
+                onClick={submitReport}
+                disabled={submitting || !reportFood.trim() || !reportCity.trim() || !reportDesc.trim()}
+                className={`w-full py-4 mt-2 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2
+                  \${submitting || !reportFood.trim() || !reportCity.trim() || !reportDesc.trim() 
+                    ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' 
+                    : 'bg-red-500 hover:bg-red-400 text-white shadow-[0_4px_24px_rgba(239,68,68,0.3)] border border-red-400'}`}
+              >
+                {submitting ? '⏳...' : `📢 ${t(lang, 'submitReport')}`}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

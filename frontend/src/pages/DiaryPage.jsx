@@ -1,72 +1,21 @@
 import { OC_STYLES, DigestPanel } from '../components/OverconsumptionBanner'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { BookOpen, AlertTriangle, Download, FileText, PieChart, BarChart2, Lightbulb, UserCheck, ShieldAlert, Sparkles, RefreshCw, FileWarning } from 'lucide-react'
 
 const API_URL = '/api'
 
-const RISK_COLOR = { LOW:'#639922', MEDIUM:'#e07c1a', HIGH:'#c0392b', CRITICAL:'#7F0000' }
-const RISK_BG    = { LOW:'#eaf3de', MEDIUM:'#fff8ed', HIGH:'#fff0f0', CRITICAL:'#f7c1c1' }
-const RISK_BORDER= { LOW:'#c0dd97', MEDIUM:'#fac775', HIGH:'#f7c1c1', CRITICAL:'#f09595' }
+const RISK_COLOR = { LOW: '#00e09c', MEDIUM: '#fac775', HIGH: '#f7c1c1', CRITICAL: '#ff7b7b' }
+const RISK_BG = { LOW: 'bg-brand/10', MEDIUM: 'bg-orange-500/10', HIGH: 'bg-red-500/10', CRITICAL: 'bg-red-900/40' }
+const RISK_BORDER = { LOW: 'border-brand/20', MEDIUM: 'border-orange-500/20', HIGH: 'border-red-500/20', CRITICAL: 'border-red-500/40' }
+const RISK_TEXT = { LOW: 'text-brand', MEDIUM: 'text-orange-400', HIGH: 'text-red-400', CRITICAL: 'text-red-500' }
 
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
-  * { box-sizing:border-box; }
-  .dp-root { font-family:'DM Sans',sans-serif; background:#f7f5f0; min-height:100vh; display:flex; flex-direction:column; gap:10px; padding-bottom:80px; }
-  .dp-header { background:linear-gradient(160deg,#0d2818 0%,#1a3d2b 100%); padding:20px 16px 28px; position:relative; overflow:hidden; }
-  .dp-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:18px; background:#f7f5f0; border-radius:18px 18px 0 0; }
-  .dp-title { font-family:'Playfair Display',serif; font-size:20px; font-weight:600; color:#f5f0e8; margin-bottom:2px; }
-  .dp-sub { font-size:11px; color:rgba(245,240,232,0.5); font-weight:300; letter-spacing:0.04em; margin-bottom:16px; }
-  .dp-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .dp-stat { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 8px; text-align:center; backdrop-filter:blur(4px); }
-  .dp-stat-val { font-family:'Playfair Display',serif; font-size:22px; font-weight:600; line-height:1; margin-bottom:3px; }
-  .dp-stat-lbl { font-size:9px; color:rgba(245,240,232,0.5); font-weight:300; letter-spacing:0.06em; text-transform:uppercase; }
-  .dp-section { padding:0 16px; }
-  .dp-section-label { font-size:9px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#999; margin-bottom:6px; margin-left:2px; }
-  .dp-card { background:#fff; border-radius:16px; border:1px solid #ece8df; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-  .dp-card-inner { padding:14px 16px; }
-  .dp-insight { padding:10px 14px; border-radius:12px; margin-bottom:8px; border:1px solid; font-size:12px; line-height:1.55; }
-  .dp-insight:last-child { margin-bottom:0; }
-  .dp-insight-icon { font-size:14px; margin-right:5px; }
-  .dp-history-row { display:flex; justify-content:space-between; align-items:center; padding:9px 16px; border-bottom:1px solid #f4f1eb; }
-  .dp-history-row:last-child { border-bottom:none; }
-  .dp-food-name { font-size:13px; font-weight:600; color:#1a3d2b; }
-  .dp-food-date { font-size:10px; color:#aaa; font-weight:300; margin-top:1px; }
-  .dp-risk-pill { font-size:9px; padding:3px 9px; border-radius:10px; font-weight:600; letter-spacing:0.04em; border:1px solid; }
-  .dp-score-bar-wrap { margin-top:4px; }
-  .dp-score-bar-bg { height:3px; background:#f0ede8; border-radius:2px; overflow:hidden; width:80px; }
-  .dp-score-bar { height:3px; border-radius:2px; transition:width 0.8s ease; }
-  .dp-empty { text-align:center; padding:40px 16px; color:#aaa; font-size:13px; font-weight:300; line-height:1.7; }
-  .dp-grade { font-family:'Playfair Display',serif; font-size:36px; font-weight:600; line-height:1; }
-  .dp-donut-wrap { display:flex; align-items:center; gap:16px; padding:14px 16px; }
-  .dp-legend { display:flex; flex-direction:column; gap:6px; flex:1; }
-  .dp-legend-row { display:flex; align-items:center; gap:8px; font-size:11px; }
-  .dp-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .dp-legend-label { color:#555; flex:1; }
-  .dp-legend-count { font-weight:600; color:#1a3d2b; font-size:12px; }
-  .dp-weekly-bar { display:flex; align-items:flex-end; gap:4px; height:60px; }
-  .dp-week-col { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; }
-  .dp-week-bar { width:100%; border-radius:4px 4px 0 0; transition:height 0.6s ease; min-height:2px; }
-  .dp-week-label { font-size:8px; color:#aaa; font-weight:300; }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .dp-fade { animation:fadeUp 0.3s ease forwards; }
-
-  @media print {
-    body, html { background: #fff !important; }
-    .dp-root { background: #fff !important; padding-bottom: 0 !important; }
-    .dp-header { background: #1a3d2b !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .dp-stat { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .dp-risk-pill { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .dp-legend-dot { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .dp-export-btn, nav, .chatbot-fab, button[style*="position: fixed"] { display: none !important; }
-  }
-`
-
-function DonutChart({ data, size = 100 }) {
+function DonutChart({ data, size = 120 }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   if (!total) return null
   let offset = 0
-  const r = 38
+  const r = 46
   const cx = size / 2
   const cy = size / 2
   const circumference = 2 * Math.PI * r
@@ -80,14 +29,15 @@ function DonutChart({ data, size = 100 }) {
   })
 
   return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f4f1eb" strokeWidth="14" />
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} className="drop-shadow-lg">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="16" />
       {slices.map((s, i) => (
         <circle key={i} cx={cx} cy={cy} r={r} fill="none"
-          stroke={s.color} strokeWidth="14"
+          stroke={s.color} strokeWidth="16"
           strokeDasharray={`${s.dash} ${circumference}`}
           strokeDashoffset={-s.offset}
-          strokeLinecap="butt"
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out"
         />
       ))}
     </svg>
@@ -101,14 +51,21 @@ export default function DiaryPage() {
   const [digest, setDigest] = useState(null)
   const [loadingDigest, setLoadingDigest] = useState(false)
 
-  const total  = scanHistory.length
-  const high   = scanHistory.filter(s => ['HIGH','CRITICAL'].includes(s.risk_level)).length
-  const avg    = total ? Math.round(scanHistory.reduce((a, s) => a + (s.safety_score || 50), 0) / total) : 0
-  const grade  = avg >= 80 ? 'A' : avg >= 65 ? 'B' : avg >= 50 ? 'C' : avg >= 35 ? 'D' : 'F'
-  const gradeColor = grade === 'A' ? '#27500A' : grade === 'B' ? '#639922' : grade === 'C' ? '#e07c1a' : '#c0392b'
+  const total = scanHistory.length
+  const high = scanHistory.filter(s => ['HIGH', 'CRITICAL'].includes(s.risk_level)).length
+  const avg = total ? Math.round(scanHistory.reduce((a, s) => a + (s.safety_score || 50), 0) / total) : 0
+  const grade = avg >= 80 ? 'A' : avg >= 65 ? 'B' : avg >= 50 ? 'C' : avg >= 35 ? 'D' : 'F'
+
+  const gradeConfig = grade === 'A' 
+    ? { color: 'text-brand', bg: 'bg-brand/10', border: 'border-brand/30' } 
+    : grade === 'B' 
+    ? { color: 'text-brand-light', bg: 'bg-brand-light/10', border: 'border-brand-light/30' } 
+    : grade === 'C' 
+    ? { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' } 
+    : { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
 
   // Risk distribution
-  const riskCounts = ['LOW','MEDIUM','HIGH','CRITICAL'].map(r => ({
+  const riskCounts = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(r => ({
     label: r,
     value: scanHistory.filter(s => s.risk_level === r).length,
     color: RISK_COLOR[r],
@@ -121,9 +78,7 @@ export default function DiaryPage() {
     const label = d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2)
     const dateStr = d.toDateString()
     const scans = scanHistory.filter(s => new Date(s.date).toDateString() === dateStr)
-    const avgScore = scans.length
-      ? Math.round(scans.reduce((a, s) => a + (s.safety_score || 50), 0) / scans.length)
-      : 0
+    const avgScore = scans.length ? Math.round(scans.reduce((a, s) => a + (s.safety_score || 50), 0) / scans.length) : 0
     return { label, scans: scans.length, avgScore }
   })
   const maxScans = Math.max(...weekDays.map(d => d.scans), 1)
@@ -133,286 +88,267 @@ export default function DiaryPage() {
     acc[s.food_name] = (acc[s.food_name] || 0) + 1
     return acc
   }, {})
-  const topFoods = Object.entries(foodFreq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+  const topFoods = Object.entries(foodFreq).sort((a, b) => b[1] - a[1]).slice(0, 3)
 
-  // Fetch AI insights from dedicated diary endpoint — no scan/text abuse
+  // Fetch AI insights
   useEffect(() => {
     if (scanHistory.length < 3) return
     setLoadingInsights(true)
-    const summary = scanHistory.slice(0, 10).map(s => ({
-      food:  s.food_name,
-      risk:  s.risk_level,
-      score: s.safety_score,
-    }))
+    const summary = scanHistory.slice(0, 10).map(s => ({ food: s.food_name, risk: s.risk_level, score: s.safety_score }))
     fetch(`${API_URL}/diary/insights`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scan_history: summary, lang }),
     })
-    .then(r => r.json())
-    .then(data => {
-      if (data.main) {
-        setAiInsights({
-          main:    data.main,
-          warning: data.warning || null,
-          tip:     data.tip    || null,
-          pattern: data.riskPattern || null,
-          swap:    data.safeSwap || null,
-        })
-      }
-    })
-    .catch(() => {})
-    .finally(() => setLoadingInsights(false))
+      .then(r => r.json())
+      .then(data => {
+        if (data.main) {
+          setAiInsights({
+            main: data.main, warning: data.warning || null, tip: data.tip || null,
+            pattern: data.riskPattern || null, swap: data.safeSwap || null,
+          })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingInsights(false))
   }, [scanHistory.length])
 
-
-  // Fetch weekly overconsumption digest
+  // Fetch weekly digest
   useEffect(() => {
     if (!token || scanHistory.length === 0) return
     setLoadingDigest(true)
-    fetch(`${API_URL}/diary/overconsumption`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then(r => r.json())
-    .then(data => { if (data.categories) setDigest(data) })
-    .catch(() => {})
-    .finally(() => setLoadingDigest(false))
+    fetch(`${API_URL}/diary/overconsumption`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.categories) setDigest(data) })
+      .catch(() => {})
+      .finally(() => setLoadingDigest(false))
   }, [scanHistory.length])
 
   return (
-    <div className="dp-root">
-      <style>{STYLES}{OC_STYLES}</style>
+    <div className="flex flex-col animate-fade-up px-4 md:px-8 py-6 max-w-4xl mx-auto w-full pb-32">
+      <style>{OC_STYLES}</style>
 
       {/* Header */}
-      <div className="dp-header">
-        <div className="dp-title">{t(lang, 'foodDiary')}</div>
-        <div className="dp-sub">{t(lang, 'diarySub')}</div>
-        <div className="dp-stats">
-          <div className="dp-stat">
-            <div className="dp-stat-val" style={{ color: '#c9a84c' }}>{total}</div>
-            <div className="dp-stat-lbl">{t(lang, 'totalScans')}</div>
+      <div className="relative p-6 md:p-8 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden mb-8 backdrop-blur-xl">
+        <div className="absolute -right-32 -top-32 w-96 h-96 bg-brand/10 blur-[80px] rounded-full pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-brand/10 text-brand border border-brand/20 flex flex-col items-center justify-center shrink-0">
+              <BookOpen className="w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif font-bold text-white mb-1">{t(lang, 'foodDiary')}</h1>
+              <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.15em]">{t(lang, 'diarySub')}</p>
+            </div>
           </div>
-          <div className="dp-stat">
-            <div className="dp-stat-val" style={{ color: high > 0 ? '#E24B4A' : '#c9a84c' }}>{high}</div>
-            <div className="dp-stat-lbl">{t(lang, 'highRisk')}</div>
-          </div>
-          <div className="dp-stat">
-            <div className="dp-grade" style={{ color: gradeColor }}>{total ? grade : '—'}</div>
-            <div className="dp-stat-lbl">{t(lang, 'reportGrade')}</div>
+
+          <div className="grid grid-cols-3 gap-3 md:gap-4 w-full md:w-auto">
+            <div className="bg-surface-200/50 border border-white/5 rounded-2xl p-3 md:p-4 flex flex-col items-center justify-center backdrop-blur-md">
+              <span className="text-2xl font-serif font-bold text-white leading-none mb-1">{total}</span>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'totalScans')}</span>
+            </div>
+            <div className="bg-surface-200/50 border border-white/5 rounded-2xl p-3 md:p-4 flex flex-col items-center justify-center backdrop-blur-md relative overflow-hidden">
+              {high > 0 && <div className="absolute top-0 right-0 w-8 h-8 bg-red-500/20 blur-xl rounded-full" />}
+              <span className={`text-2xl font-serif font-bold leading-none mb-1 \${high > 0 ? 'text-red-400' : 'text-white'}`}>{high}</span>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center flex items-center gap-1">
+                {high > 0 && <AlertTriangle className="w-2.5 h-2.5 text-red-500" />} {t(lang, 'highRisk')}
+              </span>
+            </div>
+            <div className={`bg-surface-200/50 border \${gradeConfig.border} rounded-2xl p-3 md:p-4 flex flex-col items-center justify-center backdrop-blur-md relative overflow-hidden`}>
+              <div className={`absolute inset-0 \${gradeConfig.bg} opacity-50`} />
+              <span className={`relative z-10 text-3xl font-serif font-bold \${gradeConfig.color} leading-none mb-0.5`}>{total ? grade : '—'}</span>
+              <span className="relative z-10 text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'reportGrade')}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Export PDF button */}
       {total > 0 && (
-        <div style={{ padding: '0 16px' }}>
-          <button
-            className="dp-export-btn"
-            onClick={() => window.print()}
-            style={{
-              width: '100%', padding: '10px', borderRadius: 10,
-              border: '1px solid #ece8df', background: '#fff',
-              color: '#1a3d2b', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
-          >
-            📄 {t(lang, 'downloadPDF')}
-          </button>
-        </div>
+        <button 
+          onClick={() => window.print()}
+          className="flex items-center justify-center gap-2 w-full md:w-auto md:ml-auto mb-6 px-6 py-3 rounded-xl bg-surface-100 border border-white/10 hover:border-white/20 hover:bg-surface-200 text-white/70 hover:text-white transition-all text-sm font-bold shadow-sm"
+        >
+          <Download className="w-4 h-4" /> {t(lang, 'downloadPDF')}
+        </button>
       )}
 
       {total === 0 ? (
-        <div className="dp-empty">
-          {t(lang, 'noScansYet')}<br />
-          {t(lang, 'startScanning')}
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center border border-dashed border-white/10 rounded-[32px] bg-surface-100/30">
+          <FileText className="w-16 h-16 text-white/10 mb-6" />
+          <p className="text-white/50 text-[15px] leading-relaxed max-w-sm font-medium">
+            {t(lang, 'noScansYet')}<br />
+            <span className="text-white/30 text-sm mt-2 block">{t(lang, 'startScanning')}</span>
+          </p>
         </div>
       ) : (
-        <>
-          {/* Risk Distribution */}
-          <div className="dp-section dp-fade">
-            <div className="dp-section-label">{t(lang, 'riskDistribution')}</div>
-            <div className="dp-card">
-              <div className="dp-donut-wrap">
-                <DonutChart data={riskCounts} size={100} />
-                <div className="dp-legend">
-                  {riskCounts.map((r, i) => (
-                    <div key={i} className="dp-legend-row">
-                      <div className="dp-legend-dot" style={{ background: r.color }} />
-                      <span className="dp-legend-label">{r.label}</span>
-                      <span className="dp-legend-count">{r.value}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
+          
+          <div className="flex flex-col gap-6">
+            {/* Risk Distribution */}
+            <div className="animate-fade-up">
+              <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                <PieChart className="w-3.5 h-3.5" /> {t(lang, 'riskDistribution')}
+              </h3>
+              <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden p-6 shadow-xl relative backdrop-blur-sm">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-white/5 rounded-full blur-[60px] pointer-events-none" />
+                <div className="flex flex-col sm:flex-row items-center gap-8 relative z-10">
+                  <div className="shrink-0 relative">
+                    <DonutChart data={riskCounts} size={130} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-serif font-bold text-white leading-none">{total}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex flex-col gap-3 w-full">
+                    {riskCounts.map((r, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm py-1.5 border-b border-white/5 last:border-0">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: r.color, boxShadow: `0 0 8px \${r.color}` }} />
+                          <span className="text-white/60 font-medium">{r.label}</span>
+                        </div>
+                        <span className="font-bold text-white/90 bg-surface-200 px-2 py-0.5 rounded-md border border-white/5">{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Weekly Activity */}
-          <div className="dp-section dp-fade">
-            <div className="dp-section-label">{t(lang, 'last7Days')}</div>
-            <div className="dp-card">
-              <div className="dp-card-inner">
-                <div className="dp-weekly-bar">
-                  {weekDays.map((d, i) => (
-                    <div key={i} className="dp-week-col">
-                      <div className="dp-week-bar" style={{
-                        height: d.scans ? `${(d.scans / maxScans) * 48}px` : '2px',
-                        background: d.scans
-                          ? `linear-gradient(180deg, #c9a84c, #1a3d2b)`
-                          : '#f0ede8',
-                      }} />
-                      <div className="dp-week-label">{d.label}</div>
+            {/* AI Insights */}
+            {(aiInsights || loadingInsights) && (
+              <div className="animate-fade-up">
+                <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-gold" /> {t(lang, 'aiInsights')}
+                </h3>
+                <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden p-5 shadow-xl">
+                  {loadingInsights ? (
+                    <div className="flex items-center justify-center py-6 text-white/30 text-xs gap-2 font-bold uppercase tracking-widest">
+                      <RefreshCw className="w-4 h-4 animate-spin" /> {t(lang, 'analyzingHistory')}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {aiInsights?.main && (
+                        <div className="p-4 rounded-xl bg-surface-200 border border-white/5 text-[13px] text-white/80 leading-relaxed flex gap-3">
+                          <Lightbulb className="w-4 h-4 text-brand shrink-0 mt-0.5" /> <p>{aiInsights.main}</p>
+                        </div>
+                      )}
+                      {aiInsights?.warning && (
+                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-[13px] text-red-400 leading-relaxed flex gap-3">
+                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> <p>{aiInsights.warning}</p>
+                        </div>
+                      )}
+                      {aiInsights?.pattern && (
+                        <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-[13px] text-orange-400 leading-relaxed flex gap-3">
+                          <BarChart2 className="w-4 h-4 shrink-0 mt-0.5" /> <p><span className="font-bold text-orange-300 mr-2">{t(lang, 'pattern')}</span>{aiInsights.pattern}</p>
+                        </div>
+                      )}
+                      {aiInsights?.swap && (
+                        <div className="p-4 rounded-xl bg-brand/10 border border-brand/20 text-[13px] text-brand leading-relaxed flex gap-3">
+                          <RefreshCw className="w-4 h-4 shrink-0 mt-0.5" /> <p><span className="font-bold text-brand-light mr-2">{t(lang, 'saferSwap')}</span>{aiInsights.swap}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Top Foods */}
-          {topFoods.length > 0 && (
-            <div className="dp-section dp-fade">
-              <div className="dp-section-label">{t(lang, 'mostScanned')}</div>
-              <div className="dp-card">
-                {topFoods.map(([food, count], i) => (
-                  <div key={i} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '10px 16px',
-                    borderBottom: i < topFoods.length - 1 ? '1px solid #f4f1eb' : 'none',
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3d2b' }}>{food}</div>
-                    <div style={{ fontSize: 11, color: '#aaa', fontWeight: 300 }}>{count}× {t(lang, 'timesScanned')}</div>
+          <div className="flex flex-col gap-6">
+            {/* Weekly Activity */}
+            <div className="animate-fade-up">
+              <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                <BarChart2 className="w-3.5 h-3.5" /> {t(lang, 'last7Days')}
+              </h3>
+              <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden p-6 shadow-xl flex items-end justify-between h-[160px] pb-4">
+                {weekDays.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 flex-1 group relative">
+                    {d.scans > 0 && (
+                      <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-300 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 z-20 pointer-events-none whitespace-nowrap">
+                        {d.scans} scans ({d.avgScore}/100)
+                      </div>
+                    )}
+                    <div className="w-full px-1.5 flex justify-center">
+                      <div 
+                        className={`w-full max-w-[24px] rounded-t-lg transition-all duration-1000 ease-in-out hover:brightness-125 hover:shadow-[0_0_12px_rgba(0,224,156,0.3)]
+                          \${d.scans ? 'bg-gradient-to-t from-brand/40 to-brand border-t border-brand-light/50' : 'bg-surface-200'}`}
+                        style={{ height: d.scans ? `${Math.max((d.scans / maxScans) * 100, 4)}px` : '4px' }} 
+                      />
+                    </div>
+                    <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold group-hover:text-white/80 transition-colors">{d.label}</div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-
-          {/* Overconsumption Digest */}
-          <div className="dp-section dp-fade">
-            <div className="dp-section-label">{t(lang, 'weeklyOverconsumption')}</div>
-            <div className="dp-card">
-              <div className="dp-card-inner">
-                <DigestPanel digest={digest} loading={loadingDigest} />
+            {/* Overconsumption Digest */}
+            <div className="animate-fade-up">
+              <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                <FileWarning className="w-3.5 h-3.5" /> {t(lang, 'weeklyOverconsumption')}
+              </h3>
+              <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden p-5 shadow-xl">
+                 <DigestPanel digest={digest} loading={loadingDigest} />
               </div>
             </div>
-          </div>
 
-          {/* AI Insights */}
-          {(aiInsights || loadingInsights) && (
-            <div className="dp-section dp-fade">
-              <div className="dp-section-label">{t(lang, 'aiInsights')}</div>
-              <div className="dp-card">
-                <div className="dp-card-inner">
-                  {loadingInsights ? (
-                    <div style={{ fontSize: 12, color: '#aaa', fontWeight: 300, padding: '4px 0' }}>
-                      🤖 {t(lang, 'analyzingHistory')}
-                    </div>
-                  ) : (
-                    <>
-                      {aiInsights?.main && (
-                        <div className="dp-insight" style={{ background: '#f5f7f3', borderColor: '#e0e8da', color: '#1a3d2b' }}>
-                          <span className="dp-insight-icon">💡</span>{aiInsights.main}
-                        </div>
-                      )}
-                      {aiInsights?.warning && (
-                        <div className="dp-insight" style={{ background: '#fff0f0', borderColor: '#f7c1c1', color: '#791F1F' }}>
-                          <span className="dp-insight-icon">⚠️</span>{aiInsights.warning}
-                        </div>
-                      )}
-                      {aiInsights?.pattern && (
-                        <div className="dp-insight" style={{ background: '#fff8ed', borderColor: '#fac775', color: '#633806' }}>
-                          <span className="dp-insight-icon">📈</span>{t(lang, 'pattern')}: {aiInsights.pattern}
-                        </div>
-                      )}
-                      {aiInsights?.swap && (
-                        <div className="dp-insight" style={{ background: '#eaf3de', borderColor: '#c0dd97', color: '#27500A' }}>
-                          <span className="dp-insight-icon">🔄</span>{t(lang, 'saferSwap')}: {aiInsights.swap}
-                        </div>
-                      )}
-                      {aiInsights?.tip && (
-                        <div className="dp-insight" style={{ background: '#fff8ed', borderColor: '#fac775', color: '#633806' }}>
-                          <span className="dp-insight-icon">→</span>{aiInsights.tip}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Avg score */}
-          <div className="dp-section dp-fade">
-            <div className="dp-section-label">{t(lang, 'avgSafetyScore')}</div>
-            <div className="dp-card">
-              <div className="dp-card-inner" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 600,
-                  background: avg >= 75 ? '#eaf3de' : avg >= 50 ? '#fff8ed' : '#fff0f0',
-                  color: avg >= 75 ? '#27500A' : avg >= 50 ? '#633806' : '#791F1F',
-                  border: `2px solid ${avg >= 75 ? '#c0dd97' : avg >= 50 ? '#fac775' : '#f7c1c1'}`,
-                }}>
-                  {avg}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3d2b', marginBottom: 6 }}>
-                    {avg >= 80 ? t(lang, 'excellentChoices') : avg >= 65 ? t(lang, 'goodOverall') : avg >= 50 ? t(lang, 'roomImprovement') : t(lang, 'highRiskDiet')}
-                  </div>
-                  <div style={{ height: 6, background: '#f0ede8', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', borderRadius: 4,
-                      width: `${avg}%`,
-                      background: avg >= 75 ? '#639922' : avg >= 50 ? '#e07c1a' : '#c0392b',
-                      transition: 'width 1s ease',
-                    }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Scan History */}
-          <div className="dp-section dp-fade">
-            <div className="dp-section-label">{t(lang, 'recentScans')}</div>
-            <div className="dp-card">
-              {scanHistory.slice(0, 20).map((s, i) => (
-                <div key={s.id || i} className="dp-history-row">
-                  <div>
-                    <div className="dp-food-name">{s.food_name}</div>
-                    <div className="dp-food-date">{new Date(s.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</div>
-                    <div className="dp-score-bar-wrap">
-                      <div className="dp-score-bar-bg">
-                        <div className="dp-score-bar" style={{
-                          width: `${s.safety_score || 50}%`,
-                          background: RISK_COLOR[s.risk_level] || '#639922',
-                        }} />
+            {/* Top Foods */}
+            {topFoods.length > 0 && (
+              <div className="animate-fade-up">
+                <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5" /> {t(lang, 'mostScanned')}
+                </h3>
+                <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden divide-y divide-white/5 shadow-xl">
+                  {topFoods.map(([food, count], i) => (
+                    <div key={i} className="flex justify-between items-center p-4 hover:bg-surface-200/50 transition-colors">
+                      <div className="text-sm font-bold text-white/90">{food}</div>
+                      <div className="text-[11px] font-bold text-white/40 uppercase tracking-widest bg-surface-300 px-2.5 py-1 rounded-lg border border-white/5">
+                        {count}×
                       </div>
                     </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span className="dp-risk-pill" style={{
-                      background: RISK_BG[s.risk_level] || '#eee',
-                      color: RISK_COLOR[s.risk_level] || '#666',
-                      borderColor: RISK_BORDER[s.risk_level] || '#ddd',
-                    }}>
-                      {s.risk_level || '?'}
-                    </span>
-                    <div style={{ fontSize: 11, color: '#aaa', fontWeight: 300, marginTop: 4 }}>
-                      {s.safety_score || 50}/100
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
-        </>
+          
+          {/* Scan History Fill */}
+          <div className="md:col-span-2 animate-fade-up">
+             <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
+                <ShieldAlert className="w-3.5 h-3.5" /> {t(lang, 'recentScans')}
+             </h3>
+             <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden shadow-xl">
+               <div className="divide-y divide-white/5">
+                 {scanHistory.slice(0, 10).map((s, i) => {
+                   const rCfg = { bg: RISK_BG[s.risk_level] || RISK_BG.LOW, text: RISK_TEXT[s.risk_level] || RISK_TEXT.LOW, border: RISK_BORDER[s.risk_level] || RISK_BORDER.LOW }
+                   const barColor = RISK_COLOR[s.risk_level] || RISK_COLOR.LOW
+
+                   return (
+                    <div key={s.id || i} className="p-4 sm:p-5 flex justify-between items-center hover:bg-surface-200/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-white/90 mb-0.5">{s.food_name}</div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-widest font-medium mb-2.5">
+                          {new Date(s.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+                        </div>
+                        <div className="h-1.5 w-full max-w-[120px] bg-surface-300 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${s.safety_score || 50}%`, backgroundColor: barColor }} />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                         <span className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border shrink-0 \${rCfg.bg} \${rCfg.text} \${rCfg.border}`}>
+                          {s.risk_level || '?'}
+                        </span>
+                        <span className="text-[11px] font-medium text-white/30">
+                          {s.safety_score || 50} / 100
+                        </span>
+                      </div>
+                    </div>
+                   )
+                 })}
+               </div>
+             </div>
+          </div>
+
+        </div>
       )}
     </div>
   )

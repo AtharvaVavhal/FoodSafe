@@ -1,6 +1,7 @@
 // frontend/src/pages/MealPlannerPage.jsx
 import { useState } from 'react'
 import { useStore } from '../store'
+import { t } from '../i18n/translations'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -160,7 +161,7 @@ const MEAL_ICONS = {
 const MEAL_ORDER = ['breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']
 
 export default function MealPlannerPage() {
-  const { scanHistory, activeMember } = useStore()
+  const { scanHistory, activeMember, lang } = useStore()
   const [planType, setPlanType] = useState('single')
   const [plan, setPlan]         = useState(null)
   const [loading, setLoading]   = useState(false)
@@ -199,12 +200,12 @@ export default function MealPlannerPage() {
 
       {/* Header */}
       <div className="mp-header">
-        <div className="mp-header-title">🥗 AI Meal Planner</div>
-        <div className="mp-header-sub">Safe Maharashtra meals · Based on your scan history</div>
+        <div className="mp-header-title">🥗 {t(lang, 'mealPlanner')}</div>
+        <div className="mp-header-sub">{t(lang, 'mealPlannerSub')}</div>
 
         {activeMember && (
           <div className="mp-member-info">
-            ⚕ Personalizing for {activeMember.name}
+            ⚕ {t(lang, 'personalizingFor')} {activeMember.name}
             {activeMember.conditions?.length > 0 && ` (${activeMember.conditions.join(', ')})`}
           </div>
         )}
@@ -214,13 +215,13 @@ export default function MealPlannerPage() {
             className={`mp-type-btn${planType === 'single' ? ' active' : ''}`}
             onClick={() => { setPlanType('single'); setPlan(null) }}
           >
-            📅 Today's Plan
+            📅 {t(lang, 'todaysPlan')}
           </button>
           <button
             className={`mp-type-btn${planType === 'weekly' ? ' active' : ''}`}
             onClick={() => { setPlanType('weekly'); setPlan(null) }}
           >
-            🗓 Weekly Plan
+            🗓 {t(lang, 'weeklyPlan')}
           </button>
         </div>
       </div>
@@ -228,20 +229,19 @@ export default function MealPlannerPage() {
       {/* Body */}
       <div className="mp-body">
         <button className="mp-generate-btn" onClick={generate} disabled={loading}>
-          {loading ? '⏳ Generating your plan…' : '✨ Generate Safe Meal Plan'}
+          {loading ? `⏳ ${t(lang, 'generatingPlan')}` : `✨ ${t(lang, 'generatePlan')}`}
         </button>
 
         {highRiskFoods.length > 0 && !loading && (
           <div className="mp-avoided">
-            ⚠ Avoiding from your scan history: {highRiskFoods.join(', ')}
+            ⚠ {t(lang, 'avoidingFoods')}: {highRiskFoods.join(', ')}
           </div>
         )}
 
         {loading && (
           <div className="mp-loading">
-            🤖 Creating your personalized<br />
-            Maharashtra meal plan…<br />
-            <span style={{ fontSize: 10 }}>This takes a few seconds</span>
+            🤖 {t(lang, 'creatingPlan')}<br />
+            <span style={{ fontSize: 10 }}>{t(lang, 'takesSeconds')}</span>
           </div>
         )}
 
@@ -287,7 +287,7 @@ export default function MealPlannerPage() {
 
             {plan.nutrition_summary && (
               <>
-                <div className="mp-section-label" style={{ marginTop: 4 }}>Nutrition Summary</div>
+                <div className="mp-section-label" style={{ marginTop: 4 }}>{t(lang, 'nutritionSummary')}</div>
                 <div style={{ fontSize:12, color:'#555', background:'#fff', padding:'10px 14px', borderRadius:12, border:'1px solid #ece8df', marginBottom:10 }}>
                   {plan.nutrition_summary}
                 </div>
@@ -296,7 +296,7 @@ export default function MealPlannerPage() {
 
             {plan.safety_tips?.length > 0 && (
               <>
-                <div className="mp-section-label">Safety Tips</div>
+                <div className="mp-section-label">{t(lang, 'safetyTips')}</div>
                 <div className="mp-card">
                   {plan.safety_tips.map((tip, i) => (
                     <div key={i} className="mp-tip-row">
@@ -343,7 +343,7 @@ export default function MealPlannerPage() {
 
             {plan.safety_tips?.length > 0 && (
               <>
-                <div className="mp-section-label">Safety Tips</div>
+                <div className="mp-section-label">{t(lang, 'safetyTips')}</div>
                 <div className="mp-card">
                   {plan.safety_tips.map((tip, i) => (
                     <div key={i} className="mp-tip-row">

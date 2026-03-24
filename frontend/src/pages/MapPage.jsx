@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
+import { t } from '../i18n/translations'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -336,20 +337,20 @@ export default function MapPage() {
 
       {/* Header */}
       <div className="mp-header">
-        <div className="mp-title">Maharashtra Risk Map</div>
-        <div className="mp-subtitle">Live community adulteration reports</div>
+        <div className="mp-title">{t(lang, 'riskMap')}</div>
+        <div className="mp-subtitle">{t(lang, 'riskMapSub')}</div>
         <div className="mp-stats-row">
           <div className="mp-stat">
             <div className="mp-stat-num">{totalReports}</div>
-            <div className="mp-stat-label">Total Reports</div>
+            <div className="mp-stat-label">{t(lang, 'totalReports')}</div>
           </div>
           <div className="mp-stat">
             <div className="mp-stat-num">{cities.length}</div>
-            <div className="mp-stat-label">Cities</div>
+            <div className="mp-stat-label">{t(lang, 'cities')}</div>
           </div>
           <div className="mp-stat">
             <div className="mp-stat-num" style={{ color: '#E24B4A' }}>{criticalCount + highCount}</div>
-            <div className="mp-stat-label">High Risk</div>
+            <div className="mp-stat-label">{t(lang, 'highRisk')}</div>
           </div>
         </div>
       </div>
@@ -366,7 +367,7 @@ export default function MapPage() {
                 color: active ? '#fff' : '#666',
                 borderColor: active ? (cfg?.dot || '#1a3d2b') : '#ece8df',
               }}>
-                {f === 'ALL' ? 'All Cities' : cfg.label}
+                {f === 'ALL' ? t(lang, 'allCities') : cfg.label}
               </button>
             )
           })}
@@ -377,7 +378,7 @@ export default function MapPage() {
       <div className="mp-section">
         <div className="mp-map-wrap">
           {loading ? (
-            <div className="mp-loading">Loading map data…</div>
+            <div className="mp-loading">{t(lang, 'loadingMap')}</div>
           ) : (
             <svg width="100%" viewBox="0 0 520 430" style={{ display: 'block' }}>
               {/* Maharashtra outline */}
@@ -453,11 +454,11 @@ export default function MapPage() {
             </div>
             <div className="mp-city-stats">
               <div className="mp-city-stat">
-                <div className="mp-city-stat-label">Reports</div>
+                <div className="mp-city-stat-label">{t(lang, 'reports')}</div>
                 <div className="mp-city-stat-val">{sel.reports}</div>
               </div>
               <div className="mp-city-stat">
-                <div className="mp-city-stat-label">Top Risky Food</div>
+                <div className="mp-city-stat-label">{t(lang, 'topRiskyFood')}</div>
                 <div className="mp-city-stat-food">{sel.topFood || 'Various'}</div>
               </div>
             </div>
@@ -469,9 +470,9 @@ export default function MapPage() {
       <div className="mp-section">
         <div className="mp-section-label">{filtered.length} cities</div>
         {loading ? (
-          <div className="mp-loading">Loading…</div>
+          <div className="mp-loading">{t(lang, 'loading')}</div>
         ) : filtered.length === 0 ? (
-          <div className="mp-empty">No reports yet for this filter.</div>
+          <div className="mp-empty">{t(lang, 'noReports')}</div>
         ) : (
           <div className="mp-list-card">
             {[...filtered]
@@ -487,7 +488,7 @@ export default function MapPage() {
                     <div className="mp-list-food">{city.topFood || 'Various'}</div>
                   </div>
                   <div className="mp-list-right">
-                    <span className="mp-list-count">{city.reports} reports</span>
+                    <span className="mp-list-count">{city.reports} {t(lang, 'reports')}</span>
                     <span className="mp-sev" style={{
                       background: RISK_CONFIG[city.risk].fill,
                       color: RISK_CONFIG[city.risk].text,

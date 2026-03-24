@@ -3,6 +3,8 @@
 // Add route in App.jsx: <Route path="/compare" element={<BrandComparison />} />
 
 import { useState, useEffect } from 'react'
+import { useStore } from '../store'
+import { t } from '../i18n/translations'
 
 const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -143,6 +145,7 @@ const scoreBg    = s => s >= 85 ? '#639922' : s >= 75 ? '#E07C1A' : '#A32D2D'
 const ALL_CATS   = [...new Set(ALL_BRANDS.map(b => b.food))]
 
 export default function BrandComparison() {
+  const { lang } = useStore()
   const [activeCat, setActiveCat]   = useState('Turmeric')
   const [selected,  setSelected]    = useState([])
   const [compared,  setCompared]    = useState(null)
@@ -193,8 +196,8 @@ export default function BrandComparison() {
 
       {/* Header */}
       <div className="bc-header">
-        <div className="bc-title">Brand Compare</div>
-        <div className="bc-sub">Pick up to 4 brands · compare side by side</div>
+        <div className="bc-title">{t(lang, 'brandCompare')}</div>
+        <div className="bc-sub">{t(lang, 'brandCompareSub')}</div>
       </div>
 
       {/* Category pills */}
@@ -211,8 +214,8 @@ export default function BrandComparison() {
       {/* Brand picker */}
       <div className="bc-section">
         <div className="bc-label">
-          {activeCat} brands — select 2 to 4 to compare
-          {selected.length > 0 && ` (${selected.length} selected)`}
+          {activeCat} {t(lang, 'brandsSelect')}
+          {selected.length > 0 && ` (${selected.length} ${t(lang, 'selected')})`}
         </div>
         <div className="bc-picker-grid">
           {filtered.map(b => {
@@ -244,10 +247,10 @@ export default function BrandComparison() {
           onClick={handleCompare}
         >
           {loading
-            ? '⏳ Building comparison…'
+            ? `⏳ ${t(lang, 'buildingComparison')}`
             : selected.length < 2
-              ? `Select ${2 - selected.length} more brand${selected.length === 1 ? '' : 's'}`
-              : `Compare ${selected.length} brands →`
+              ? `${t(lang, 'selectMore')} (${2 - selected.length})`
+              : `${t(lang, 'compareBrands')} (${selected.length}) →`
           }
         </button>
       </div>
@@ -255,7 +258,7 @@ export default function BrandComparison() {
       {/* Comparison Panel */}
       {compared && (
         <div id="bc-result" className="bc-section bc-animate">
-          <div className="bc-label">Comparison — {activeCat}</div>
+          <div className="bc-label">{t(lang, 'comparison')} — {activeCat}</div>
           <div className="bc-panel">
 
             {/* Column headers */}
@@ -266,7 +269,7 @@ export default function BrandComparison() {
                   <div className="bc-col-name">{b.brand}</div>
                   <div className="bc-col-price">{b.price}</div>
                   {b.id === winner?.id && (
-                    <div className="bc-winner">⭐ TOP PICK</div>
+                    <div className="bc-winner">⭐ {t(lang, 'topPick')}</div>
                   )}
                 </div>
               ))}
@@ -274,7 +277,7 @@ export default function BrandComparison() {
 
             {/* Safety Score */}
             <div className="bc-row">
-              <div className="bc-row-label">Safety score</div>
+              <div className="bc-row-label">{t(lang, 'safetyScore')}</div>
               {compared.map(b => (
                 <div key={b.id} className="bc-cell">
                   <div className="bc-score-num" style={{ color: scoreColor(b.score) }}>
@@ -293,11 +296,11 @@ export default function BrandComparison() {
 
             {/* FSSAI */}
             <div className="bc-row">
-              <div className="bc-row-label">FSSAI certified</div>
+              <div className="bc-row-label">{t(lang, 'fssaiCertified')}</div>
               {compared.map(b => (
                 <div key={b.id} className="bc-cell">
                   <span className={`bc-tag ${b.fssai ? 'bc-tag-ok' : 'bc-tag-warn'}`}>
-                    {b.fssai ? 'FSSAI ✓' : 'Not verified'}
+                    {b.fssai ? t(lang, 'fssaiYes') : t(lang, 'notVerified')}
                   </span>
                 </div>
               ))}
@@ -305,7 +308,7 @@ export default function BrandComparison() {
 
             {/* Why safe */}
             <div className="bc-row">
-              <div className="bc-row-label">Why it's safe / not</div>
+              <div className="bc-row-label">{t(lang, 'whySafe')}</div>
               {compared.map(b => (
                 <div key={b.id} className="bc-cell">
                   <div className="bc-why">{b.why}</div>
@@ -315,7 +318,7 @@ export default function BrandComparison() {
 
             {/* Adulterants to watch */}
             <div className="bc-row">
-              <div className="bc-row-label">Common adulterants to watch</div>
+              <div className="bc-row-label">{t(lang, 'adulterantsWatch')}</div>
               {compared.map(b => (
                 <div key={b.id} className="bc-cell">
                   <div className="bc-adult">
@@ -332,17 +335,17 @@ export default function BrandComparison() {
 
             {/* Home test */}
             <div className="bc-row">
-              <div className="bc-row-label">Home test — {activeCat}</div>
+              <div className="bc-row-label">{t(lang, 'homeTest')} — {activeCat}</div>
               {compared.map(b => (
                 <div key={b.id} className="bc-cell">
-                  <div className="bc-test">🧪 {HOME_TESTS[b.food] || 'No home test available.'}</div>
+                  <div className="bc-test">🧪 {HOME_TESTS[b.food] || t(lang, 'noHomeTest')}</div>
                 </div>
               ))}
             </div>
 
           </div>
 
-          <button className="bc-clear" onClick={reset}>✕ Clear comparison</button>
+          <button className="bc-clear" onClick={reset}>✕ {t(lang, 'clearComparison')}</button>
         </div>
       )}
     </div>

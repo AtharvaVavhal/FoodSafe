@@ -212,7 +212,7 @@ function ShareButton({ result }) {
   return (
     <>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-      <button className="rp-btn-share" onClick={handleShare}>📤 Share</button>
+      <button className="rp-btn-share" onClick={handleShare}>📤 {t(lang, 'share')}</button>
     </>
   )
 }
@@ -336,9 +336,9 @@ export default function ResultPage() {
     return (
       <div style={{ textAlign:'center', padding:'60px 24px', fontFamily:"'DM Sans',sans-serif", background:'#f7f5f0', minHeight:'100vh' }}>
         <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
-        <p style={{ color:'#888', fontSize:14, marginBottom:20, fontWeight:300 }}>No scan result yet.</p>
+        <p style={{ color:'#888', fontSize:14, marginBottom:20, fontWeight:300 }}>{t(lang, 'noResult')}</p>
         <button onClick={() => nav('/')} style={{ padding:'11px 28px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#1a3d2b,#2d6647)', color:'#fff', cursor:'pointer', fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:500 }}>
-          ← Back to Scan
+          {t(lang, 'backToScan')}
         </button>
       </div>
     )
@@ -371,7 +371,7 @@ export default function ResultPage() {
       {/* Hero */}
       <div className="rp-hero" style={{ background: heroBg }}>
         <button className="rp-back" onClick={() => nav('/')} style={{ color:'rgba(245,240,232,0.6)' }}>
-          ← Back to Scan
+          {t(lang, 'backToScan')}
         </button>
         <div className="rp-score-row rp-fade rp-fade-1">
           <div className="rp-ring-wrap">
@@ -392,7 +392,7 @@ export default function ResultPage() {
             </div>
             {activeMember && (
               <div style={{ fontSize:10, color:'rgba(245,240,232,0.5)', marginBottom:6, fontWeight:300 }}>
-                ⚕ Personalized for {activeMember.name}
+                ⚕ {t(lang, 'personalizedFor')} {activeMember.name}
               </div>
             )}
             <span className="rp-risk-badge" style={{ background:cfg.bg, color:cfg.text, border:`1px solid ${cfg.border}` }}>
@@ -423,7 +423,7 @@ export default function ResultPage() {
       {/* Adulterants */}
       {r.adulterants?.length > 0 && (
         <div className="rp-section rp-fade rp-fade-3">
-          <div className="rp-section-label">Common Adulterants</div>
+          <div className="rp-section-label">{t(lang, 'adulterants')}</div>
           <div className="rp-card">
             <div className="rp-card-inner">
               {r.adulterants.map((a, i) => (
@@ -438,7 +438,7 @@ export default function ResultPage() {
                   </div>
                   <div className="rp-adulterant-risk">{a.healthRisk}</div>
                   {a.isPersonalRisk && (
-                    <div className="rp-personal-risk">⚠ High risk for your profile</div>
+                    <div className="rp-personal-risk">⚠ {t(lang, 'highRiskProfile')}</div>
                   )}
                 </div>
               ))}
@@ -451,7 +451,7 @@ export default function ResultPage() {
       {r.fssaiCitations?.length > 0 && (
         <div className="rp-section rp-fade rp-fade-3">
           <div className="rp-section-label">
-            {r.ragGrounded ? '✓ Based on verified FSSAI records' : 'FSSAI Reference'}
+            {r.ragGrounded ? t(lang, 'fssaiVerified') : t(lang, 'fssaiRef')}
           </div>
           <div className="rp-card">
             <div className="rp-card-inner">
@@ -482,7 +482,7 @@ export default function ResultPage() {
                       {c.source && (
                         <a href={c.source} target="_blank" rel="noopener noreferrer"
                           style={{ color: '#c9a84c', textDecoration: 'none', fontWeight: 500 }}>
-                          View source ↗
+                          {t(lang, 'viewSource')}
                         </a>
                       )}
                     </div>
@@ -490,7 +490,7 @@ export default function ResultPage() {
                 </div>
               ))}
               <div style={{ fontSize: 9, color: '#bbb', marginTop: 8, paddingTop: 6, borderTop: '1px solid #f4f1eb' }}>
-                Relevance score (0–100) shown. Higher = closer match to this food item.
+                {t(lang, 'relevanceNote')}
               </div>
             </div>
           </div>
@@ -500,7 +500,7 @@ export default function ResultPage() {
       {/* Home Tests */}
       {validHomeTests.length > 0 && (
         <div className="rp-section rp-fade rp-fade-4">
-          <div className="rp-section-label">Home Tests</div>
+          <div className="rp-section-label">{t(lang, 'homeTests')}</div>
           <div className="rp-card">
             <div className="rp-card-inner">
               {validHomeTests.map((test, i) => (
@@ -521,7 +521,7 @@ export default function ResultPage() {
       {/* Buying Tips */}
       {r.buyingTips?.length > 0 && (
         <div className="rp-section rp-fade rp-fade-4">
-          <div className="rp-section-label">Buying Tips</div>
+          <div className="rp-section-label">{t(lang, 'buyingTips')}</div>
           <div className="rp-card">
             <div className="rp-card-inner">
               {r.buyingTips.map((tip, i) => (
@@ -548,18 +548,18 @@ export default function ResultPage() {
       {/* Community Intelligence */}
       {collab && (
         <div className="rp-section rp-fade rp-fade-5">
-          <div className="rp-section-label">Community Intelligence</div>
+          <div className="rp-section-label">{t(lang, 'communityIntel')}</div>
           <div className="rp-card">
             <div className="rp-card-inner">
               <div style={{ fontSize:13, color:'#1a3d2b', fontWeight:600, marginBottom:8 }}>{collab.message}</div>
               {collab.top_cities?.length > 0 && (
                 <div className="rp-collab-cities">
-                  📍 Most reported in: {collab.top_cities.map(c => c.city).join(', ')}
+                  📍 {t(lang, 'mostReported')}: {collab.top_cities.map(c => c.city).join(', ')}
                 </div>
               )}
               {collab.also_flagged?.length > 0 && (
                 <div className="rp-also-flagged">
-                  ⚠ Users also flagged: {collab.also_flagged.join(', ')}
+                  ⚠ {t(lang, 'alsoFlagged')}: {collab.also_flagged.join(', ')}
                 </div>
               )}
             </div>
@@ -582,7 +582,7 @@ export default function ResultPage() {
         const trendColor = market.trend === 'rising' ? '#A32D2D' : market.trend === 'falling' ? '#27500A' : '#888'
         return (
           <div className="rp-section rp-fade rp-fade-5">
-            <div className="rp-section-label">🔬 Authenticity Analysis</div>
+            <div className="rp-section-label">🔬 {t(lang, 'authenticityAnalysis')}</div>
             <div className="rp-card">
               <div className="rp-card-inner">
 
@@ -615,15 +615,15 @@ export default function ResultPage() {
                 {/* Real vs Fake bar */}
                 <div style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#aaa', marginBottom:4 }}>
-                    <span>Real</span><span>Fake</span>
+                    <span>{t(lang, 'real')}</span><span>{t(lang, 'fake')}</span>
                   </div>
                   <div className="rp-auth-split-track">
                     <div className="rp-auth-split-real" style={{ width: real + '%' }}/>
                     <div className="rp-auth-split-fake" style={{ width: fake + '%' }}/>
                   </div>
                   <div className="rp-auth-legend" style={{ fontSize:10, color:'#666' }}>
-                    <span><span className="rp-auth-legend-dot" style={{ background:'#639922' }}/> Genuine {real}%</span>
-                    <span><span className="rp-auth-legend-dot" style={{ background:'#E24B4A' }}/> Fake {fake}%</span>
+                    <span><span className="rp-auth-legend-dot" style={{ background:'#639922' }}/> {t(lang, 'genuine')} {real}%</span>
+                    <span><span className="rp-auth-legend-dot" style={{ background:'#E24B4A' }}/> {t(lang, 'fake')} {fake}%</span>
                   </div>
                 </div>
 
@@ -632,7 +632,7 @@ export default function ResultPage() {
                   <div className="rp-market-card">
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
                       <span style={{ fontSize:10, fontWeight:600, color:'#854F0B', textTransform:'uppercase', letterSpacing:'.06em' }}>
-                        Market adulteration rate
+                        {t(lang, 'marketAdultRate')}
                       </span>
                       <span style={{ fontFamily:'monospace', fontSize:20, fontWeight:700, color:'#854F0B', lineHeight:1 }}>
                         {market.rate}%
@@ -656,17 +656,17 @@ export default function ResultPage() {
                 {/* Score breakdown */}
                 {breakdown.ai_visual_score !== undefined && (
                   <div style={{ background:'#f5f7f3', borderRadius:8, padding:'8px 10px', marginBottom:8 }}>
-                    <div style={{ fontSize:10, fontWeight:600, color:'#1a3d2b', marginBottom:6 }}>How score was calculated</div>
+                    <div style={{ fontSize:10, fontWeight:600, color:'#1a3d2b', marginBottom:6 }}>{t(lang, 'howScoreCalc')}</div>
                     <div className="rp-boost-row">
-                      <span style={{ color:'#555' }}>AI visual analysis</span>
+                      <span style={{ color:'#555' }}>{t(lang, 'aiVisualAnalysis')}</span>
                       <span style={{ color:'#E07C1A', fontWeight:600 }}>{breakdown.ai_visual_score}/100 authentic</span>
                     </div>
                     <div className="rp-boost-row">
-                      <span style={{ color:'#555' }}>Market adulteration penalty</span>
+                      <span style={{ color:'#555' }}>{t(lang, 'marketPenalty')}</span>
                       <span style={{ color:'#A32D2D', fontWeight:600 }}>+{breakdown.market_boost}% fake risk</span>
                     </div>
                     <div className="rp-boost-row" style={{ borderTop:'1px solid #e0e8da', marginTop:4, paddingTop:6 }}>
-                      <span style={{ color:'#1a3d2b', fontWeight:600 }}>Final fake probability</span>
+                      <span style={{ color:'#1a3d2b', fontWeight:600 }}>{t(lang, 'finalFakeProb')}</span>
                       <span style={{ color: gaugeColor, fontWeight:700, fontSize:13 }}>{fake}%</span>
                     </div>
                   </div>
@@ -676,7 +676,7 @@ export default function ResultPage() {
                 {flags.length > 0 && (
                   <div style={{ marginBottom:8 }}>
                     <div style={{ fontSize:10, fontWeight:600, color:'#A32D2D', marginBottom:6 }}>
-                      🚩 Visual red flags ({flags.length})
+                      🚩 {t(lang, 'visualRedFlags')} ({flags.length})
                     </div>
                     {flags.map((f, i) => (
                       <div key={i} className="rp-flag-item">
@@ -697,7 +697,7 @@ export default function ResultPage() {
                 {/* Positive indicators */}
                 {good.length > 0 && (
                   <div style={{ background:'#eaf3de', borderRadius:8, padding:'8px 10px' }}>
-                    <div style={{ fontSize:10, fontWeight:600, color:'#27500A', marginBottom:4 }}>✓ Genuine indicators</div>
+                    <div style={{ fontSize:10, fontWeight:600, color:'#27500A', marginBottom:4 }}>✓ {t(lang, 'genuineIndicators')}</div>
                     {good.map((g, i) => (
                       <div key={i} style={{ fontSize:11, color:'#3d5a24', padding:'3px 0', borderBottom: i < good.length-1 ? '.5px solid #c0dd97' : 'none' }}>
                         ✓ {g}
@@ -715,7 +715,7 @@ export default function ResultPage() {
       {/* ML Insights */}
       {(r.seasonalRisk || r.personalizedScore) && (
         <div className="rp-section rp-fade rp-fade-6">
-          <div className="rp-section-label">ML Insights</div>
+          <div className="rp-section-label">{t(lang, 'mlInsights')}</div>
           <div className="rp-card">
             <div className="rp-card-inner">
               {r.seasonalRisk && (
@@ -724,7 +724,7 @@ export default function ResultPage() {
                   border: `1px solid ${r.seasonalRisk.seasonal_alert ? '#f7c1c1' : '#e0e8da'}`,
                 }}>
                   <div className="rp-ml-row">
-                    <span className="rp-ml-label">📅 Seasonal Risk — {r.seasonalRisk.month}</span>
+                    <span className="rp-ml-label">📅 {t(lang, 'seasonalRisk')} — {r.seasonalRisk.month}</span>
                     <span className="rp-ml-badge" style={{
                       background: r.seasonalRisk.seasonal_alert ? '#fff0f0' : '#eaf3de',
                       color: r.seasonalRisk.seasonal_alert ? '#791F1F' : '#27500A',
@@ -739,7 +739,7 @@ export default function ResultPage() {
               )}
               {r.personalizedScore && (
                 <div className="rp-ml-block" style={{ background:'#f5f7f3', border:'1px solid #e0e8da' }}>
-                  <div className="rp-ml-label" style={{ marginBottom:8 }}>👤 Personalized Toxin Exposure</div>
+                  <div className="rp-ml-label" style={{ marginBottom:8 }}>👤 {t(lang, 'personalToxin')}</div>
                   <div className="rp-exposure-row">
                     <div className="rp-exposure-ring" style={{
                       background: r.personalizedScore.exposure_level === 'HIGH' ? '#fff0f0' : r.personalizedScore.exposure_level === 'MEDIUM' ? '#fff8ed' : '#eaf3de',
@@ -750,9 +750,9 @@ export default function ResultPage() {
                     </div>
                     <div>
                       <div style={{ fontSize:12, fontWeight:600, color:'#1a3d2b' }}>
-                        {r.personalizedScore.exposure_level || 'LOW'} Exposure
+                        {r.personalizedScore.exposure_level || 'LOW'} {t(lang, 'exposure')}
                       </div>
-                      <div style={{ fontSize:10, color:'#888', fontWeight:300 }}>Cumulative toxin score</div>
+                      <div style={{ fontSize:10, color:'#888', fontWeight:300 }}>{t(lang, 'cumulativeToxin')}</div>
                     </div>
                   </div>
                   {r.personalizedScore.recommendation && (
@@ -770,7 +770,7 @@ export default function ResultPage() {
       {/* Overconsumption Warnings */}
       {r.overconsumptionWarnings && (
         <div className="rp-section rp-fade rp-fade-6">
-          <div className="rp-section-label">Overconsumption Check</div>
+          <div className="rp-section-label">{t(lang, 'overconsumptionCheck')}</div>
           <div className="rp-card">
             <div className="rp-card-inner" style={{ padding: '12px 14px' }}>
               <ScanBanner warnings={r.overconsumptionWarnings} />
@@ -781,12 +781,12 @@ export default function ResultPage() {
 
       {/* Feedback */}
       <div className="rp-section rp-fade rp-fade-6">
-        <div className="rp-section-label">Was this analysis accurate?</div>
+        <div className="rp-section-label">{t(lang, 'wasAccurate')}</div>
         <div className="rp-card">
           <div className="rp-card-inner" style={{ textAlign: 'center', padding: '14px 16px' }}>
             {feedbackSent ? (
               <div style={{ fontSize: 13, color: '#27500A', fontWeight: 500 }}>
-                {feedback === 'accurate' ? '👍 Thanks! Glad it helped.' : '👎 Thanks for the feedback — we\'ll improve.'}
+                {feedback === 'accurate' ? `👍 ${t(lang, 'thanksAccurate')}` : `👎 ${t(lang, 'thanksInaccurate')}`}
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
@@ -798,7 +798,7 @@ export default function ResultPage() {
                     color: '#27500A', fontSize: 13, fontWeight: 600,
                     fontFamily: "'DM Sans',sans-serif",
                   }}>
-                  👍 Accurate
+                  {t(lang, 'yesAccurate')}
                 </button>
                 <button
                   onClick={() => submitFeedback('inaccurate')}
@@ -808,7 +808,7 @@ export default function ResultPage() {
                     color: '#791F1F', fontSize: 13, fontWeight: 600,
                     fontFamily: "'DM Sans',sans-serif",
                   }}>
-                  👎 Not accurate
+                  {t(lang, 'noInaccurate')}
                 </button>
               </div>
             )}
@@ -820,7 +820,7 @@ export default function ResultPage() {
       <div className="rp-section rp-fade rp-fade-7">
         <div className="rp-actions">
           <button className="rp-btn-primary" onClick={() => nav('/brands')}>
-            🛒 See Safe Brands
+            🛒 {t(lang, 'brandCompare')}
           </button>
           <ShareButton result={r} />
         </div>

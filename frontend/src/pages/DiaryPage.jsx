@@ -177,34 +177,34 @@ export default function DiaryPage() {
 
       {/* Header */}
       <div className="dp-header">
-        <div className="dp-title">Food Safety Diary</div>
-        <div className="dp-sub">Your personal adulteration exposure tracker</div>
+        <div className="dp-title">{t(lang, 'foodDiary')}</div>
+        <div className="dp-sub">{t(lang, 'diarySub')}</div>
         <div className="dp-stats">
           <div className="dp-stat">
             <div className="dp-stat-val" style={{ color: '#c9a84c' }}>{total}</div>
-            <div className="dp-stat-lbl">Total Scans</div>
+            <div className="dp-stat-lbl">{t(lang, 'totalScans')}</div>
           </div>
           <div className="dp-stat">
             <div className="dp-stat-val" style={{ color: high > 0 ? '#E24B4A' : '#c9a84c' }}>{high}</div>
-            <div className="dp-stat-lbl">High Risk</div>
+            <div className="dp-stat-lbl">{t(lang, 'highRisk')}</div>
           </div>
           <div className="dp-stat">
             <div className="dp-grade" style={{ color: gradeColor }}>{total ? grade : '—'}</div>
-            <div className="dp-stat-lbl">Safety Grade</div>
+            <div className="dp-stat-lbl">{t(lang, 'reportGrade')}</div>
           </div>
         </div>
       </div>
 
       {total === 0 ? (
         <div className="dp-empty">
-          No scans yet.<br />
-          Start scanning food to build<br />your safety diary.
+          {t(lang, 'noScansYet')}<br />
+          {t(lang, 'startScanning')}
         </div>
       ) : (
         <>
           {/* Risk Distribution */}
           <div className="dp-section dp-fade">
-            <div className="dp-section-label">Risk Distribution</div>
+            <div className="dp-section-label">{t(lang, 'riskDistribution')}</div>
             <div className="dp-card">
               <div className="dp-donut-wrap">
                 <DonutChart data={riskCounts} size={100} />
@@ -223,7 +223,7 @@ export default function DiaryPage() {
 
           {/* Weekly Activity */}
           <div className="dp-section dp-fade">
-            <div className="dp-section-label">Last 7 Days</div>
+            <div className="dp-section-label">{t(lang, 'last7Days')}</div>
             <div className="dp-card">
               <div className="dp-card-inner">
                 <div className="dp-weekly-bar">
@@ -246,7 +246,7 @@ export default function DiaryPage() {
           {/* Top Foods */}
           {topFoods.length > 0 && (
             <div className="dp-section dp-fade">
-              <div className="dp-section-label">Most Scanned</div>
+              <div className="dp-section-label">{t(lang, 'mostScanned')}</div>
               <div className="dp-card">
                 {topFoods.map(([food, count], i) => (
                   <div key={i} style={{
@@ -255,7 +255,7 @@ export default function DiaryPage() {
                     borderBottom: i < topFoods.length - 1 ? '1px solid #f4f1eb' : 'none',
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3d2b' }}>{food}</div>
-                    <div style={{ fontSize: 11, color: '#aaa', fontWeight: 300 }}>{count}× scanned</div>
+                    <div style={{ fontSize: 11, color: '#aaa', fontWeight: 300 }}>{count}× {t(lang, 'timesScanned')}</div>
                   </div>
                 ))}
               </div>
@@ -265,7 +265,7 @@ export default function DiaryPage() {
 
           {/* Overconsumption Digest */}
           <div className="dp-section dp-fade">
-            <div className="dp-section-label">Weekly Overconsumption</div>
+            <div className="dp-section-label">{t(lang, 'weeklyOverconsumption')}</div>
             <div className="dp-card">
               <div className="dp-card-inner">
                 <DigestPanel digest={digest} loading={loadingDigest} />
@@ -276,12 +276,12 @@ export default function DiaryPage() {
           {/* AI Insights */}
           {(aiInsights || loadingInsights) && (
             <div className="dp-section dp-fade">
-              <div className="dp-section-label">AI Insights</div>
+              <div className="dp-section-label">{t(lang, 'aiInsights')}</div>
               <div className="dp-card">
                 <div className="dp-card-inner">
                   {loadingInsights ? (
                     <div style={{ fontSize: 12, color: '#aaa', fontWeight: 300, padding: '4px 0' }}>
-                      🤖 Analyzing your scan history…
+                      🤖 {t(lang, 'analyzingHistory')}
                     </div>
                   ) : (
                     <>
@@ -297,12 +297,12 @@ export default function DiaryPage() {
                       )}
                       {aiInsights?.pattern && (
                         <div className="dp-insight" style={{ background: '#fff8ed', borderColor: '#fac775', color: '#633806' }}>
-                          <span className="dp-insight-icon">📈</span>Pattern: {aiInsights.pattern}
+                          <span className="dp-insight-icon">📈</span>{t(lang, 'pattern')}: {aiInsights.pattern}
                         </div>
                       )}
                       {aiInsights?.swap && (
                         <div className="dp-insight" style={{ background: '#eaf3de', borderColor: '#c0dd97', color: '#27500A' }}>
-                          <span className="dp-insight-icon">🔄</span>Safer swap: {aiInsights.swap}
+                          <span className="dp-insight-icon">🔄</span>{t(lang, 'saferSwap')}: {aiInsights.swap}
                         </div>
                       )}
                       {aiInsights?.tip && (
@@ -319,7 +319,7 @@ export default function DiaryPage() {
 
           {/* Avg score */}
           <div className="dp-section dp-fade">
-            <div className="dp-section-label">Average Safety Score</div>
+            <div className="dp-section-label">{t(lang, 'avgSafetyScore')}</div>
             <div className="dp-card">
               <div className="dp-card-inner" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
@@ -334,7 +334,7 @@ export default function DiaryPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3d2b', marginBottom: 6 }}>
-                    {avg >= 80 ? 'Excellent food choices' : avg >= 65 ? 'Good overall' : avg >= 50 ? 'Room for improvement' : 'High risk diet detected'}
+                    {avg >= 80 ? t(lang, 'excellentChoices') : avg >= 65 ? t(lang, 'goodOverall') : avg >= 50 ? t(lang, 'roomImprovement') : t(lang, 'highRiskDiet')}
                   </div>
                   <div style={{ height: 6, background: '#f0ede8', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{
@@ -351,7 +351,7 @@ export default function DiaryPage() {
 
           {/* Scan History */}
           <div className="dp-section dp-fade">
-            <div className="dp-section-label">Recent Scans</div>
+            <div className="dp-section-label">{t(lang, 'recentScans')}</div>
             <div className="dp-card">
               {scanHistory.slice(0, 20).map((s, i) => (
                 <div key={s.id || i} className="dp-history-row">

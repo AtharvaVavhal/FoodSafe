@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { t } from '../i18n/translations'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -49,7 +50,7 @@ const STYLES = `
 `
 
 export default function SymptomPage() {
-  const { scanHistory } = useStore()
+  const { scanHistory, lang } = useStore()
   const [symptoms, setSymptoms] = useState('')
   const [result, setResult]     = useState(null)
   const [loading, setLoading]   = useState(false)
@@ -83,20 +84,20 @@ export default function SymptomPage() {
       <style>{STYLES}</style>
 
       <div className="sp-header">
-        <div className="sp-title">Symptom Checker</div>
-        <div className="sp-sub">Check if your symptoms could be food adulteration related</div>
+        <div className="sp-title">{t(lang, 'symptomChecker')}</div>
+        <div className="sp-sub">{t(lang, 'symptomSub')}</div>
 
         <textarea
           className="sp-textarea"
           rows={4}
           value={symptoms}
           onChange={e => setSymptoms(e.target.value)}
-          placeholder="e.g. stomach pain, nausea, skin rash since yesterday…"
+          placeholder={t(lang, 'symptomPlaceholder')}
         />
 
         {recentFoods.length > 0 && (
           <div className="sp-recent">
-            Recent foods: <span>{recentFoods.join(', ')}</span>
+            {t(lang, 'recentFoods')}: <span>{recentFoods.join(', ')}</span>
           </div>
         )}
 
@@ -109,7 +110,7 @@ export default function SymptomPage() {
           onClick={analyze}
           disabled={loading || !symptoms.trim()}
         >
-          {loading ? '⏳ Analyzing…' : '🩺 Analyze Symptoms'}
+          {loading ? `⏳ ${t(lang, 'analyzingSymptoms')}` : `🩺 ${t(lang, 'analyzeSymptoms')}`}
         </button>
       </div>
 
@@ -131,7 +132,7 @@ export default function SymptomPage() {
           {/* Possible causes */}
           {result.possibleCauses?.length > 0 && (
             <div className="sp-section sp-fade">
-              <div className="sp-section-label">Possible Causes</div>
+              <div className="sp-section-label">{t(lang, 'possibleCauses')}</div>
               <div className="sp-card">
                 {result.possibleCauses.map((c, i) => (
                   <div key={i} className="sp-cause-row">
@@ -152,7 +153,7 @@ export default function SymptomPage() {
           {/* Recommendation */}
           {result.recommendation && (
             <div className="sp-section sp-fade">
-              <div className="sp-section-label">Recommendation</div>
+              <div className="sp-section-label">{t(lang, 'recommendation')}</div>
               <div className="sp-rec">💡 {result.recommendation}</div>
             </div>
           )}

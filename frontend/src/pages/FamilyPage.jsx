@@ -70,11 +70,11 @@ export default function FamilyPage() {
       <div className="fp-header">
         <div className="fp-header-row">
           <div>
-            <div className="fp-title">Family Profiles</div>
-            <div className="fp-sub">Personalized safety for every member</div>
+            <div className="fp-title">{t(lang, 'familyProfiles')}</div>
+            <div className="fp-sub">{t(lang, 'familySub')}</div>
           </div>
           <button className="fp-add-btn" onClick={() => setAdding(!adding)}>
-            {adding ? '✕ Cancel' : '+ Add Member'}
+            {adding ? `✕ ${t(lang, 'cancel')}` : t(lang, 'addMember')}
           </button>
         </div>
       </div>
@@ -83,11 +83,11 @@ export default function FamilyPage() {
       {adding && (
         <div className="fp-section fp-fade">
           <div className="fp-form">
-            <div className="fp-form-label">Name</div>
+            <div className="fp-form-label">{t(lang, 'name')}</div>
             <input className="fp-input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Aai, Baba, Dada…" />
-            <div className="fp-form-label">Age</div>
-            <input className="fp-input" value={age} onChange={e => setAge(e.target.value)} placeholder="Age" type="number" />
-            <div className="fp-form-label" style={{ marginBottom:8 }}>Health Conditions</div>
+            <div className="fp-form-label">{t(lang, 'age')}</div>
+            <input className="fp-input" value={age} onChange={e => setAge(e.target.value)} placeholder={t(lang, 'age')} type="number" />
+            <div className="fp-form-label" style={{ marginBottom:8 }}>{t(lang, 'healthConditions')}</div>
             <div className="fp-conditions-wrap">
               {CONDITIONS.map(c => (
                 <button key={c} className="fp-cond-btn" onClick={() => toggleCondition(c)} style={{
@@ -99,7 +99,7 @@ export default function FamilyPage() {
                 </button>
               ))}
             </div>
-            <button className="fp-save-btn" onClick={save}>Save Member</button>
+            <button className="fp-save-btn" onClick={save}>{t(lang, 'saveMember')}</button>
           </div>
         </div>
       )}
@@ -107,12 +107,12 @@ export default function FamilyPage() {
       {/* Members */}
       {family.length === 0 && !adding ? (
         <div className="fp-empty">
-          No family members yet.<br />
-          Add members to get personalized<br />scan results for each person.
+          {t(lang, 'noMembers')}<br />
+          {t(lang, 'addMemberHint')}
         </div>
       ) : (
         <div className="fp-section">
-          <div className="fp-section-label">{family.length} member{family.length !== 1 ? 's' : ''}</div>
+          <div className="fp-section-label">{family.length} {family.length !== 1 ? t(lang, 'members') : t(lang, 'member')}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {family.map((m, i) => {
               const pal = AV_PALETTE[i % AV_PALETTE.length]
@@ -123,7 +123,7 @@ export default function FamilyPage() {
                   </div>
                   <div style={{ flex:1 }}>
                     <div className="fp-member-name">{m.name}</div>
-                    <div className="fp-member-age">{m.age ? `Age ${m.age}` : 'Age not set'}</div>
+                    <div className="fp-member-age">{m.age ? `${t(lang, 'ageLabel')} ${m.age}` : t(lang, 'ageNotSet')}</div>
                     {m.conditions?.length > 0 && (
                       <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:6 }}>
                         {m.conditions.map(c => (
@@ -132,7 +132,7 @@ export default function FamilyPage() {
                       </div>
                     )}
                   </div>
-                  <button className="fp-remove-btn" onClick={() => removeMember(m.id)}>Remove</button>
+                  <button className="fp-remove-btn" onClick={() => removeMember(m.id)}>{t(lang, 'remove')}</button>
                 </div>
               )
             })}

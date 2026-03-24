@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useStore } from '../store'
+import { t } from '../i18n/translations'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -46,6 +48,7 @@ const STYLES = `
 `
 
 export default function FestivalPage() {
+  const { lang } = useStore()
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -61,7 +64,7 @@ export default function FestivalPage() {
     return (
       <div className="fep-root">
         <style>{STYLES}</style>
-        <div className="fep-loading">Loading festival guide…</div>
+        <div className="fep-loading">{t(lang, 'loadingFestival')}</div>
       </div>
     )
   }
@@ -85,8 +88,8 @@ export default function FestivalPage() {
 
       {/* Hero */}
       <div className="fep-header" style={{ background: heroBg }}>
-        <div className="fep-title">Festival Safety Guide</div>
-        <div className="fep-sub">AI-powered seasonal food safety alerts</div>
+        <div className="fep-title">{t(lang, 'festivalSafetyGuide')}</div>
+        <div className="fep-sub">{t(lang, 'festivalSafetySub')}</div>
 
         <div className="fep-current">
           <span className="fep-fest-icon">{data.icon}</span>
@@ -94,7 +97,7 @@ export default function FestivalPage() {
           <div className="fep-fest-headline">{data.headline}</div>
           <span className="fep-risk-pill" style={{ background:cfg.bg, color:cfg.text, borderColor:cfg.border }}>
             <span style={{ width:6, height:6, borderRadius:'50%', background:cfg.bar, display:'inline-block' }} />
-            {data.risk} RISK SEASON
+            {data.risk} {t(lang, 'riskSeason')}
           </span>
         </div>
       </div>
@@ -102,7 +105,7 @@ export default function FestivalPage() {
       {/* Risky foods */}
       {data.riskyFoods?.length > 0 && (
         <div className="fep-section fep-fade">
-          <div className="fep-section-label">Risky Foods This Season</div>
+          <div className="fep-section-label">{t(lang, 'riskyFoodsSeason')}</div>
           <div className="fep-card">
             {data.riskyFoods.map((f, i) => (
               <div key={i} className="fep-food-row">
@@ -124,7 +127,7 @@ export default function FestivalPage() {
       {/* Tips */}
       {data.tips?.length > 0 && (
         <div className="fep-section fep-fade">
-          <div className="fep-section-label">Safety Tips</div>
+          <div className="fep-section-label">{t(lang, 'safetyTips')}</div>
           <div className="fep-card">
             {data.tips.map((tip, i) => (
               <div key={i} className="fep-tip-row">
@@ -139,7 +142,7 @@ export default function FestivalPage() {
       {/* All seasons */}
       {data.allSeasons?.length > 0 && (
         <div className="fep-section fep-fade">
-          <div className="fep-section-label">Year-Round Calendar</div>
+          <div className="fep-section-label">{t(lang, 'yearRoundCalendar')}</div>
           <div className="fep-card">
             {data.allSeasons.map((s, i) => (
               <div key={i} className="fep-season-row">

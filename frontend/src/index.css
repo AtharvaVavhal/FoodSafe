@@ -215,6 +215,26 @@ body::after {
 .btn-glass:hover { background: var(--glass-bg-md); transform: translateY(-1px); }
 
 /* ── Input ─────────────────────────────────────────── */
+input, 
+textarea, 
+select {
+  background-color: #171c22 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+input::placeholder, 
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+input:focus, 
+textarea:focus {
+  background-color: #1f252b !important;
+  border-color: #00e09c !important;
+  outline: none !important;
+}
+
 .input-glass {
   width: 100%;
   background: var(--glass-bg);

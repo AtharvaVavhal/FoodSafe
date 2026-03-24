@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { register, login } from '../services/api'
+import { User, Mail, Lock, MapPin, ArrowRight, ShieldCheck } from 'lucide-react'
 
 export default function AuthPage() {
   const { setAuth } = useStore()
@@ -30,105 +31,109 @@ export default function AuthPage() {
     }
   }
 
-  const inp = {
-    padding: '12px 14px', borderRadius: 10,
-    border: '1px solid #e0e8da', fontSize: 14,
-    fontFamily: 'inherit', outline: 'none', width: '100%',
-    background: '#fafaf8', color: '#1a1208',
-  }
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(160deg, #0d2818 0%, #1a3d2b 100%)',
-      overflowY: 'auto',
-      padding: '40px 20px 40px',
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-    }}>
-      {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <div style={{ fontSize: 44, marginBottom: 8 }}>🌿</div>
-        <div style={{
-          fontSize: 24, fontWeight: 700, color: '#f5f0e8',
-          fontFamily: "'Playfair Display', serif",
-        }}>FoodSafe</div>
-        <div style={{ fontSize: 12, color: 'rgba(245,240,232,0.45)', marginTop: 4 }}>
-          Protect your family's plate
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden animate-fade-up">
+      {/* Background ambient lighting */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-brand/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
+
+      {/* Hero section */}
+      <div className="text-center mb-10 relative z-10 w-full max-w-sm">
+        <div className="mx-auto w-16 h-16 rounded-2xl bg-glass-gradient border border-brand/20 shadow-[0_0_40px_rgba(0,224,156,0.3)] flex items-center justify-center mb-6">
+          <ShieldCheck className="w-8 h-8 text-brand" />
         </div>
+        <h1 className="text-4xl font-serif font-bold text-white tracking-tight mb-2">FoodSafe</h1>
+        <p className="text-sm text-white/50 tracking-[0.15em] uppercase font-bold">Protect your family's plate</p>
       </div>
 
-      {/* Card */}
-      <div style={{
-        maxWidth: 400, margin: '0 auto',
-        background: '#fff', borderRadius: 24,
-        padding: '28px 24px',
-        boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
-      }}>
-        {/* Toggle */}
-        <div style={{
-          display: 'flex', background: '#f0f4ee',
-          borderRadius: 12, padding: 4, marginBottom: 24,
-        }}>
+      {/* Authentication Card */}
+      <div className="w-full max-w-sm bg-glass-gradient backdrop-blur-2xl rounded-[32px] border border-surface-200 shadow-2xl p-8 relative z-10">
+        
+        {/* Toggle Controls */}
+        <div className="flex bg-surface-100/50 rounded-2xl p-1.5 mb-8 border border-white/5">
           {['login', 'register'].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError('') }} style={{
-              flex: 1, padding: '10px 0', borderRadius: 9, border: 'none',
-              fontFamily: 'inherit', fontSize: 13, cursor: 'pointer',
-              background: mode === m ? '#fff' : 'transparent',
-              fontWeight: mode === m ? 600 : 400,
-              color: mode === m ? '#1a3d2b' : '#888',
-              boxShadow: mode === m ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s',
-            }}>
-              {m === 'login' ? 'Login' : 'Register'}
+            <button
+              key={m}
+              onClick={() => { setMode(m); setError('') }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300
+                ${mode === m 
+                  ? 'bg-surface-200 text-brand shadow-sm border border-white/10' 
+                  : 'text-white/40 hover:text-white/70'}`}
+            >
+              {m}
             </button>
           ))}
         </div>
 
-        {/* Form */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Form Inputs */}
+        <div className="flex flex-col gap-4">
           {mode === 'register' && (
             <>
-              <input value={name} onChange={e => setName(e.target.value)}
-                placeholder="Full name" style={inp} />
-              <input value={city} onChange={e => setCity(e.target.value)}
-                placeholder="City (e.g. Pune)" style={inp} />
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-brand transition-colors" />
+                <input
+                  value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Full name"
+                  className="w-full bg-surface-100 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/10 transition-all shadow-inner"
+                />
+              </div>
+              <div className="relative group">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-brand transition-colors" />
+                <input
+                  value={city} onChange={e => setCity(e.target.value)}
+                  placeholder="City (e.g. Pune)"
+                  className="w-full bg-surface-100 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/10 transition-all shadow-inner"
+                />
+              </div>
             </>
           )}
-          <input value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="Email" type="email" style={inp} />
-          <input value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="Password" type="password"
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            style={inp} />
+
+          <div className="relative group">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-brand transition-colors" />
+            <input
+              value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Email address" type="email"
+              className="w-full bg-surface-100 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/10 transition-all shadow-inner"
+            />
+          </div>
+
+          <div className="relative group">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-brand transition-colors" />
+            <input
+              value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="Password" type="password"
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              className="w-full bg-surface-100 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/10 transition-all shadow-inner"
+            />
+          </div>
 
           {error && (
-            <div style={{
-              fontSize: 12, color: '#A32D2D',
-              background: '#fff0f0', padding: '8px 12px',
-              borderRadius: 8, border: '1px solid #f7c1c1',
-            }}>{error}</div>
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs py-3 px-4 rounded-xl flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              {error}
+            </div>
           )}
 
-          <button onClick={handleSubmit} disabled={loading} style={{
-            padding: '13px', borderRadius: 10, border: 'none',
-            background: loading ? '#ccc' : 'linear-gradient(135deg, #1a3d2b, #2d6647)',
-            color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontFamily: 'inherit', marginTop: 4,
-            boxShadow: '0 4px 16px rgba(26,61,43,0.25)',
-          }}>
-            {loading ? 'Please wait...' : mode === 'login' ? '→ Login' : '→ Create Account'}
-          </button>
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
-          <button onClick={() => nav('/scan')} style={{
-            fontSize: 12, color: '#aaa', background: 'none',
-            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-          }}>
+          <button
+            onClick={handleSubmit} disabled={loading}
+            className={`w-full mt-4 py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2
+              ${loading 
+                ? 'bg-surface-200 text-white/30 cursor-not-allowed border border-white/5' 
+                : 'bg-brand text-background hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
+          >
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            {!loading && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
       </div>
+      
+      {/* Skip option */}
+      <button 
+        onClick={() => nav('/scan')}
+        className="mt-8 text-xs font-bold text-white/30 hover:text-white transition-colors uppercase tracking-[0.2em]"
+      >
+        Skip for now
+      </button>
     </div>
   )
 }

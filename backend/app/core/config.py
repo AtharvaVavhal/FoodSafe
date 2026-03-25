@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
     def model_post_init(self, __context):
         # Fail-fast if SECRET_KEY is not set in production

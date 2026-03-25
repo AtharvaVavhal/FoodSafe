@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
-import { analyzeLabel } from '../services/claude'
-import { scanFoodAPI, scanCombinationAPI } from '../services/api'
+import { scanFoodAPI, scanImageAPI, scanCombinationAPI } from '../services/api'
 import ScanLoader from '../components/ScanLoader'
 import { Camera, Image as ImageIcon, Mic, Search as SearchIcon, X, Sparkles, HeartPulse, MapPin, ShieldCheck, Plus, CheckCircle2 } from 'lucide-react'
 
@@ -28,14 +27,14 @@ export default function HomePage() {
   const [fssaiAlerts, setFssaiAlerts] = useState(DEFAULT_ALERTS)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [listening, setListening]   = useState(false)
-  
+
   const fileRef   = useRef()
   const cameraRef = useRef()
   const canvasRef = useRef()
   const streamRef = useRef()
   const recognitionRef = useRef(null)
 
-  // ── Voice input (Web Speech API) ──────────────────────────────
+  // ── Voice input ───────────────────────────────────────────────
   const LANG_MAP = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' }
 
   function toggleVoice() {
@@ -80,6 +79,7 @@ export default function HomePage() {
       .catch(() => {})
   }, [])
 
+  // ── Camera ────────────────────────────────────────────────────
   async function openCamera() {
     setCameraOpen(true)
     try {
@@ -98,91 +98,104 @@ export default function HomePage() {
   }
 
   async function capturePhoto() {
-    const video = cameraRef.current
+    const video  = cameraRef.current
     const canvas = canvasRef.current
     if (!video || !canvas) return
-    canvas.width = video.videoWidth
+    canvas.width  = video.videoWidth
     canvas.height = video.videoHeight
     canvas.getContext('2d').drawImage(video, 0, 0)
     stopCamera()
     canvas.toBlob(async (blob) => {
       const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' })
-      await handleImageUpload({ target: { files: [file], value: '' } })
+      await handleImageUpload({ target: { files: [file] } })
     }, 'image/jpeg', 0.9)
   }
 
+  // ── Text / combination scan ───────────────────────────────────
   async function handleScan() {
     const foodName = query.trim()
     if (!foodName) return
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
       const profile = activeMember || null
       let result
       if (combinationFoods.length > 0) {
-        result = await scanCombinationAPI({ foods: [...combinationFoods, foodName], member_profile: profile, lang })
+        result = await scanCombinationAPI({
+          foods: [...combinationFoods, foodName],
+          member_profile: profile,
+          lang,
+        })
         result.isCombination = true
       } else {
-        try {
-          result = await scanFoodAPI({ food_name: foodName, member_profile: profile, lang })
-        } catch {
-          const { scanFood } = await import('../services/claude')
-          result = await scanFood({ foodName, memberProfile: profile, lang })
-        }
+        result = await scanFoodAPI({ food_name: foodName, member_profile: profile, lang })
       }
       addScan({ food_name: foodName, risk_level: result.riskLevel, safety_score: result.safetyScore })
       setLastResult(result)
       nav('/result')
     } catch {
-      setError('Scan failed. Check your connection.')
+      setError('Scan failed. Check your connection and try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  // ── Image upload (FIXED) ──────────────────────────────────────
+  // FIX 1: Removed broken `analyzeLabel` import and fallback — it didn't exist.
+  // FIX 2: Use `scanImageAPI` from api.js (handles multipart/form-data correctly).
+  // FIX 3: Removed the early-return bug that left loading=true forever on error.
+  // FIX 4: Validate file type and size on the frontend before sending.
   async function handleImageUpload(e) {
-    const file = e.target.files[0]
+    const file = e.target.files?.[0]
     if (!file) return
+
+    // Reset file input so the same file can be re-selected if needed
     if (e.target.value !== undefined) e.target.value = ''
-    setLoading(true); setError('')
+
+    // Client-side validation (mirrors backend limits)
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('Please upload a JPEG, PNG, or WebP image.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image is too large. Maximum size is 5MB.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('lang', lang)
-      const res = await fetch('/api/scan/image', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error('Backend image scan failed')
-      const result = await res.json()
-      if (result.foodName || result.food_name) {
-        addScan({
-          food_name: result.foodName || result.food_name || 'Image scan',
-          risk_level: result.riskLevel,
-          safety_score: result.safetyScore,
-        })
-      }
+
+      // scanImageAPI already sets Content-Type: multipart/form-data via axios
+      const result = await scanImageAPI(formData)
+
+      const foodName = result.foodName || result.food_name || result.productName || 'Image scan'
+      addScan({
+        food_name:    foodName,
+        risk_level:   result.riskLevel,
+        safety_score: result.safetyScore,
+      })
       setLastResult(result)
       nav('/result')
-    } catch {
-      try {
-        const reader = new FileReader()
-        reader.onload = async (ev) => {
-          try {
-            const b64 = ev.target.result.split(',')[1]
-            const result = await analyzeLabel({ imageBase64: b64, lang })
-            setLastResult(result)
-            nav('/result')
-          } catch {
-            setError('Image analysis failed.')
-          } finally {
-            setLoading(false)
-          }
-        }
-        reader.onerror = () => { setError('Could not read image file.'); setLoading(false) }
-        reader.readAsDataURL(file)
-        return
-      } catch {
-        setError('Image analysis failed.')
+    } catch (err) {
+      // Show a meaningful error instead of silently failing
+      const status = err?.response?.status
+      if (status === 413) {
+        setError('Image is too large. Please use a smaller photo.')
+      } else if (status === 400) {
+        setError('Unsupported image format. Please use JPEG, PNG, or WebP.')
+      } else {
+        setError('Image analysis failed. Please try again or type the food name instead.')
       }
+    } finally {
+      // FIX 3: This now always runs — no more infinite spinner
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const currentAlert = fssaiAlerts[ticker % fssaiAlerts.length]
@@ -196,7 +209,7 @@ export default function HomePage() {
         <div className="fixed inset-0 bg-deep/90 backdrop-blur-xl z-[999] flex flex-col items-center justify-center p-4">
           <div className="relative w-full max-w-md rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
             <video ref={cameraRef} autoPlay playsInline className="w-full h-[60vh] object-cover" />
-            <div className="absolute inset-0 border-2 border-brand/40 rounded-3xl pointer-events-none m-4 
+            <div className="absolute inset-0 border-2 border-brand/40 rounded-3xl pointer-events-none m-4
                             after:absolute after:top-0 after:left-1/4 after:w-1/2 after:h-1 after:bg-brand after:animate-pulse-slow" />
             <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex justify-center gap-4">
               <button onClick={stopCamera} className="w-14 h-14 rounded-full bg-surface-200 border border-white/20 flex items-center justify-center text-white/70 hover:bg-surface-300 hover:text-white transition-colors">
@@ -213,7 +226,6 @@ export default function HomePage() {
 
       {/* Hero Interactive Surface */}
       <div className="relative p-7 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden backdrop-blur-2xl mt-2">
-        {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-brand/10 blur-[100px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-blue-500/10 blur-[80px] rounded-full pointer-events-none translate-y-1/2 -translate-x-1/2" />
 
@@ -223,7 +235,7 @@ export default function HomePage() {
             <p className="font-sans text-[13px] md:text-sm text-white/50">{t(lang, 'placeholder') || 'Search paneer, complex spices, or ingredients...'}</p>
           </div>
 
-          {/* Intelligent Search Bar */}
+          {/* Search Bar */}
           <div className="relative group w-full">
             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-brand transition-colors" />
             <input
@@ -234,7 +246,7 @@ export default function HomePage() {
               placeholder="E.g. Turmeric powder, Amul Milk..."
             />
             {query && (
-              <button 
+              <button
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
                 onClick={() => setQuery('')}
               >
@@ -245,15 +257,21 @@ export default function HomePage() {
 
           {/* Multi-modal Inputs */}
           <div className="flex gap-3 h-20">
-            <button className="flex-1 rounded-2xl border border-white/10 bg-surface-100 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-200 hover:border-white/20 transition-all hover:-translate-y-1 group" onClick={() => fileRef.current.click()}>
+            <button
+              className="flex-1 rounded-2xl border border-white/10 bg-surface-100 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-200 hover:border-white/20 transition-all hover:-translate-y-1 group"
+              onClick={() => fileRef.current.click()}
+            >
               <ImageIcon className="w-5 h-5 text-white/60 group-hover:text-gold transition-colors" />
               <span className="text-[11px] font-medium text-white/60 group-hover:text-white">{t(lang, 'uploadBtn')}</span>
             </button>
-            <button className="flex-1 rounded-2xl border border-white/10 bg-surface-100 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-200 hover:border-white/20 transition-all hover:-translate-y-1 group" onClick={openCamera}>
+            <button
+              className="flex-1 rounded-2xl border border-white/10 bg-surface-100 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-200 hover:border-white/20 transition-all hover:-translate-y-1 group"
+              onClick={openCamera}
+            >
               <Camera className="w-5 h-5 text-white/60 group-hover:text-blue-400 transition-colors" />
               <span className="text-[11px] font-medium text-white/60 group-hover:text-white">{t(lang, 'cameraBtn')}</span>
             </button>
-            <button 
+            <button
               className={`flex-1 rounded-2xl border transition-all hover:-translate-y-1 group flex flex-col items-center justify-center gap-1.5
                 ${listening ? 'bg-red-500/10 border-red-500/30' : 'bg-surface-100 border-white/10 hover:bg-surface-200 hover:border-white/20'}`}
               onClick={toggleVoice}
@@ -263,7 +281,15 @@ export default function HomePage() {
                 {listening ? 'Listening...' : t(lang, 'voiceInput')}
               </span>
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
+            {/* Hidden file input — wired to handleImageUpload */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
           </div>
 
           {error && (
@@ -273,22 +299,22 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Primary Action Button */}
+          {/* Scan Button */}
           <button
             className={`w-full py-4 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2
-              ${query.trim() 
-                ? 'bg-brand text-deep shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] border border-brand-light' 
+              ${query.trim()
+                ? 'bg-brand text-deep shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,224,156,0.4)] border border-brand-light'
                 : 'bg-surface-100 text-white/30 border border-white/5 cursor-not-allowed'}`}
             onClick={handleScan}
             disabled={loading || !query.trim()}
           >
             <SearchIcon className="w-4 h-4" />
-            {t(lang, 'scanNow') || 'Analyze Food Context'}
+            {t(lang, 'scanNow') || 'Analyze Food Safety'}
           </button>
         </div>
       </div>
 
-      {/* FSSAI Pulse Ticker */}
+      {/* FSSAI Ticker */}
       <div className="relative group overflow-hidden rounded-[24px] bg-surface-100 border border-surface-200 p-4 flex gap-4 items-center shadow-lg hover:bg-surface-200 transition-colors cursor-pointer">
         <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 shrink-0">
           <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -300,19 +326,19 @@ export default function HomePage() {
             <span className="text-[10px] text-white/30">{ticker % fssaiAlerts.length + 1}/{fssaiAlerts.length}</span>
           </div>
           <p className="text-[12px] text-white/80 font-medium truncate group-hover:text-white transition-colors" key={ticker}>
-             {currentAlert}
+            {currentAlert}
           </p>
         </div>
       </div>
 
-      {/* Grid Features */}
+      {/* Quick Actions */}
       <div>
         <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] mb-4 pl-1">{t(lang, 'quickActions')}</h3>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { icon: Sparkles, color: 'text-gold', bg: 'bg-gold/10', border: 'group-hover:border-gold/30', title: 'festivalGuide', sub: 'festivalGuideSub', to: '/festival' },
-            { icon: HeartPulse, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'group-hover:border-blue-400/30', title: 'symptomCheck', sub: 'symptomCheckSub', to: '/symptoms' },
-            { icon: MapPin, color: 'text-brand', bg: 'bg-brand/10', border: 'group-hover:border-brand/30', title: 'foodSafetyMap', sub: 'foodSafetyMapSub', to: '/map' },
+            { icon: Sparkles,  color: 'text-gold',     bg: 'bg-gold/10',     border: 'group-hover:border-gold/30',     title: 'festivalGuide', sub: 'festivalGuideSub', to: '/festival' },
+            { icon: HeartPulse,color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'group-hover:border-blue-400/30', title: 'symptomCheck',  sub: 'symptomCheckSub',  to: '/symptoms' },
+            { icon: MapPin,    color: 'text-brand',    bg: 'bg-brand/10',    border: 'group-hover:border-brand/30',    title: 'foodSafetyMap', sub: 'foodSafetyMapSub', to: '/map' },
           ].map(({ icon: Icon, color, bg, border, title, sub, to }) => (
             <button key={to} onClick={() => nav(to)} className={`p-4 rounded-[20px] bg-surface-100 border border-surface-200 shadow-sm flex flex-col gap-3 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-surface-200 group ${border}`}>
               <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>
@@ -327,7 +353,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Combination Builder (Glass Card) */}
+      {/* Combination Builder */}
       <div>
         <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] mb-4 pl-1">{t(lang, 'combinationRisk') || 'Combination Analysis'}</h3>
         <div className="p-5 rounded-[24px] bg-glass-gradient border border-surface-200 shadow-xl backdrop-blur-xl">
@@ -352,12 +378,12 @@ export default function HomePage() {
                 {f}
               </span>
             ))}
-            <button 
+            <button
               className="flex items-center gap-1.5 text-[11px] font-semibold text-white/50 border border-dashed border-white/20 px-3 py-1.5 rounded-full hover:border-white/40 hover:text-white transition-colors"
               onClick={() => { if (query.trim()) { addCombinationFood(query.trim()); setQuery('') } }}
             >
               <Plus className="w-3 h-3" />
-              {t(lang, 'addFood') || 'Add Query'}
+              {t(lang, 'addFood') || 'Add to Stack'}
             </button>
           </div>
         </div>
@@ -376,8 +402,8 @@ export default function HomePage() {
                   onClick={() => setActiveMember(active ? null : m)}
                   className={`
                     flex items-center gap-2.5 px-3 py-1.5 rounded-full border transition-all duration-300
-                    ${active 
-                      ? 'bg-brand text-deep border-brand shadow-[0_2px_12px_rgba(0,224,156,0.3)] scale-105 font-bold' 
+                    ${active
+                      ? 'bg-brand text-deep border-brand shadow-[0_2px_12px_rgba(0,224,156,0.3)] scale-105 font-bold'
                       : 'bg-surface-200 border-white/5 text-white/60 hover:text-white hover:bg-surface-300 hover:border-white/20 font-medium'}
                   `}
                 >

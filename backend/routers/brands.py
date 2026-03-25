@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional
-from services.ai_service import _call_groq
+from services.ai_service import _call_ollama
 
 router = APIRouter()
 
@@ -50,7 +50,7 @@ Return ONLY this JSON:
 Return 10-16 brands across multiple food categories (turmeric, milk, ghee, honey, mustard oil, chilli powder, paneer, rice, atta, tea). If the query is specific, return 4-6 brands only for that food. Only include real, well-known Indian brands. Vary scores realistically (70-95)."""
 
     try:
-        result = _call_groq(system, user, max_tokens=1500)
+        result = _call_ollama(system, user, max_tokens=1500)
         brands = result.get("brands", [])
         if len(brands) >= 3:
             return {"brands": brands, "total": len(brands), "source": "ai"}
@@ -100,7 +100,7 @@ Return ONLY this JSON:
 Only use real data about these actual Indian brands. Be honest about quality issues. Scores must differ between brands."""
 
     try:
-        result = _call_groq(system, user, max_tokens=1500)
+        result = _call_ollama(system, user, max_tokens=1500)
         return {"data": result, "source": "ai"}
     except Exception as e:
         # Fallback: return basic info

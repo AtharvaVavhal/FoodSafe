@@ -1,0 +1,33 @@
+{
+  "model": "yolov8n",
+  "description": "YOLOv8 nano model for Indian food detection",
+  "classes": {
+    "0": "turmeric_powder",
+    "1": "chilli_powder",
+    "2": "coriander_powder",
+    "3": "cumin",
+    "4": "milk_packet",
+    "5": "ghee_container",
+    "6": "mustard_oil",
+    "7": "coconut_oil",
+    "8": "rice",
+    "9": "wheat_flour",
+    "10": "dal_lentils",
+    "11": "paneer",
+    "12": "honey_jar",
+    "13": "spice_packet",
+    "14": "loose_spice"
+  },
+  "training_config": {
+    "epochs": 50,
+    "imgsz": 640,
+    "batch": 16,
+    "device": "0",
+    "patience": 10,
+    "lr0": 0.001,
+    "augment": true
+  },
+  "dataset_source": "Open Images v7 + custom Indian food images",
+  "export_format": "onnx",
+  "output_dir": "../models"
+}

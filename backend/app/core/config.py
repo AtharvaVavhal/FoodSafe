@@ -4,7 +4,12 @@ import json
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
+    # Groq (can be used as fallback)
     GROQ_API_KEY: str = ""
+    # Ollama configuration
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.1:8b"
+    OLLAMA_VISION_MODEL: str = "llava:13b"  # or "bakllava", "moondream"
     DATABASE_URL: str = "sqlite+aiosqlite:///./foodsafe.db"
     REDIS_URL: str = "redis://localhost:6379"
     SECRET_KEY: str = "dev-secret-key-change-in-production"

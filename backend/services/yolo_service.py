@@ -16,7 +16,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
-VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+VISION_MODEL = "llama-3.2-90b-vision-preview"
 
 
 def _groq_key() -> str:

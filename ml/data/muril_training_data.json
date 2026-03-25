@@ -1,0 +1,35 @@
+{
+  "model": "google/muril-base-cased",
+  "description": "Multilingual NLP for Hindi and Marathi food safety queries",
+  "labels": {
+    "0": "other",
+    "1": "adulteration",
+    "2": "symptom",
+    "3": "brand"
+  },
+  "training_samples": [
+    {"text": "Is turmeric powder safe to eat?", "label": 1, "lang": "en"},
+    {"text": "How to test milk for adulteration at home?", "label": 1, "lang": "en"},
+    {"text": "Which honey brand is FSSAI certified?", "label": 3, "lang": "en"},
+    {"text": "I have stomach pain after eating food", "label": 2, "lang": "en"},
+    {"text": "What is the recipe for dal makhani?", "label": 0, "lang": "en"},
+    {"text": "क्या हल्दी में मिलावट है?", "label": 1, "lang": "hi"},
+    {"text": "दूध की जांच घर पर कैसे करें?", "label": 1, "lang": "hi"},
+    {"text": "अमूल दूध सुरक्षित है क्या?", "label": 3, "lang": "hi"},
+    {"text": "पेट में दर्द हो रहा है खाना खाने के बाद", "label": 2, "lang": "hi"},
+    {"text": "दाल मखनी की रेसिपी बताएं", "label": 0, "lang": "hi"},
+    {"text": "हळदीमध्ये भेसळ आहे का?", "label": 1, "lang": "mr"},
+    {"text": "दुधाची घरी तपासणी कशी करावी?", "label": 1, "lang": "mr"},
+    {"text": "कोणता तेलाचा ब्रँड सुरक्षित आहे?", "label": 3, "lang": "mr"},
+    {"text": "जेवणानंतर पोटदुखी होत आहे", "label": 2, "lang": "mr"},
+    {"text": "मसाल्यांमध्ये कोणती भेसळ असते?", "label": 1, "lang": "mr"}
+  ],
+  "training_config": {
+    "epochs": 10,
+    "batch_size": 8,
+    "learning_rate": "2e-5",
+    "max_length": 128,
+    "test_split": 0.2
+  },
+  "output_dir": "../models/muril_foodsafe"
+}

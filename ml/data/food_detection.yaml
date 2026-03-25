@@ -1,0 +1,25 @@
+# FoodSafe YOLOv8 Food Detection Dataset
+# Indian food items commonly tested for adulteration
+
+path: ../data/food_detection
+train: images/train
+val: images/val
+test: images/test
+
+nc: 15
+names:
+  - turmeric_powder
+  - chilli_powder
+  - coriander_powder
+  - cumin
+  - milk_packet
+  - ghee_container
+  - mustard_oil
+  - coconut_oil
+  - rice
+  - wheat_flour
+  - dal_lentils
+  - paneer
+  - honey_jar
+  - spice_packet
+  - loose_spice

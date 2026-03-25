@@ -12,6 +12,8 @@ Changes from v1:
     source cards beneath the analysis.
   - All other functions (scan_combination, analyze_symptoms,
     analyze_label_image, extract_fssai_violation) are unchanged.
+
+Using Ollama for local LLM inference (privacy-focused, no API costs).
 """
 
 import json
@@ -25,16 +27,108 @@ from services.rag_service import rag
 
 logger = logging.getLogger(__name__)
 
+# Ollama configuration
+OLLAMA_BASE_URL = settings.OLLAMA_BASE_URL
+OLLAMA_MODEL = settings.OLLAMA_MODEL
+OLLAMA_VISION_MODEL = settings.OLLAMA_VISION_MODEL
+
+# Fallback to Groq if Ollama is unavailable
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_KEY = settings.GROQ_API_KEY
-MODEL = "llama-3.1-8b-instant"
-VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
-# ── Groq helpers ──────────────────────────────────────────────────────────────
+# ── Ollama helpers ──────────────────────────────────────────────────────────────
 
-def _call_groq(system: str, user: str, max_tokens: int = 1500, _retries: int = 3) -> dict:
-    """Call Groq LLM with retry + exponential backoff."""
+def _call_ollama(system: str, user: str, max_tokens: int = 1500, _retries: int = 2, use_vision: bool = False, image_b64: str = None, media_type: str = None) -> dict:
+    """Call Ollama LLM with retry + exponential backoff."""
+    model = OLLAMA_VISION_MODEL if use_vision else OLLAMA_MODEL
+
+    last_err = None
+    for attempt in range(1, _retries + 1):
+        try:
+            t0 = time.time()
+
+            # Build messages for Ollama
+            messages = [{"role": "system", "content": system}]
+
+            if use_vision and image_b64:
+                # Ollama vision models expect images in a specific format
+                user_content = {
+                    "role": "user",
+                    "content": user,
+                    "images": [image_b64]  # Ollama expects raw base64 without prefix
+                }
+            else:
+                user_content = {"role": "user", "content": user}
+
+            messages.append(user_content)
+
+            response = httpx.post(
+                f"{OLLAMA_BASE_URL}/api/chat",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "num_predict": max_tokens,
+                    },
+                },
+                timeout=60,  # Ollama can be slower than Groq
+            )
+            response.raise_for_status()
+            elapsed = int((time.time() - t0) * 1000)
+            data = response.json()
+
+            logger.info(
+                "Ollama call (%s): %dms",
+                model,
+                elapsed,
+            )
+
+            text = data.get("message", {}).get("content", "")
+            return _parse(text)
+        except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.ConnectError) as e:
+            last_err = e
+            logger.warning(
+                "Ollama attempt %d/%d failed (%s)",
+                attempt, _retries, e,
+            )
+            # Don't retry Ollama - fall back to Groq instead
+            break
+
+    # Fall back to Groq if Ollama fails
+    logger.info("Falling back to Groq...")
+    if use_vision:
+        return _call_groq_vision(system, user, image_b64, media_type, max_tokens)
+    return _call_groq(system, user, max_tokens)
+
+
+def _parse(text: str) -> dict:
+    """Parse JSON response from LLM, handling markdown code blocks."""
+    clean = (
+        text.strip()
+        .removeprefix("```json")
+        .removeprefix("```")
+        .removesuffix("```")
+        .strip()
+    )
+    try:
+        return json.loads(clean)
+    except Exception:
+        return {"error": "parse_failed", "raw": text}
+
+
+# ── Groq helpers (fallback) ──────────────────────────────────────────────────────────────
+
+def _call_groq(system: str, user: str, max_tokens: int = 1500, _retries: int = 2) -> dict:
+    """Call Groq LLM with retry + exponential backoff (fallback when Ollama unavailable)."""
+    if not GROQ_KEY:
+        raise RuntimeError("Groq API key not configured")
+
     last_err = None
     for attempt in range(1, _retries + 1):
         try:
@@ -46,7 +140,7 @@ def _call_groq(system: str, user: str, max_tokens: int = 1500, _retries: int = 3
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": MODEL,
+                    "model": GROQ_MODEL,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user",   "content": user},
@@ -61,7 +155,7 @@ def _call_groq(system: str, user: str, max_tokens: int = 1500, _retries: int = 3
             data = response.json()
             usage = data.get("usage", {})
             logger.info(
-                "Groq call: %dms, %d tokens in / %d tokens out",
+                "Groq fallback: %dms, %d tokens in / %d tokens out",
                 elapsed,
                 usage.get("prompt_tokens", 0),
                 usage.get("completion_tokens", 0),
@@ -73,28 +167,66 @@ def _call_groq(system: str, user: str, max_tokens: int = 1500, _retries: int = 3
             if attempt < _retries:
                 wait = 2 ** attempt
                 logger.warning(
-                    "Groq attempt %d/%d failed (%s), retrying in %ds...",
+                    "Groq fallback attempt %d/%d failed (%s), retrying in %ds...",
                     attempt, _retries, e, wait,
                 )
                 time.sleep(wait)
             else:
-                logger.error("Groq failed after %d attempts: %s", _retries, e)
+                logger.error("Groq fallback failed after %d attempts: %s", _retries, e)
                 raise
-    raise last_err  # should not reach here
+    raise last_err
 
 
-def _parse(text: str) -> dict:
-    clean = (
-        text.strip()
-        .removeprefix("```json")
-        .removeprefix("```")
-        .removesuffix("```")
-        .strip()
-    )
-    try:
-        return json.loads(clean)
-    except Exception:
-        return {"error": "parse_failed", "raw": text}
+def _call_groq_vision(system: str, user: str, image_b64: str, media_type: str, max_tokens: int = 1800, _retries: int = 2) -> dict:
+    """Call Groq Vision model (fallback when Ollama vision fails)."""
+    if not GROQ_KEY:
+        raise RuntimeError("Groq API key not configured")
+
+    last_err = None
+    for attempt in range(1, _retries + 1):
+        try:
+            t0 = time.time()
+            response = httpx.post(
+                GROQ_URL,
+                headers={
+                    "Authorization": f"Bearer {GROQ_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": GROQ_VISION_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{media_type};base64,{image_b64}"
+                                    },
+                                },
+                                {"type": "text", "text": user},
+                            ],
+                        },
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": max_tokens,
+                },
+                timeout=45,
+            )
+            response.raise_for_status()
+            elapsed = int((time.time() - t0) * 1000)
+            logger.info("Groq vision fallback: %dms", elapsed)
+            text = response.json()["choices"][0]["message"]["content"]
+            return _parse(text)
+        except Exception as e:
+            last_err = e
+            logger.warning("Groq vision fallback attempt %d/%d failed: %s", attempt, _retries, e)
+            if attempt < _retries:
+                time.sleep(2 ** attempt)
+            else:
+                raise
+    raise last_err
 
 
 # ── Market adulteration rate data (FSSAI + ICMR surveys) ─────────────────────
@@ -220,7 +352,7 @@ Return ONLY this JSON structure:
 }}"""
 
     # ── 3. LLM call ───────────────────────────────────────────────────────────
-    result = _call_groq(system, user, max_tokens=1600)
+    result = _call_ollama(system, user, max_tokens=1600)
 
     # ── 4. Attach citations and market rate ───────────────────────────────────
     result["fssaiCitations"] = rag.format_citations(fssai_records)
@@ -256,7 +388,7 @@ Return ONLY this JSON:
   "dailyExposureWarning": "cumulative toxin note",
   "recommendation": "actionable advice"
 }}"""
-    return _call_groq(system, user, max_tokens=1000)
+    return _call_ollama(system, user, max_tokens=1000)
 
 
 # ── Symptom reverse lookup ─────────────────────────────────────────────────────
@@ -282,7 +414,7 @@ Could these be food adulteration related? Return ONLY this JSON:
   "recommendation": "what to do now",
   "disclaimer": "always seek professional medical advice"
 }}"""
-    return _call_groq(system, user, max_tokens=1000)
+    return _call_ollama(system, user, max_tokens=1000)
 
 
 # ── Label image analysis ───────────────────────────────────────────────────────
@@ -348,37 +480,8 @@ Return ONLY this JSON:
 }"""
 
     try:
-        response = httpx.post(
-            GROQ_URL,
-            headers={
-                "Authorization": f"Bearer {GROQ_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": VISION_MODEL,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{media_type};base64,{image_b64}"
-                                },
-                            },
-                            {"type": "text", "text": user},
-                        ],
-                    },
-                ],
-                "temperature": 0.2,
-                "max_tokens": 1800,
-            },
-            timeout=45,
-        )
-        response.raise_for_status()
-        text = response.json()["choices"][0]["message"]["content"]
-        result = _parse(text)
+        # Try Ollama vision model first
+        result = _call_ollama(system, user, max_tokens=1800, use_vision=True, image_b64=image_b64, media_type=media_type)
 
         # Ensure all list fields are always lists
         for key in [
@@ -462,4 +565,4 @@ Return ONLY this JSON:
   "state": "state name",
   "date": "YYYY-MM-DD or null"
 }}"""
-    return _call_groq(system, user, max_tokens=500)
+    return _call_ollama(system, user, max_tokens=500)

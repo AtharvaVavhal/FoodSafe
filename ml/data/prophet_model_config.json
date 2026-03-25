@@ -1,0 +1,34 @@
+{
+  "model_type": "prophet",
+  "description": "Seasonal adulteration prediction using Facebook Prophet",
+  "target_food": "turmeric",
+  "seasonal_patterns": {
+    "diwali_boost": {
+      "months": [10, 11],
+      "increase": 35,
+      "description": "Festival season adulteration spike"
+    },
+    "holi_boost": {
+      "months": [3],
+      "increase": 20,
+      "description": "Holi festival adulteration spike"
+    },
+    "monsoon_boost": {
+      "months": [6, 7, 8],
+      "increase": 12,
+      "description": "Monsoon moisture-related adulteration"
+    }
+  },
+  "training_config": {
+    "yearly_seasonality": true,
+    "weekly_seasonality": false,
+    "daily_seasonality": false,
+    "seasonality_mode": "multiplicative",
+    "changepoint_prior_scale": 0.1
+  },
+  "indian_holidays": ["diwali", "holi", "navratri"],
+  "output_files": {
+    "model": "../models/prophet_turmeric.pkl",
+    "risk_calendar": "../models/turmeric_risk_calendar.json"
+  }
+}

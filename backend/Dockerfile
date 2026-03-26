@@ -1,34 +1,40 @@
-FROM python:3.11-slim
+# 1. Use a lightweight Python base image (Python 3.10 is highly stable for ML)
+FROM python:3.10-slim
 
-# System dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
+# 2. Set environment variables to optimize Python
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# 3. Install system dependencies for Prophet (C++ compilers) and PostgreSQL
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     libpq-dev \
-    curl \
+    python3-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# 4. Hugging Face Spaces SECURITY REQUIREMENT: Create and switch to a non-root user
+RUN useradd -m -u 1000 user
+USER user
 
-# Install CPU-only PyTorch first to avoid full CUDA build (~700MB vs ~3GB)
-RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
+# 5. Set up the working directory and PATH for the new user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+WORKDIR $HOME/app
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 6. Copy requirements first (this caches the heavy ML installations so rebuilds are faster)
+COPY --chown=user requirements.txt .
 
-# Copy application code
-COPY . .
+# 7. Install Python packages
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser \
-    && mkdir -p /app/data/chroma_fssai \
-    && chown -R appuser:appuser /app
+# 8. Copy the rest of your application code
+COPY --chown=user . .
 
-USER appuser
+# 9. Hugging Face Spaces PORT REQUIREMENT
+EXPOSE 7860
 
-EXPOSE 8000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2
+# 10. Start the FastAPI application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]

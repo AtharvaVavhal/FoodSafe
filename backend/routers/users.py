@@ -154,8 +154,22 @@ async def sync_scan(
     if not req.food_name.strip():
         raise HTTPException(400, "food_name is required")
 
-    # Avoid duplicate: same user + same food + same day
-    scanned_date = req.scanned_at[:10] if req.scanned_at else datetime.utcnow().date().isoformat()
+    # 1. Parse and clean the date for duplicate checking
+    # We use utcnow() to keep it naive
+    record_date = datetime.utcnow()
+    
+    if req.scanned_at:
+        try:
+            # Parse the ISO string (e.g., from JavaScript's .toISOString())
+            dt = datetime.fromisoformat(req.scanned_at.replace("Z", "+00:00"))
+            # FIX: Convert from 'Aware' to 'Naive' to match Postgres column
+            record_date = dt.replace(tzinfo=None)
+        except (ValueError, TypeError):
+            record_date = datetime.utcnow()
+
+    scanned_date_str = record_date.date().isoformat()
+
+    # 2. Avoid duplicate: same user + same food + same day
     existing = await db.execute(
         select(ScanRecord).where(
             ScanRecord.user_id   == user.id,
@@ -164,16 +178,19 @@ async def sync_scan(
     )
     records = existing.scalars().all()
     for r in records:
-        if r.created_at and r.created_at.date().isoformat() == scanned_date:
+        if r.created_at and r.created_at.date().isoformat() == scanned_date_str:
             return {"success": True, "skipped": True, "reason": "duplicate"}
 
+    # 3. Save the new record
     db.add(ScanRecord(
         user_id      = user.id,
         food_name    = req.food_name.strip(),
         risk_level   = req.risk_level,
         safety_score = req.safety_score,
         scan_type    = "text",
+        created_at   = record_date  # This is now a clean 'Naive' datetime
     ))
+    
     await db.flush()
     await db.commit()
     return {"success": True, "skipped": False}

@@ -8,8 +8,11 @@ from services.ai_service import _call_groq
 router = APIRouter()
 
 
-def _ai_fssai_alerts() -> list:
-    """Generate current FSSAI-style alerts via Groq — used only when DB is empty."""
+async def _ai_fssai_alerts() -> list:
+    """
+    Generate current FSSAI-style alerts via Groq asynchronously.
+    FIXED: Changed to 'async def' and added 'await' for the Groq call.
+    """
     system = "You are an Indian food safety expert. Respond ONLY with valid JSON, no markdown."
     user = """List the 6 most recent and significant food adulteration alerts in India.
 Base on real FSSAI violation patterns for the current season.
@@ -28,7 +31,8 @@ Return ONLY this JSON:
   ]
 }"""
     try:
-        result = _call_groq(system, user, max_tokens=800)
+        # FIXED: Added 'await' to resolve the coroutine
+        result = await _call_groq(system, user, max_tokens=800)
         return result.get("alerts", [])
     except Exception:
         return []
@@ -36,6 +40,9 @@ Return ONLY this JSON:
 
 @router.get("/alerts")
 async def get_alerts(db: AsyncSession = Depends(get_db)):
+    """
+    Fetch alerts from database or generate them via AI if the DB is empty.
+    """
     result = await db.execute(
         select(FssaiViolation).order_by(FssaiViolation.created_at.desc()).limit(50)
     )
@@ -57,8 +64,8 @@ async def get_alerts(db: AsyncSession = Depends(get_db)):
             for v in violations
         ]
     else:
-        # DB empty — generate dynamically via AI (no hardcoded fallback)
-        alerts = _ai_fssai_alerts()
+        # FIXED: Added 'await' because _ai_fssai_alerts is now async
+        alerts = await _ai_fssai_alerts()
 
     return {"alerts": alerts}
 

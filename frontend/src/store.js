@@ -13,28 +13,34 @@ export const useStore = create(
       // ── Auth ─────────────────────────────────────────────
       user: null,
       token: null,
-      setAuth: (user, token) => {
+      setAuth: async (user, token) => {
         localStorage.setItem('foodsafe_token', token)
         set({ user, token })
+        
         // Sync existing local scan history to DB on login
         const history = get().scanHistory
         if (history.length > 0) {
-          history.slice(0, 20).forEach(scan => {
-            fetch(`${API_URL}/users/sync-scan`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                food_name:    scan.food_name,
-                risk_level:   scan.risk_level,
-                safety_score: scan.safety_score,
-                scanned_at:   scan.date,
-              }),
-            }).catch(err => console.warn('Scan sync failed:', err))
-          })
+          await Promise.all(
+            history.slice(0, 20).map(scan => 
+              fetch(`${API_URL}/users/sync-scan`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  food_name:    scan.food_name,
+                  risk_level:   scan.risk_level,
+                  safety_score: scan.safety_score,
+                  scanned_at:   scan.date,
+                }),
+              }).catch(err => console.warn('Scan sync failed:', err))
+            )
+          )
         }
+        
+        // Pull the fully merged history back from the DB
+        get().loadScansFromDB()
       },
       logout: () => {
         localStorage.removeItem('foodsafe_token')

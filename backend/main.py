@@ -9,7 +9,7 @@ from app.db.database import init_db
 from routers import (
     scan, symptoms, community, brands, fssai,
     users, whatsapp, recommendations, festival,
-    meal_planner, push, admin, diary, news,
+    meal_planner, push, admin, diary, news, chat,
 )
 
 
@@ -71,6 +71,7 @@ app.include_router(push.router,             prefix="/api/push",            tags=
 app.include_router(admin.router,            prefix="/api/admin",           tags=["Admin"])
 app.include_router(diary.router,            prefix="/api/diary",           tags=["Diary"])
 app.include_router(news.router,             prefix="/api/news",            tags=["News"])
+app.include_router(chat.router,             prefix="/api/chat",            tags=["Chat"])
 
 @app.get("/")
 async def root():

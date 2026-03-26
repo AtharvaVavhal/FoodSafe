@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useStore } from '../store' 
 
-/* ── Animated counter hook ─────────────────────────────── */
+/* ── HELPERS (Must be OUTSIDE the component) ─────────────────────────── */
+
 function useCountUp(target, duration = 2000, start = false) {
   const [count, setCount] = useState(0)
   useEffect(() => {
@@ -18,7 +20,6 @@ function useCountUp(target, duration = 2000, start = false) {
   return count
 }
 
-/* ── Intersection Observer hook ────────────────────────── */
 function useInView(threshold = 0.2) {
   const ref = useRef(null)
   const [inView, setInView] = useState(false)
@@ -32,7 +33,6 @@ function useInView(threshold = 0.2) {
   return [ref, inView]
 }
 
-/* ── Floating particles component ──────────────────────── */
 function Particles() {
   const particles = Array.from({ length: 20 }, (_, i) => ({
     id: i,
@@ -62,7 +62,6 @@ function Particles() {
   )
 }
 
-/* ── Typewriter text ───────────────────────────────────── */
 function Typewriter({ words, speed = 100, pause = 2000 }) {
   const [text, setText] = useState('')
   const [wordIdx, setWordIdx] = useState(0)
@@ -99,7 +98,6 @@ function Typewriter({ words, speed = 100, pause = 2000 }) {
   )
 }
 
-/* ── FSSAI Alert Marquee ───────────────────────────────── */
 function AlertMarquee({ alerts }) {
   return (
     <div style={{
@@ -127,6 +125,8 @@ function AlertMarquee({ alerts }) {
     </div>
   )
 }
+
+/* ── CONSTANTS ──────────────────────────────────────────────────────── */
 
 const STATS = [
   { value: 68, suffix: '%', label: 'Turmeric Adulterated', icon: '🌿' },
@@ -159,8 +159,12 @@ const DEFAULT_ALERTS = [
   "Argemone oil in mustard oil detected in Rajasthan",
 ]
 
+/* ── MAIN COMPONENT ─────────────────────────────────────────────────── */
+
 export default function LandingPage() {
   const nav = useNavigate()
+  const { token } = useStore() // Get the token
+  
   const [statsRef, statsInView] = useInView(0.3)
   const [featRef, featInView] = useInView(0.1)
   const [stepsRef, stepsInView] = useInView(0.2)
@@ -172,6 +176,13 @@ export default function LandingPage() {
   const stat2 = useCountUp(STATS[2].value, 2000, statsInView)
   const stat3 = useCountUp(STATS[3].value, 2000, statsInView)
   const statValues = [stat0, stat1, stat2, stat3]
+
+  // AUTO-REDIRECT LOGGED IN USERS
+  useEffect(() => {
+    if (token) {
+      nav('/scan', { replace: true });
+    }
+  }, [token, nav]);
 
   useEffect(() => { setTimeout(() => setHeroLoaded(true), 100) }, [])
 
@@ -208,7 +219,6 @@ export default function LandingPage() {
         }} />
         <Particles />
 
-        {/* Morphing glow blob */}
         <div style={{
           position: 'absolute',
           width: 300, height: 300,
@@ -218,7 +228,6 @@ export default function LandingPage() {
           filter: 'blur(40px)',
         }} />
 
-        {/* Brand badge */}
         <div style={{
           opacity: heroLoaded ? 1 : 0,
           transform: heroLoaded ? 'translateY(0)' : 'translateY(20px)',
@@ -237,7 +246,6 @@ export default function LandingPage() {
           <div className="live-dot" style={{ marginLeft: 4 }} />
         </div>
 
-        {/* Main headline */}
         <h1 style={{
           fontSize: 'clamp(36px, 7vw, 72px)',
           fontWeight: 800,
@@ -254,7 +262,6 @@ export default function LandingPage() {
           <br />in your food
         </h1>
 
-        {/* Typewriter subheadline */}
         <div style={{
           fontSize: 'clamp(16px, 3vw, 22px)',
           color: 'rgba(255,255,255,0.5)',
@@ -273,7 +280,6 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* CTA buttons */}
         <div style={{
           display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
           opacity: heroLoaded ? 1 : 0,
@@ -315,7 +321,6 @@ export default function LandingPage() {
           </button>
         </div>
 
-        {/* Scroll indicator */}
         <div style={{
           position: 'absolute',
           bottom: 30,
@@ -327,7 +332,6 @@ export default function LandingPage() {
         }}>↓</div>
       </section>
 
-      {/* ── FSSAI Alert Marquee ─────────────────────────── */}
       <AlertMarquee alerts={alerts} />
 
       {/* ── Stats Section ──────────────────────────────── */}

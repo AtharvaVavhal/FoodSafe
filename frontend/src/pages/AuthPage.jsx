@@ -17,15 +17,36 @@ export default function AuthPage() {
 
   async function handleSubmit() {
     if (!email || !password) return
-    setLoading(true); setError('')
+    if (mode === 'register' && (!name || !city)) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true); 
+    setError('')
+    
     try {
       const res = mode === 'register'
         ? await register({ name, email, password, city })
         : await login({ email, password })
-      setAuth({ id: res.user_id, name: res.name, email }, res.access_token)
-      nav('/scan')
+
+      // Ensure we extract the correct fields from the backend response
+      const userData = { 
+        id: res.user_id || res.id, 
+        name: res.name || name, 
+        email: email,
+        city: res.city || city 
+      };
+
+      // 1. Save to Store & LocalStorage
+      setAuth(userData, res.access_token || res.token);
+      
+      // 2. Redirect straight to the Scan Page
+      nav('/scan', { replace: true });
+
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Something went wrong')
+      console.error("Auth Error:", e);
+      setError(e?.response?.data?.detail || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false)
     }
@@ -60,7 +81,7 @@ export default function AuthPage() {
                   ? 'bg-surface-200 text-brand shadow-sm border border-white/10'
                   : 'text-white/40 hover:text-white/70'}`}
             >
-              {m}
+              {m === 'login' ? 'Sign In' : 'Join'}
             </button>
           ))}
         </div>
@@ -121,7 +142,7 @@ export default function AuthPage() {
                 ? 'bg-surface-200 text-white/30 cursor-not-allowed border border-white/5'
                 : 'bg-brand text-deep hover:scale-[1.02] shadow-[0_4px_24px_rgba(0,224,156,0.3)] hover:shadow-[0_8px_32px_rgba(0,224,156,0.5)] border border-brand-light'}`}
           >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
             {!loading && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>

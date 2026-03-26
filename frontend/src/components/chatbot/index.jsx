@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStore } from '../../store'
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-
-const SYSTEM_PROMPT = `You are FoodSafe AI, a food safety assistant for Indian families. You help with food adulteration detection, FSSAI violations, safe food buying tips, home tests, and seasonal food risks in Maharashtra. Keep responses short and practical. If asked in Hindi or Marathi, respond in the same language.`
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const SUGGESTIONS = {
   en: ['Is turmeric safe?', 'How to test milk?', 'Safe oil brands?'],
@@ -27,25 +24,28 @@ export default function Chatbot() {
   }, [messages])
 
   async function sendMessage(text) {
-    const userMsg = text || input.trim()
-    if (!userMsg) return
+    const userMsg = (text || input).trim()
+    if (!userMsg || loading) return
     setInput('')
+
+    const historySnapshot = messages.map(m => ({ role: m.role, content: m.content }))
+
     setMessages(prev => [...prev, { role: 'user', content: userMsg }])
     setLoading(true)
+
     try {
-      const history = messages.map(m => ({ role: m.role, content: m.content }))
-      const res = await fetch(GROQ_URL, {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userMsg }],
-          temperature: 0.5,
-          max_tokens: 300,
-        })
+          message: userMsg,
+          history: historySnapshot,
+        }),
       })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      const reply = data.choices?.[0]?.message?.content || 'Sorry, I could not respond.'
+      const reply = data.reply || 'Sorry, I could not respond.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }])
@@ -57,7 +57,7 @@ export default function Chatbot() {
   return (
     <>
       <button onClick={() => setOpen(!open)} style={{
-        position: 'fixed', bottom: 80, right: 'max(16px, calc(50vw - 224px))', zIndex: 1000,
+        position: 'fixed', bottom: 80, right: 16, zIndex: 1000,  /* FIX: was max(16px, calc(50vw - 224px)) */
         width: 48, height: 48, borderRadius: '50%',
         background: '#1a3d2b', border: 'none',
         boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
@@ -69,7 +69,7 @@ export default function Chatbot() {
 
       {open && (
         <div style={{
-          position: 'fixed', bottom: 140, right: 'max(16px, calc(50vw - 224px))', zIndex: 1000,
+          position: 'fixed', bottom: 140, right: 16, zIndex: 1000,  /* FIX: was max(16px, calc(50vw - 224px)) */
           width: 300, height: 420, background: '#dcdada',
           borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           display: 'flex', flexDirection: 'column',
@@ -96,7 +96,8 @@ export default function Chatbot() {
                   borderBottomRightRadius: m.role === 'user' ? 4 : 16,
                   borderBottomLeftRadius: m.role === 'assistant' ? 4 : 16,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  whiteSpace: 'pre-wrap',
                 }}>
                   {m.content}
                 </div>
@@ -129,7 +130,7 @@ export default function Chatbot() {
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendMessage()}
+              onKeyDown={e => e.key === 'Enter' && !loading && sendMessage()}
               placeholder={lang === 'hi' ? 'कुछ पूछें...' : lang === 'mr' ? 'विचारा...' : 'Ask anything...'}
               style={{
                 flex: 1, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',

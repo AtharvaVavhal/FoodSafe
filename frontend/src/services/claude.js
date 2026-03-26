@@ -1,106 +1,68 @@
-// FoodSafe AI Service — powered by Groq (FREE)
-// Get free key at: console.groq.com → API Keys
-// Free tier: unlimited requests, very fast (LLaMA 3)
+// FoodSafe Backend Service Wrapper
+// This replaces the old direct Groq calls to ensure all scans are 
+// processed by the FastAPI backend and saved to your history.
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || 'YOUR_GROQ_KEY_HERE'
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+import { 
+  scanFoodAPI, 
+  scanCombinationAPI, 
+  analyzeSymptomsAPI, 
+  scanImageAPI 
+} from './api'
 
-async function callGroq(systemPrompt, userPrompt) {
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt }
-      ],
-      temperature: 0.3,
-      max_tokens: 1500,
-    })
+/**
+ * Scans a single food item via text.
+ * Triggers seasonal and personalized risk scoring on the backend.
+ */
+export async function scanFood({ foodName, memberProfile, lang = 'en', city }) {
+  return scanFoodAPI({
+    food_name: foodName,
+    lang: lang,
+    member_profile: memberProfile,
+    city: city
   })
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err?.error?.message || 'Groq API error')
-  }
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content || ''
-  const clean = text.replace(/```json|```/g, '').trim()
-  try { return JSON.parse(clean) }
-  catch { return { error: 'parse_failed', raw: text } }
 }
 
-export async function scanFood({ foodName, memberProfile, lang = 'en' }) {
-  const langNote = lang === 'hi' ? 'Respond with values in Hindi.' : lang === 'mr' ? 'Respond with values in Marathi.' : ''
-  const system = `You are a food safety expert specializing in Indian food adulteration. Respond ONLY with valid JSON, no markdown, no extra text. ${langNote}`
-  const user = `${memberProfile ? `User health profile: ${JSON.stringify(memberProfile)}\n` : ''}
-Analyze adulteration risk for: "${foodName}"
-Return ONLY this JSON:
-{
-  "foodName": "cleaned name",
-  "riskLevel": "LOW or MEDIUM or HIGH or CRITICAL",
-  "safetyScore": 0-100,
-  "summary": "2 sentence overview",
-  "cookingWarning": null or "warning if heating worsens it",
-  "personalizedWarning": null or "warning for health profile",
-  "adulterants": [
-    { "name": "name", "description": "what and why added", "healthRisk": "impact", "severity": "LOW or MEDIUM or HIGH or CRITICAL", "isPersonalRisk": true or false }
-  ],
-  "homeTests": [
-    { "name": "test name", "steps": "step by step", "result": "what to look for", "difficulty": "Easy or Medium or Hard" }
-  ],
-  "buyingTips": ["tip1", "tip2", "tip3"],
-  "verdict": "one punchy verdict sentence"
-}`
-  return callGroq(system, user)
-}
-
+/**
+ * Analyzes risks for multiple foods consumed together.
+ */
 export async function scanCombination({ foods, memberProfile, lang = 'en' }) {
-  const system = 'You are a food safety and toxicology expert. Respond ONLY with valid JSON, no markdown.'
-  const user = `${memberProfile ? `Health profile: ${JSON.stringify(memberProfile)}\n` : ''}
-Analyze combined risk for foods eaten together: ${foods.join(', ')}
-Return ONLY this JSON:
-{
-  "combinedRiskLevel": "LOW or MEDIUM or HIGH or CRITICAL",
-  "combinedScore": 0-100,
-  "interactions": [{ "foods": ["f1","f2"], "interaction": "what happens", "severity": "LOW or MEDIUM or HIGH" }],
-  "dailyExposureWarning": "cumulative toxin note",
-  "recommendation": "actionable advice"
-}`
-  return callGroq(system, user)
+  return scanCombinationAPI({
+    foods: foods,
+    lang: lang,
+    member_profile: memberProfile
+  })
 }
 
+/**
+ * Analyzes health symptoms against recently consumed foods.
+ */
 export async function analyzeSymptoms({ symptoms, recentFoods, lang = 'en' }) {
-  const system = 'You are a food safety and public health expert. Respond ONLY with valid JSON, no markdown.'
-  const user = `Symptoms: "${symptoms}"
-Recent foods: ${recentFoods?.join(', ') || 'unknown'}
-Could these be from food adulteration? Return ONLY this JSON:
-{
-  "possibleCauses": [{ "adulterant": "name", "food": "source", "confidence": "HIGH or MEDIUM or LOW", "explanation": "why" }],
-  "urgency": "MONITOR or CONSULT_DOCTOR or EMERGENCY",
-  "recommendation": "what to do now",
-  "disclaimer": "always seek professional medical advice"
-}`
-  return callGroq(system, user)
+  return analyzeSymptomsAPI({
+    symptoms: symptoms,
+    recent_foods: recentFoods,
+    lang: lang
+  })
 }
 
+/**
+ * Handles image-based scanning.
+ * Converts base64 image data to a File object for YOLOv8 processing on the backend.
+ */
 export async function analyzeLabel({ imageBase64, lang = 'en' }) {
-  // Groq doesn't support vision — fall back to text description
-  const system = 'You are a food label safety expert. Respond ONLY with valid JSON, no markdown.'
-  const user = `A user uploaded a food label image. Provide general guidance on what to look for.
-Return ONLY this JSON:
-{
-  "productName": "Unknown — manual check needed",
-  "flaggedIngredients": [],
-  "eNumbers": [
-    { "code": "E102", "name": "Tartrazine", "risk": "MEDIUM", "note": "Yellow dye, may cause hyperactivity" },
-    { "code": "E621", "name": "MSG", "risk": "LOW", "note": "Flavor enhancer, generally safe" }
-  ],
-  "overallRisk": "MEDIUM",
-  "summary": "For accurate label analysis, please type the ingredient list in the search box and scan it as a food item."
-}`
-  return callGroq(system, user)
+  try {
+    // 1. Convert the base64 string (from the camera) into a Blob
+    const res = await fetch(imageBase64)
+    const blob = await res.blob()
+    
+    // 2. Prepare FormData for file upload
+    const formData = new FormData()
+    formData.append('file', blob, 'scan.jpg')
+    formData.append('lang', lang)
+
+    // 3. Send to FastAPI image endpoint (/api/scan/image)
+    return scanImageAPI(formData)
+  } catch (error) {
+    console.error("Image analysis failed:", error)
+    throw error
+  }
 }

@@ -1,177 +1,434 @@
-import { useEffect, useState } from 'react'
-
 /**
- * SplashLoader — shown on first app load, auto-dismisses after 2.2s
+ * FoodSafe SplashLoader — "Typographic Deconstruction"
  *
- * Usage in main.jsx:
- *   import SplashLoader from './components/SplashLoader'
- *   // wrap your <App /> with it — see bottom of this file
+ * Architecture:
+ *  - All motion via transform + opacity only (GPU composited, zero layout thrash)
+ *  - Framer Motion AnimatePresence for mount/unmount lifecycle
+ *  - Spring physics: stiffness 280, damping 20 (elastic snap, physically grounded)
+ *  - Four-act structure: Scatter → Scan → Converge → Confirm → Exit
+ *  - willChange only on high-frequency animated nodes
+ *
+ * Dependencies: framer-motion (already in your stack)
  */
 
-const LEAVES = [
-  { x: 18,  y: 22,  size: 7,  delay: 0,    rot: -25 },
-  { x: 72,  y: 15,  size: 5,  delay: 0.15, rot: 40  },
-  { x: 85,  y: 60,  size: 9,  delay: 0.3,  rot: -10 },
-  { x: 10,  y: 68,  size: 6,  delay: 0.1,  rot: 55  },
-  { x: 55,  y: 82,  size: 4,  delay: 0.45, rot: -40 },
-  { x: 38,  y: 12,  size: 5,  delay: 0.25, rot: 20  },
-  { x: 90,  y: 30,  size: 7,  delay: 0.05, rot: -60 },
-]
+import { useEffect, useState, memo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-function Leaf({ x, y, size, delay, rot }) {
-  return (
-    <div style={{
-      position: 'absolute',
-      left: `${x}%`,
-      top: `${y}%`,
-      fontSize: size * 3,
-      opacity: 0,
-      transform: `rotate(${rot}deg) scale(0)`,
-      animation: `leafPop 0.6s ease forwards`,
-      animationDelay: `${delay + 0.4}s`,
-    }}>
-      🌿
-    </div>
-  )
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const T = {
+  bg:        '#060a07',
+  green:     '#00c878',
+  greenDim:  'rgba(0, 200, 120, 0.35)',
+  greenGlow: 'rgba(0, 200, 120, 0.09)',
+  cream:     '#e8f0eb',
+  creamDim:  'rgba(232, 240, 235, 0.42)',
+  mono:      "'IBM Plex Mono', 'Courier New', monospace",
+  serif:     "'Cormorant Garamond', Georgia, serif",
 }
 
+// ─── Letter scatter positions (deterministic — same every render) ─────────────
+const LETTERS = [
+  { char: 'F', dx: -190, dy: -95,  rot: -44, s: 0.28 },
+  { char: 'o', dx:  -65, dy: -148, rot:  26, s: 0.38 },
+  { char: 'o', dx:   85, dy: -115, rot: -20, s: 0.34 },
+  { char: 'd', dx:  168, dy:  -72, rot:  52, s: 0.29 },
+  { char: 'S', dx: -145, dy:   84, rot: -58, s: 0.33 },
+  { char: 'a', dx:  -22, dy:  128, rot:  24, s: 0.40 },
+  { char: 'f', dx:  105, dy:   96, rot: -28, s: 0.36 },
+  { char: 'e', dx:  195, dy:   52, rot:  44, s: 0.29 },
+]
+
+// ─── Ambient particles (no runtime random) ────────────────────────────────────
+const PARTICLES = [
+  { x:  7, y: 13, s: 1.5, d: 0.2,  dur: 4.1 },
+  { x: 22, y: 79, s: 2,   d: 0.8,  dur: 5.3 },
+  { x: 68, y: 14, s: 1,   d: 0.4,  dur: 3.8 },
+  { x: 83, y: 63, s: 2.5, d: 1.1,  dur: 4.7 },
+  { x: 14, y: 46, s: 1,   d: 0.6,  dur: 6.0 },
+  { x: 92, y: 27, s: 1.8, d: 0.0,  dur: 4.4 },
+  { x: 45, y: 89, s: 1.2, d: 0.9,  dur: 5.1 },
+  { x: 76, y: 91, s: 2,   d: 0.3,  dur: 3.6 },
+  { x: 36, y:  4, s: 1.5, d: 0.7,  dur: 4.9 },
+  { x:  4, y: 86, s: 2.2, d: 0.1,  dur: 4.2 },
+  { x: 97, y: 73, s: 1,   d: 0.5,  dur: 3.9 },
+  { x: 59, y: 56, s: 1,   d: 1.4,  dur: 5.5 },
+]
+
+// ─── Motion presets ───────────────────────────────────────────────────────────
+const SPRING   = { type: 'spring', stiffness: 280, damping: 20, mass: 1.1 }
+const SPRING_S = { type: 'spring', stiffness: 120, damping: 18 }
+const EXPO     = [0.16, 1, 0.3, 1]
+
+// ─── AnimLetter ───────────────────────────────────────────────────────────────
+const AnimLetter = memo(({ char, dx, dy, rot, s, delay, active }) => (
+  <motion.span
+    style={{
+      display: 'inline-block',
+      fontFamily: T.serif,
+      fontSize: 'clamp(34px, 7.5vw, 54px)',
+      fontWeight: 500,
+      color: T.cream,
+      letterSpacing: '-0.01em',
+      lineHeight: 1,
+      willChange: 'transform, opacity, filter',
+    }}
+    initial={{ opacity: 0, x: dx, y: dy, rotate: rot, scale: s, filter: 'blur(7px)' }}
+    animate={active
+      ? { opacity: 1, x: 0, y: 0, rotate: 0, scale: 1, filter: 'blur(0px)' }
+      : { opacity: 0, x: dx, y: dy, rotate: rot, scale: s, filter: 'blur(7px)' }
+    }
+    transition={{ ...SPRING, delay, filter: { duration: 0.3, delay }, opacity: { duration: 0.22, delay } }}
+  >
+    {char}
+  </motion.span>
+))
+
+// ─── ScanLine ─────────────────────────────────────────────────────────────────
+const ScanLine = memo(({ active }) => (
+  <motion.div
+    style={{
+      position: 'absolute', top: '50%', left: 0, right: 0,
+      height: 1,
+      background: `linear-gradient(90deg, transparent 0%, ${T.greenDim} 15%, ${T.green} 50%, ${T.greenDim} 85%, transparent 100%)`,
+      boxShadow: `0 0 18px ${T.greenDim}, 0 0 4px ${T.green}`,
+      willChange: 'transform, opacity',
+      transformOrigin: 'left center',
+    }}
+    initial={{ scaleX: 0, opacity: 0 }}
+    animate={active
+      ? { scaleX: [0, 1, 1, 0], opacity: [0, 1, 1, 0], originX: [0, 0, 1, 1] }
+      : { scaleX: 0, opacity: 0 }
+    }
+    transition={{ duration: 0.85, times: [0, 0.38, 0.62, 1], ease: EXPO }}
+  />
+))
+
+// ─── Checkmark ────────────────────────────────────────────────────────────────
+const Checkmark = memo(({ visible }) => (
+  <motion.div
+    style={{ position: 'absolute', top: '50%', left: '50%' }}
+    initial={{ opacity: 0, scale: 0.5, x: '-50%', y: '-50%' }}
+    animate={visible
+      ? { opacity: 1, scale: 1, x: '-50%', y: '-50%' }
+      : { opacity: 0, scale: 0.5, x: '-50%', y: '-50%' }
+    }
+    transition={SPRING_S}
+  >
+    <svg width="52" height="52" viewBox="0 0 52 52" fill="none" style={{ overflow: 'visible' }}>
+      <motion.circle
+        cx="26" cy="26" r="22"
+        stroke={T.green} strokeWidth="1" strokeOpacity="0.35" fill="none"
+        initial={{ pathLength: 0 }}
+        animate={visible ? { pathLength: 1 } : { pathLength: 0 }}
+        transition={{ duration: 0.55, ease: EXPO }}
+      />
+      <motion.path
+        d="M15 26L22 33L37 18"
+        stroke={T.green} strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" fill="none"
+        initial={{ pathLength: 0 }}
+        animate={visible ? { pathLength: 1 } : { pathLength: 0 }}
+        transition={{ duration: 0.4, ease: EXPO, delay: 0.18 }}
+      />
+    </svg>
+  </motion.div>
+))
+
+// ─── Particle ─────────────────────────────────────────────────────────────────
+const Particle = memo(({ x, y, s, d, dur }) => (
+  <motion.div
+    style={{
+      position: 'absolute', left: `${x}%`, top: `${y}%`,
+      width: s, height: s, borderRadius: '50%',
+      background: T.green, willChange: 'transform, opacity',
+    }}
+    initial={{ opacity: 0, y: 0, scale: 0 }}
+    animate={{ opacity: [0, 0.22, 0.08, 0.18, 0], y: [0, -18, -7, -22, -38], scale: [0, 1, 0.8, 1.1, 0] }}
+    transition={{ duration: dur, delay: d, repeat: Infinity, repeatDelay: dur * 0.25, ease: 'easeInOut' }}
+  />
+))
+
+// ─── CornerBrackets ───────────────────────────────────────────────────────────
+const CornerBrackets = memo(() => (
+  <>
+    {[
+      { top: 18, left: 18,   bt: 1, bl: 1 },
+      { top: 18, right: 18,  bt: 1, br: 1 },
+      { bottom: 18, left: 18,  bb: 1, bl: 1 },
+      { bottom: 18, right: 18, bb: 1, br: 1 },
+    ].map((c, i) => (
+      <motion.div
+        key={i}
+        style={{
+          position: 'absolute',
+          top: c.top, left: c.left, right: c.right, bottom: c.bottom,
+          width: 22, height: 22,
+          borderTop:    c.bt ? `1px solid ${T.greenDim}` : 'none',
+          borderBottom: c.bb ? `1px solid ${T.greenDim}` : 'none',
+          borderLeft:   c.bl ? `1px solid ${T.greenDim}` : 'none',
+          borderRight:  c.br ? `1px solid ${T.greenDim}` : 'none',
+        }}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.08 + i * 0.04, ...SPRING_S }}
+      />
+    ))}
+  </>
+))
+
+// ─── StatusBar ────────────────────────────────────────────────────────────────
+const STATUS = {
+  scatter:  ['INITIALIZING',              0.05],
+  scan:     ['SCANNING SAFETY DATABASE',  0.52],
+  converge: ['ASSEMBLING RESULTS',        0.82],
+  confirm:  ['ALL CLEAR  ✓',              1.00],
+  exit:     ['ALL CLEAR  ✓',              1.00],
+}
+
+const StatusBar = memo(({ phase }) => {
+  const [label, progress] = STATUS[phase] || STATUS.scatter
+  return (
+    <motion.div
+      style={{
+        position: 'absolute', bottom: 44,
+        left: '50%', width: 220,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+      }}
+      initial={{ opacity: 0, y: 10, x: '-50%' }}
+      animate={{ opacity: 1, y: 0, x: '-50%' }}
+      transition={{ delay: 0.25, duration: 0.4, ease: EXPO }}
+    >
+      <div style={{ width: '100%', height: 1, background: 'rgba(0,200,120,0.1)', borderRadius: 1, overflow: 'hidden' }}>
+        <motion.div
+          style={{
+            height: '100%', borderRadius: 1,
+            background: `linear-gradient(90deg, ${T.greenDim}, ${T.green})`,
+            boxShadow: `0 0 8px ${T.green}`,
+            transformOrigin: 'left center',
+            willChange: 'transform',
+          }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: progress }}
+          transition={{ duration: 0.55, ease: EXPO }}
+        />
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={label}
+          style={{
+            fontFamily: T.mono, fontSize: 8, letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: phase === 'confirm' || phase === 'exit' ? T.green : 'rgba(0,200,120,0.42)',
+          }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.22 }}
+        >
+          {label}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
+  )
+})
+
+// ─── Main export ──────────────────────────────────────────────────────────────
 export default function SplashLoader({ onDone }) {
-  const [exiting, setExiting] = useState(false)
+  /**
+   * Phase timeline:
+   *  0ms    → scatter   letters scattered, invisible
+   *  180ms  → scan      scanline sweeps
+   *  860ms  → converge  letters spring into final positions
+   *  1520ms → confirm   checkmark draws, "all clear"
+   *  2380ms → exit      AnimatePresence unmount (blur + scale + fade)
+   *  2750ms → onDone()
+   */
+  const [phase, setPhase]   = useState('scatter')
+  const [mounted, setMounted] = useState(true)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setExiting(true), 2000)
-    const t2 = setTimeout(() => onDone?.(), 2400)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    const schedule = [
+      [180,  () => setPhase('scan')],
+      [860,  () => setPhase('converge')],
+      [1520, () => setPhase('confirm')],
+      [2380, () => setPhase('exit')],
+      [2400, () => setMounted(false)],
+      [2780, () => onDone?.()],
+    ]
+    const timers = schedule.map(([ms, fn]) => setTimeout(fn, ms))
+    return () => timers.forEach(clearTimeout)
   }, [])
 
+  const lettersActive = phase === 'converge' || phase === 'confirm' || phase === 'exit'
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(160deg, #0d2818 0%, #1a3d2b 50%, #2d6647 100%)',
-      opacity: exiting ? 0 : 1,
-      transition: 'opacity 0.4s ease',
-      overflow: 'hidden',
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&family=Playfair+Display:wght@500;600&display=swap');
+    <AnimatePresence>
+      {mounted && (
+        <motion.div
+          key="splash"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            background: T.bg, overflow: 'hidden',
+          }}
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, scale: 1.035, filter: 'blur(10px)' }}
+          transition={{ duration: 0.38, ease: EXPO }}
+        >
+          {/* Font import */}
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=IBM+Plex+Mono:wght@300;400&display=swap');`}</style>
 
-        @keyframes leafPop {
-          0%   { opacity: 0; transform: rotate(var(--rot, 0deg)) scale(0); }
-          60%  { opacity: 0.25; transform: rotate(var(--rot, 0deg)) scale(1.15); }
-          100% { opacity: 0.18; transform: rotate(var(--rot, 0deg)) scale(1); }
-        }
-        @keyframes logoIn {
-          0%   { opacity: 0; transform: translateY(14px) scale(0.92); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes tagIn {
-          0%   { opacity: 0; transform: translateY(8px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes ringPulse {
-          0%, 100% { transform: scale(1);   opacity: 0.15; }
-          50%       { transform: scale(1.08); opacity: 0.3;  }
-        }
-        @keyframes scanLine {
-          0%   { top: 20%; opacity: 0; }
-          10%  { opacity: 1; }
-          90%  { opacity: 1; }
-          100% { top: 80%; opacity: 0; }
-        }
-        @keyframes dotBounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-          40%            { transform: translateY(-5px); opacity: 1; }
-        }
-      `}</style>
+          {/* Grid background */}
+          <motion.div
+            style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `linear-gradient(rgba(0,200,120,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,120,0.035) 1px,transparent 1px)`,
+              backgroundSize: '42px 42px',
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.4 }}
+          />
 
-      {/* Ambient leaves */}
-      {LEAVES.map((l, i) => <Leaf key={i} {...l} />)}
+          {/* Radial glow */}
+          <motion.div
+            style={{
+              position: 'absolute',
+              width: '55vmax', height: '55vmax',
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${T.greenGlow} 0%, transparent 70%)`,
+              top: '50%', left: '50%',
+              willChange: 'transform, opacity',
+            }}
+            initial={{ opacity: 0, scale: 0.5, x: '-50%', y: '-50%' }}
+            animate={{
+              opacity: lettersActive ? 1 : 0.5,
+              scale:   lettersActive ? 1.1 : 0.8,
+              x: '-50%', y: '-50%',
+            }}
+            transition={{ duration: 0.9, ease: 'easeOut' }}
+          />
 
-      {/* Pulsing ring behind logo */}
-      <div style={{
-        position: 'absolute',
-        width: 160, height: 160,
-        borderRadius: '50%',
-        border: '1px solid rgba(201,168,76,0.3)',
-        animation: 'ringPulse 2s ease-in-out infinite',
-      }} />
-      <div style={{
-        position: 'absolute',
-        width: 200, height: 200,
-        borderRadius: '50%',
-        border: '1px solid rgba(201,168,76,0.12)',
-        animation: 'ringPulse 2s ease-in-out infinite',
-        animationDelay: '0.3s',
-      }} />
+          {/* Particles */}
+          {PARTICLES.map((p, i) => <Particle key={i} {...p} />)}
 
-      {/* Logo */}
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-        animation: 'logoIn 0.6s cubic-bezier(0.22,1,0.36,1) forwards',
-        zIndex: 2,
-      }}>
-        <div style={{ fontSize: 56, lineHeight: 1 }}>🌿</div>
+          {/* Corner brackets */}
+          <CornerBrackets />
 
-        <div style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: 34, fontWeight: 600,
-          color: '#f5f0e8',
-          letterSpacing: '-0.02em',
-        }}>
-          FoodSafe
-        </div>
+          {/* Scan line */}
+          <ScanLine active={phase === 'scan'} />
 
-        <div style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 11, fontWeight: 300,
-          color: 'rgba(245,240,232,0.45)',
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          animation: 'tagIn 0.5s ease forwards',
-          animationDelay: '0.3s',
-          opacity: 0,
-        }}>
-          Know What You Eat
-        </div>
-      </div>
+          {/* ── Central composition ─────────────────────────────────── */}
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
 
-      {/* Loading dots */}
-      <div style={{
-        position: 'absolute', bottom: 60,
-        display: 'flex', gap: 6,
-        animation: 'tagIn 0.4s ease forwards',
-        animationDelay: '0.6s',
-        opacity: 0,
-      }}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{
-            width: 5, height: 5, borderRadius: '50%',
-            background: '#c9a84c',
-            animation: 'dotBounce 1.2s ease infinite',
-            animationDelay: `${i * 0.15}s`,
-          }} />
-        ))}
-      </div>
-    </div>
+            {/* Shield + checkmark */}
+            <div style={{ position: 'relative', width: 64, height: 72, marginBottom: 22 }}>
+              <motion.svg
+                width="64" height="72" viewBox="0 0 64 72"
+                style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.12, duration: 0.3 }}
+              >
+                <motion.path
+                  d="M32 3L5 14V36C5 52 17 65 32 69C47 65 59 52 59 36V14L32 3Z"
+                  fill="rgba(0,200,100,0.055)"
+                  stroke="rgba(0,200,100,0.48)"
+                  strokeWidth="1"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 0.85, ease: EXPO, delay: 0.18 }}
+                />
+                <motion.path
+                  d="M32 13L13 21V36C13 47 21 57 32 60C43 57 51 47 51 36V21L32 13Z"
+                  fill="none"
+                  stroke="rgba(0,200,100,0.18)"
+                  strokeWidth="0.75"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.65, ease: EXPO, delay: 0.42 }}
+                />
+              </motion.svg>
+              <Checkmark visible={phase === 'confirm' || phase === 'exit'} />
+            </div>
+
+            {/* Letters */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.015em' }}>
+              {LETTERS.map((l, i) => (
+                <AnimLetter key={i} {...l} delay={0.03 + i * 0.052} active={lettersActive} />
+              ))}
+            </div>
+
+            {/* Divider */}
+            <motion.div
+              style={{
+                height: 1, width: '100%', marginTop: 10,
+                background: `linear-gradient(90deg, transparent, ${T.greenDim} 25%, ${T.greenDim} 75%, transparent)`,
+                transformOrigin: 'center',
+                willChange: 'transform, opacity',
+              }}
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={lettersActive ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0 }}
+              transition={{ delay: 0.08, duration: 0.52, ease: EXPO }}
+            />
+
+            {/* Tagline */}
+            <motion.p
+              style={{
+                fontFamily: T.mono, fontSize: 'clamp(8px, 1.4vw, 10px)',
+                fontWeight: 300, letterSpacing: '0.22em',
+                textTransform: 'uppercase', color: T.creamDim,
+                margin: '12px 0 0', willChange: 'transform, opacity, filter',
+              }}
+              initial={{ opacity: 0, y: 7, filter: 'blur(5px)' }}
+              animate={phase === 'confirm' || phase === 'exit'
+                ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+                : { opacity: 0, y: 7, filter: 'blur(5px)' }
+              }
+              transition={{ delay: 0.18, duration: 0.48, ease: EXPO }}
+            >
+              Know What You Eat
+            </motion.p>
+          </div>
+
+          {/* Status bar */}
+          <StatusBar phase={phase} />
+
+          {/* Top-left badge */}
+          <motion.div
+            style={{ position: 'absolute', top: 18, left: 24, fontFamily: T.mono, fontSize: 8, color: 'rgba(0,200,120,0.2)', letterSpacing: '0.1em' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
+          >FSSAI CERTIFIED</motion.div>
+
+          {/* Top-right version */}
+          <motion.div
+            style={{ position: 'absolute', top: 18, right: 24, fontFamily: T.mono, fontSize: 8, color: 'rgba(0,200,120,0.2)', letterSpacing: '0.1em' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
+          >v2.0</motion.div>
+
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
 /**
- * HOW TO USE — wrap your app in main.jsx:
+ * ── USAGE in main.jsx ──────────────────────────────────────────────────────────
  *
- * import { useState } from 'react'
- * import SplashLoader from './components/SplashLoader'
- * import App from './App'
+ *  import { useState } from 'react'
+ *  import SplashLoader from './components/SplashLoader'
+ *  import App from './App'
  *
- * function Root() {
- *   const [splashDone, setSplashDone] = useState(false)
- *   return (
- *     <>
- *       {!splashDone && <SplashLoader onDone={() => setSplashDone(true)} />}
- *       <App />
- *     </>
- *   )
- * }
+ *  function Root() {
+ *    const [done, setDone] = useState(false)
+ *    return (
+ *      <>
+ *        {!done && <SplashLoader onDone={() => setDone(true)} />}
+ *        <App />
+ *      </>
+ *    )
+ *  }
+ *
+ *  ReactDOM.createRoot(document.getElementById('root')).render(<Root />)
  */

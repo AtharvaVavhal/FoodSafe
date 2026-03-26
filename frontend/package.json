@@ -13,8 +13,10 @@
     "lint": "eslint src --ext .js,.jsx"
   },
   "dependencies": {
+    "framer-motion": "^11.x",
     "axios": "^1.6.7",
     "dayjs": "^1.11.10",
+    "framer-motion": "^12.38.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.323.0",
     "qrcode": "^1.5.4",

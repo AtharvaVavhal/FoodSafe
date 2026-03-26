@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
-import base64, re, httpx
+import base64, re, httpx, logging
 from services.ai_service import scan_food_text, scan_combination, analyze_label_image
 from services.yolo_service import detect_food
 from services.overconsumption_service import check_overconsumption
@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 router = APIRouter()
 bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -22,10 +23,6 @@ async def get_optional_user(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
     db:    AsyncSession = Depends(get_db),
 ) -> Optional[User]:
-    """
-    Returns the authenticated User if a valid Bearer token is present,
-    or None if no token. Scan endpoints stay functional for anonymous users.
-    """
     if not creds:
         return None
     try:
@@ -41,7 +38,6 @@ async def get_required_user(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
     db:    AsyncSession = Depends(get_db),
 ) -> User:
-    """Returns the authenticated User or raises 401."""
     if not creds:
         raise HTTPException(401, "Authentication required")
     try:
@@ -72,8 +68,8 @@ class CombinationRequest(BaseModel):
     member_profile: Optional[dict] = None
 
 class FeedbackRequest(BaseModel):
-    feedback: str            # "accurate" | "inaccurate"
-    note:     Optional[str]  = None
+    feedback: str
+    note:     Optional[str] = None
 
 
 # ── ML helpers ────────────────────────────────────────────────────────────────
@@ -120,19 +116,12 @@ def _attach_personalized_score(result: dict, food_name: str, member_profile: dic
         result["personalizedScore"] = None
 
 
-# ── Overconsumption helper ────────────────────────────────────────────────────
-
 async def _attach_overconsumption(
     result:    dict,
     food_name: str,
     user:      User,
     db:        AsyncSession,
 ) -> None:
-    """
-    Fetch last 7 days of the user's scans, run overconsumption check,
-    and attach the result to `result["overconsumptionWarnings"]`.
-    Fails silently — never blocks the scan response.
-    """
     try:
         cutoff = datetime.utcnow() - timedelta(days=7)
         rows = await db.execute(
@@ -150,12 +139,12 @@ async def _attach_overconsumption(
             food_name, result, recent_scans
         )
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Overconsumption check failed: %s", e)
+        logger.warning("Overconsumption check failed: %s", e)
         result["overconsumptionWarnings"] = None
 
 
 # ── Text scan (optional auth) ─────────────────────────────────────────────────
+
 @router.post("/text")
 async def scan_text(
     req:  TextScanRequest,
@@ -165,7 +154,8 @@ async def scan_text(
     if not req.food_name.strip():
         raise HTTPException(400, "food_name is required")
 
-    result = scan_food_text(req.food_name, req.member_profile, req.lang)
+    result = await scan_food_text(req.food_name, req.member_profile, req.lang)
+
     _attach_seasonal_risk(result, req.food_name)
     _attach_personalized_score(result, req.food_name, req.member_profile, req.city)
 
@@ -183,7 +173,6 @@ async def scan_text(
         await db.flush()
         result["scanId"] = record.id
 
-        # Overconsumption check BEFORE commit so it can see current scan
         await _attach_overconsumption(result, req.food_name, user, db)
         await db.commit()
     else:
@@ -193,6 +182,7 @@ async def scan_text(
 
 
 # ── Image scan (public) ───────────────────────────────────────────────────────
+
 @router.post("/image")
 async def scan_image(
     file: UploadFile = File(...),
@@ -201,36 +191,59 @@ async def scan_image(
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(400, "Image must be JPEG, PNG, or WebP")
 
-    MAX_SIZE = 5 * 1024 * 1024  # 5MB
+    MAX_SIZE = 5 * 1024 * 1024
     data = await file.read(MAX_SIZE + 1)
     if len(data) > MAX_SIZE:
         raise HTTPException(413, "Image too large (max 5MB)")
-    b64  = base64.b64encode(data).decode()
-    yolo = detect_food(data)
 
-    if yolo["detected"] and yolo["confidence"] >= 0.5:
+    b64  = base64.b64encode(data).decode()
+
+    # ── YOLO: pure local model only, no Groq call inside detect_food ──────────
+    # BUG FIX: detect_food was internally calling Groq vision (bypassing
+    # _GROQ_SEMAPHORE), causing 400 / 429 storms. We now isolate it in a
+    # try/except so any failure in the YOLO service never crashes the route.
+    # All Groq vision work is handled exclusively by analyze_label_image, which
+    # uses the semaphore + exponential backoff defined in ai_service.py.
+    yolo: dict = {"detected": False, "confidence": 0, "food_name": "", "all_detections": []}
+    try:
+        yolo = await detect_food(data)
+    except Exception as e:
+        logger.warning("YOLO detect_food failed, skipping: %s", e)
+
+    # Only trust YOLO if it's confident enough — never call Groq twice.
+    if yolo.get("detected") and yolo.get("confidence", 0) >= 0.5:
         food_name = yolo["food_name"]
-        result    = scan_food_text(food_name, None, lang)
+        result    = await scan_food_text(food_name, None, lang)
         result["detectionSource"] = "yolov8"
         result["yoloDetection"]   = {
             "food":       yolo["food_name"],
             "confidence": yolo["confidence"],
-            "all":        yolo["all_detections"],
+            "all":        yolo.get("all_detections", []),
         }
     else:
-        result = analyze_label_image(b64, file.content_type)
+        # analyze_label_image owns all Groq vision calls; it has its own
+        # Scout → Maverick fallback + semaphore + retry in ai_service.py.
+        result = await analyze_label_image(b64, file.content_type)
+
+        # BUG FIX: guard against parse_failed / empty result from vision
+        if result.get("error") == "parse_failed" or not result.get("foodName"):
+            logger.warning("analyze_label_image returned no food name: %s", result.get("error"))
+
         result["detectionSource"] = "groq_vision"
-        if yolo["detected"]:
+        if yolo.get("detected"):
             result["yoloDetection"] = {
                 "food":       yolo["food_name"],
                 "confidence": yolo["confidence"],
                 "note":       "Low confidence — Groq Vision used instead",
             }
 
+    # BUG FIX: check all possible name fields before giving up on seasonal risk
     food_name = (
-        result.get("foodName") or result.get("food_name") or
-        result.get("name")     or result.get("productName") or
-        (yolo["food_name"] if yolo["detected"] else "")
+        result.get("foodName")
+        or result.get("food_name")
+        or result.get("name")
+        or result.get("productName")
+        or (yolo.get("food_name") if yolo.get("detected") else "")
     )
     if food_name:
         _attach_seasonal_risk(result, food_name)
@@ -238,32 +251,33 @@ async def scan_image(
         result["seasonalRisk"] = None
 
     result["personalizedScore"]       = None
-    result["overconsumptionWarnings"] = None   # image scans are anonymous
+    result["overconsumptionWarnings"] = None
     result["scanType"]                = "image"
     return result
 
 
 # ── Barcode scan (public) ─────────────────────────────────────────────────────
+
 @router.get("/barcode/{barcode}")
 async def scan_barcode(barcode: str, lang: str = "en"):
     if not re.match(r'^\d{8,14}$', barcode):
-        raise HTTPException(400, "Invalid barcode format (expected 8-14 digits)")
+        raise HTTPException(400, "Invalid barcode format")
 
     async with httpx.AsyncClient() as client:
         r = await client.get(f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json")
     data = r.json()
     if data.get("status") != 1:
-        raise HTTPException(404, "Product not found in Open Food Facts database")
+        raise HTTPException(404, "Product not found")
 
     product   = data["product"]
     food_name = product.get("product_name", "") or product.get("product_name_en", "")
     if not food_name:
-        raise HTTPException(404, "Could not identify product name from barcode")
+        raise HTTPException(404, "Could not identify product name")
 
-    result = scan_food_text(food_name, None, lang)
+    result = await scan_food_text(food_name, None, lang)
     _attach_seasonal_risk(result, food_name)
     result["personalizedScore"]       = None
-    result["overconsumptionWarnings"] = None   # barcode scans are anonymous
+    result["overconsumptionWarnings"] = None
     result["barcodeData"] = {
         "name":        food_name,
         "brand":       product.get("brands", ""),
@@ -276,14 +290,16 @@ async def scan_barcode(barcode: str, lang: str = "en"):
 
 
 # ── Combination scan (public) ─────────────────────────────────────────────────
+
 @router.post("/combination")
 async def combination_scan(req: CombinationRequest):
     if len(req.foods) < 2:
-        raise HTTPException(400, "At least 2 foods required for combination scan")
-    return scan_combination(req.foods, req.member_profile, req.lang)
+        raise HTTPException(400, "At least 2 foods required")
+    return await scan_combination(req.foods, req.member_profile, req.lang)
 
 
 # ── Feedback (requires auth) ──────────────────────────────────────────────────
+
 @router.post("/{scan_id}/feedback")
 async def submit_feedback(
     scan_id: str,
@@ -291,7 +307,6 @@ async def submit_feedback(
     db:      AsyncSession = Depends(get_db),
     user:    User         = Depends(get_required_user),
 ):
-    """Only the scan owner can submit feedback."""
     if req.feedback not in ("accurate", "inaccurate"):
         raise HTTPException(400, "feedback must be 'accurate' or 'inaccurate'")
 

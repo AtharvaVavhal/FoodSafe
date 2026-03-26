@@ -1,15 +1,40 @@
+# ── Core Framework ───────────────────────────────────────────
 fastapi==0.109.2
 uvicorn[standard]==0.27.1
 python-multipart==0.0.9
 pydantic==2.6.1
 pydantic-settings==2.2.1
+
+# ── Database & ORM ───────────────────────────────────────────
 sqlalchemy==2.0.27
-aiosqlite==0.19.0
+greenlet==3.0.3        # REQUIRED for SQLAlchemy Async/Await
+asyncpg==0.29.0
+aiosqlite==0.20.0
 alembic==1.13.1
-redis==5.0.1
-httpx==0.26.0
+
+# ── AI, ML & Data Processing ────────────────────────────────
+groq==0.4.2
+scikit-learn==1.6.1
+pandas==2.2.0
+numpy==1.26.4
+prophet==1.1.5
+joblib==1.3.2
+
+# ── Networking & Scraping ────────────────────────────────────
+httpx>=0.27.0
+beautifulsoup4==4.12.3
+requests==2.31.0
+
+# ── Security & Utils ─────────────────────────────────────────
 python-dotenv==1.0.1
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 Pillow==10.2.0
-requests==2.31.0
+twilio==8.13.0
+lxml==6.0.2
+
+# ── Background Tasks & Notifications ─────────────────────────
+celery==5.3.6
+redis==5.0.1
+pywebpush==2.0.0

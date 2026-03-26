@@ -1,14 +1,9 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ml'))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from backend.core.config import settings
-from backend.db.database import init_db
+from app.core.config import settings
+from app.db.database import init_db
 from backend.routers import (
     scan, symptoms, community, brands, fssai,
     users, whatsapp, recommendations, festival,

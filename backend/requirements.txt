@@ -23,7 +23,7 @@ build==1.4.0
 catalogue==2.0.10
 celery==5.3.6
 certifi==2026.2.25
-cffi==2.0.0
+cffi==1.17.1
 charset-normalizer==3.4.6
 chromadb==1.5.5
 click==8.3.1
@@ -34,7 +34,7 @@ cloudpathlib==0.23.0
 cmdstanpy==1.3.0
 confection==0.1.5
 contourpy==1.3.3
-cryptography==46.0.5
+cryptography==44.0.2
 cycler==0.12.1
 cymem==2.0.13
 datasets==4.8.2
@@ -110,7 +110,6 @@ pandas==2.2.0
 passlib==1.7.4
 pillow==10.2.0
 polars==1.39.3
-polars-runtime-32==1.39.3
 preshed==3.0.12
 prompt_toolkit==3.0.52
 propcache==0.4.1
@@ -125,10 +124,10 @@ pyarrow==23.0.1
 pyasn1==0.6.3
 pyasn1_modules==0.4.2
 pybase64==1.4.3
-pycparser==3.0
-pydantic==2.6.1
-pydantic-settings==2.2.1
-pydantic_core==2.16.2
+pycparser==2.22
+pydantic==2.9.0
+pydantic-settings==2.9.0
+pydantic_core==2.27.0
 Pygments==2.19.2
 PyJWT==2.12.1
 pyparsing==3.3.2

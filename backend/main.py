@@ -1,11 +1,15 @@
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ml'))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.core.config import settings
-from app.db.database import init_db
+
+from core.config import settings
+from db.database import init_db   # ✅ FIXED IMPORT
+
 from routers import (
     scan, symptoms, community, brands, fssai,
     users, whatsapp, recommendations, festival,
@@ -16,21 +20,25 @@ from routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🌿 FoodSafe API starting...")
+
     try:
         await init_db()
         print("✅ Database tables ready")
     except Exception as e:
         print(f"⚠ DB init skipped: {e}")
+
     try:
         import risk_scorer
         print("✅ Seasonal risk scorer loaded")
     except Exception as e:
         print(f"⚠ Seasonal risk scorer not loaded: {e}")
+
     try:
         import personalized_scorer
         print("✅ Personalized risk scorer loaded")
     except Exception as e:
         print(f"⚠ Personalized risk scorer not loaded: {e}")
+
     try:
         from services.rag_service import rag
         if rag.record_count == 0:
@@ -39,8 +47,10 @@ async def lifespan(app: FastAPI):
             print(f"✅ RAG index loaded: {rag.record_count} violations")
     except Exception as e:
         print(f"⚠ RAG service check failed: {e}")
+
     yield
     print("🌿 FoodSafe API shutting down...")
+
 
 app = FastAPI(
     title="FoodSafe API",
@@ -73,9 +83,14 @@ app.include_router(diary.router,            prefix="/api/diary",           tags=
 app.include_router(news.router,             prefix="/api/news",            tags=["News"])
 app.include_router(chat.router,             prefix="/api/chat",            tags=["Chat"])
 
+
 @app.get("/")
 async def root():
-    return {"message": "FoodSafe API is running", "version": "0.1.0"}
+    return {
+        "message": "FoodSafe API is running",
+        "version": "0.1.0"
+    }
+
 
 @app.get("/health")
 async def health():

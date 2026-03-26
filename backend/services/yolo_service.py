@@ -84,13 +84,14 @@ def detect_food(image_bytes: bytes) -> dict:
                     {
                         "role": "user",
                         "content": [
+                            {"type": "text", "text": "What food items are in this image?"},
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:{media_type};base64,{img_b64}"
+                                    "url": f"data:{media_type};base64,{img_b64}",
+                                    "detail": "auto",
                                 },
                             },
-                            {"type": "text", "text": "What food items are in this image?"},
                         ],
                     },
                 ],

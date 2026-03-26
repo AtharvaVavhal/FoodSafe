@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, JSON, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.db.database import Base
 
@@ -16,9 +16,10 @@ class User(Base):
     city          = Column(String, default="")
     state         = Column(String, default="Maharashtra")
     lang          = Column(String, default="en")
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     scans         = relationship("ScanRecord", back_populates="user")
     members       = relationship("FamilyMember", back_populates="user")
+    push_subs     = relationship("PushSubscriptionRecord", back_populates="user")
 
 class FamilyMember(Base):
     __tablename__ = "family_members"
@@ -26,7 +27,7 @@ class FamilyMember(Base):
     user_id       = Column(String, ForeignKey("users.id"))
     name          = Column(String, nullable=False)
     age           = Column(Integer)
-    conditions    = Column(JSON, default=list)   # ["diabetic","pregnant","child"]
+    conditions    = Column(JSON, default=list)
     avatar_color  = Column(String, default="green")
     user          = relationship("User", back_populates="members")
 
@@ -36,14 +37,14 @@ class ScanRecord(Base):
     user_id       = Column(String, ForeignKey("users.id"))
     member_id     = Column(String, nullable=True)
     food_name     = Column(String, nullable=False)
-    risk_level    = Column(String)               # LOW/MEDIUM/HIGH/CRITICAL
+    risk_level    = Column(String)
     safety_score  = Column(Integer)
     result_json   = Column(JSON)
-    scan_type     = Column(String, default="text")  # text/image/barcode/voice
+    scan_type     = Column(String, default="text")
     city          = Column(String)
-    feedback      = Column(String, nullable=True)   # "accurate" | "inaccurate" | None
-    feedback_note = Column(Text, nullable=True)     # optional user comment
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    feedback      = Column(String, nullable=True)
+    feedback_note = Column(Text, nullable=True)
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     user          = relationship("User", back_populates="scans")
 
 class CommunityReport(Base):
@@ -58,7 +59,7 @@ class CommunityReport(Base):
     upvotes       = Column(Integer, default=0)
     lat           = Column(Float)
     lng           = Column(Float)
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class FssaiViolation(Base):
     __tablename__ = "fssai_violations"
@@ -70,7 +71,7 @@ class FssaiViolation(Base):
     date          = Column(DateTime)
     source_url    = Column(String)
     raw_text      = Column(Text)
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class SafeBrand(Base):
     __tablename__ = "safe_brands"
@@ -82,3 +83,12 @@ class SafeBrand(Base):
     verified      = Column(Boolean, default=False)
     price_range   = Column(String)
     notes         = Column(Text)
+
+class PushSubscriptionRecord(Base):
+    __tablename__ = "push_subscriptions"
+    id         = Column(String, primary_key=True, default=gen_id)
+    user_id    = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    endpoint   = Column(Text, unique=True, nullable=False)
+    keys       = Column(JSON, nullable=False)   # {"p256dh": "...", "auth": "..."}
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    user       = relationship("User", back_populates="push_subs")

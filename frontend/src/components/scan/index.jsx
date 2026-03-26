@@ -1,122 +1,119 @@
-import { useRef, useState } from 'react'
-import { t } from '../../i18n/translations'
+"""
+routers/scan.py  (image route section)
 
-export function ScanInput({ value, onChange, onScan, lang }) {
-  return (
-    <input
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      onKeyDown={e => e.key === 'Enter' && onScan()}
-      placeholder={t(lang, 'placeholder')}
-      style={{
-        flex: 1, padding: '8px 12px', borderRadius: 8,
-        border: '1px solid #ddd', fontSize: 13,
-        outline: 'none', fontFamily: 'inherit', width: '100%',
-      }}
-    />
-  )
-}
+Drop this into your existing scan router. The key fix is converting the
+uploaded file bytes to base64 BEFORE passing to analyze_label_image.
+The old code likely passed the raw bytes or a file path, which caused
+the vision call to fail silently.
+"""
 
-export function VoiceButton({ onResult, onError, lang }) {
-  function start() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) { onError('Voice not supported'); return }
-    const rec = new SR()
-    rec.lang = lang === 'hi' ? 'hi-IN' : lang === 'mr' ? 'mr-IN' : 'en-IN'
-    rec.onresult = e => onResult(e.results[0][0].transcript)
-    rec.onerror  = () => onError('Voice recognition failed')
-    rec.start()
-  }
-  return (
-    <button onClick={start} style={btnStyle}>🎤 Voice</button>
-  )
-}
+import base64
+import logging
 
-export function ImageUploadButton({ onUpload }) {
-  const ref = useRef()
-  return (
-    <>
-      <button onClick={() => ref.current.click()} style={btnStyle}>📷 Photo</button>
-      <input ref={ref} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onUpload} />
-    </>
-  )
-}
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import JSONResponse
 
-export function BarcodeScanner({ onResult, onError }) {
-  const videoRef = useRef()
-  const streamRef = useRef()
-  const [scanning, setScanning] = useState(false)
+from services.ai_service import (
+    analyze_label_image,
+    scan_combination,
+    scan_food_text,
+)
 
-  async function lookupBarcode(code) {
-    try {
-      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`)
-      const data = await res.json()
-      if (data.status === 1) onResult(data.product.product_name || code)
-      else onError('Product not found')
-    } catch { onError('Barcode lookup failed') }
-  }
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/scan", tags=["scan"])
 
-  async function startScan() {
-    setScanning(true)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      streamRef.current = stream
-      videoRef.current.srcObject = stream
-      await videoRef.current.play()
+# ── Allowed image types ───────────────────────────────────────────────────────
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
+MAX_SIZE_BYTES = 5 * 1024 * 1024   # 5 MB
 
-      if (!('BarcodeDetector' in window)) {
-        stopScan()
-        const code = window.prompt('Enter barcode number manually:')
-        if (code) await lookupBarcode(code)
-        return
-      }
 
-      const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] })
-      const interval = setInterval(async () => {
-        try {
-          const barcodes = await detector.detect(videoRef.current)
-          if (barcodes.length > 0) {
-            clearInterval(interval)
-            stopScan()
-            await lookupBarcode(barcodes[0].rawValue)
-          }
-        } catch {}
-      }, 300)
-    } catch {
-      setScanning(false)
-      onError('Camera access denied')
-    }
-  }
+# ── POST /scan/image ──────────────────────────────────────────────────────────
+@router.post("/image")
+async def scan_image(
+    file: UploadFile = File(...),
+    lang: str = Form(default="en"),
+):
+    """
+    Accept a food product image, convert to base64, call Groq vision,
+    return structured adulteration analysis.
+    """
+    # ── Validate MIME type ────────────────────────────────────────────────────
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type '{content_type}'. Use JPEG, PNG, or WebP.",
+        )
 
-  function stopScan() {
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    setScanning(false)
-  }
+    # ── Read and size-check ───────────────────────────────────────────────────
+    raw: bytes = await file.read()
+    if len(raw) > MAX_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image exceeds 5 MB limit.",
+        )
+    if len(raw) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
 
-  return (
-    <>
-      {scanning && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-          zIndex: 999, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 12
-        }}>
-          <video ref={videoRef} style={{ width: '90vw', maxWidth: 400, borderRadius: 12 }} />
-          <p style={{ color: '#fff', fontSize: 13 }}>Point camera at barcode...</p>
-          <button onClick={stopScan}
-            style={{ padding: '8px 20px', borderRadius: 8, border: 'none',
-                     background: '#A32D2D', color: '#fff', cursor: 'pointer' }}>
-            Cancel
-          </button>
-        </div>
-      )}
-      <button onClick={startScan} style={btnStyle}>📊 Barcode</button>
-    </>
-  )
-}
+    # ── Convert to base64 ─────────────────────────────────────────────────────
+    # FIX: This is the step that was missing — raw bytes must become a base64
+    # string before being embedded in the Groq vision request as a data URL.
+    image_b64 = base64.b64encode(raw).decode("utf-8")
 
-const btnStyle = {
-  flex: 1, padding: '7px 4px', borderRadius: 8,
-  border: '1px solid #ddd', background: '#f8f9f6',
-  fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
-}
+    logger.info(
+        "Image scan: filename=%s mime=%s size=%dKB lang=%s",
+        file.filename, content_type, len(raw) // 1024, lang,
+    )
+
+    # ── Call vision AI ────────────────────────────────────────────────────────
+    try:
+        result = analyze_label_image(image_b64=image_b64, media_type=content_type)
+    except Exception as exc:
+        logger.exception("analyze_label_image raised: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Vision analysis failed. Try again or type the food name instead.",
+        ) from exc
+
+    return JSONResponse(content=result)
+
+
+# ── POST /scan/text ───────────────────────────────────────────────────────────
+@router.post("/text")
+async def scan_text(payload: dict):
+    """
+    Analyse adulteration risk for a food item by name (RAG-enhanced).
+    Expected body: { food_name, member_profile?, lang? }
+    """
+    food_name = (payload.get("food_name") or "").strip()
+    if not food_name:
+        raise HTTPException(status_code=400, detail="food_name is required")
+
+    result = scan_food_text(
+        food_name=food_name,
+        member_profile=payload.get("member_profile"),
+        lang=payload.get("lang", "en"),
+    )
+    return JSONResponse(content=result)
+
+
+# ── POST /scan/combination ────────────────────────────────────────────────────
+@router.post("/combination")
+async def scan_combination_route(payload: dict):
+    """
+    Analyse combined adulteration risk for a list of foods.
+    Expected body: { foods: [...], member_profile?, lang? }
+    """
+    foods = payload.get("foods") or []
+    if not foods or len(foods) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 foods required for combination scan")
+
+    result = scan_combination(
+        foods=foods,
+        member_profile=payload.get("member_profile"),
+        lang=payload.get("lang", "en"),
+    )
+    return JSONResponse(content=result)

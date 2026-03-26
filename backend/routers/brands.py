@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional
-from services.ai_service import _call_groq  # ← fixed: was _call_ollama
+from services.ai_service import _call_groq
 
 router = APIRouter()
 

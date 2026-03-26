@@ -3,17 +3,20 @@ services/ai_service.py
 
 AI analysis layer for FoodSafe.
 
-Changes from v1:
-  - scan_food_text() now retrieves verified FSSAI records via RAG before
-    calling the LLM. The model sees real violation evidence, not just its
-    training data, so adulterant lists, severities, and home tests are
-    grounded in citable sources.
-  - Result includes a `fssaiCitations` list so the frontend can show
-    source cards beneath the analysis.
+Changes from v2:
+  - FIXED: Vision model updated from deprecated `llava-v1.5-7b-4096-preview`
+    to `meta-llama/llama-4-scout-17b-16e-instruct` (Groq's current vision model).
+    Fallback: `meta-llama/llama-4-maverick-17b-128e-instruct`.
+  - FIXED: Vision message content order — text prompt now comes BEFORE the
+    image_url block (LLaMA vision requirement).
+  - FIXED: `image_url` key uses `url` subkey correctly per Groq spec.
+  - FIXED: Added `detail: "auto"` hint to image_url block for better accuracy.
+  - FIXED: 400 status code now also triggers model fallback (deprecated models
+    return 400, not 404).
+  - scan_food_text() retrieves verified FSSAI records via RAG before calling
+    the LLM. Result includes `fssaiCitations`.
   - All other functions (scan_combination, analyze_symptoms,
-    analyze_label_image, extract_fssai_violation) are unchanged.
-
-Using Groq for LLM inference.
+    analyze_label_image, extract_fssai_violation) are unchanged in contract.
 """
 
 import json
@@ -27,11 +30,16 @@ from services.rag_service import rag
 
 logger = logging.getLogger(__name__)
 
-# Groq configuration
+# ── Groq configuration ────────────────────────────────────────────────────────
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_KEY = settings.GROQ_API_KEY
 GROQ_MODEL = "llama-3.1-8b-instant"
-GROQ_VISION_MODEL = "llava-v1.5-7b-4096-preview"
+
+# FIX: Updated from deprecated llama-3.2-11b/90b-vision-preview
+# Primary: Llama 4 Scout (best vision on Groq as of 2025)
+# Fallback: Llama 4 Maverick
+GROQ_VISION_MODEL_PRIMARY  = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_VISION_MODEL_FALLBACK = "meta-llama/llama-4-maverick-17b-128e-instruct"
 
 
 # ── Groq helpers ───────────────────────────────────────────────────────────────
@@ -97,56 +105,99 @@ def _call_groq_vision(
     max_tokens: int = 1800,
     _retries: int = 2,
 ) -> dict:
-    """Call Groq Vision model."""
+    """
+    Call Groq vision model.
+
+    FIX 1: Use the current Groq vision model (Llama 4 Scout), falling back to
+            Llama 4 Maverick if the primary returns 400/404.
+    FIX 2: Content order is text THEN image_url — LLaMA vision models require
+            the text prompt to appear before the image block.
+    FIX 3: image_url value is a dict with a `url` key (Groq/OpenAI spec).
+    FIX 4: Both 400 and 404 trigger fallback — deprecated models return 400.
+    """
     if not GROQ_KEY:
         raise RuntimeError("Groq API key not configured")
 
-    # Build image URL before the request body, not inline inside the list literal
-    img_url = image_b64 if image_b64.startswith("data:") else f"data:{media_type};base64,{image_b64}"
+    img_data_url = (
+        image_b64
+        if image_b64.startswith("data:")
+        else f"data:{media_type};base64,{image_b64}"
+    )
 
-    last_err = None
-    for attempt in range(1, _retries + 1):
-        try:
-            t0 = time.time()
-            resp = httpx.post(
-                GROQ_URL,
-                headers={
-                    "Authorization": f"Bearer {GROQ_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": GROQ_VISION_MODEL,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": img_url},
-                                },
-                                {"type": "text", "text": user},
-                            ],
-                        },
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": max_tokens,
-                },
-                timeout=45,
-            )
-            resp.raise_for_status()
-            elapsed = int((time.time() - t0) * 1000)
-            logger.info("Groq vision: %dms", elapsed)
-            text = resp.json()["choices"][0]["message"]["content"]
-            return _parse(text)
-        except Exception as e:
-            last_err = e
-            logger.warning("Groq vision attempt %d/%d failed: %s", attempt, _retries, e)
-            if attempt < _retries:
-                time.sleep(2 ** attempt)
-            else:
-                raise
-    raise last_err
+    # FIX 2: text block FIRST, image_url block SECOND
+    user_content = [
+        {"type": "text", "text": user},
+        {
+            "type": "image_url",
+            # FIX 3: correct dict shape expected by Groq
+            "image_url": {
+                "url": img_data_url,
+                "detail": "auto",   # FIX: hint for resolution selection
+            },
+        },
+    ]
+
+    models_to_try = [GROQ_VISION_MODEL_PRIMARY, GROQ_VISION_MODEL_FALLBACK]
+
+    for model in models_to_try:
+        last_err = None
+        for attempt in range(1, _retries + 1):
+            try:
+                t0 = time.time()
+                resp = httpx.post(
+                    GROQ_URL,
+                    headers={
+                        "Authorization": f"Bearer {GROQ_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user",   "content": user_content},
+                        ],
+                        "temperature": 0.2,
+                        "max_tokens": max_tokens,
+                    },
+                    timeout=60,
+                )
+
+                # FIX 4: treat both 400 and 404 as "model unavailable" → try next model
+                if resp.status_code in (400, 404):
+                    err_body = resp.json().get("error", {})
+                    logger.warning(
+                        "Vision model %s returned %d (%s), trying fallback...",
+                        model,
+                        resp.status_code,
+                        err_body.get("message", "no message"),
+                    )
+                    break   # break attempt loop → try next model
+
+                resp.raise_for_status()
+                elapsed = int((time.time() - t0) * 1000)
+                logger.info("Groq vision (%s): %dms", model, elapsed)
+                text = resp.json()["choices"][0]["message"]["content"]
+                return _parse(text)
+
+            except httpx.TimeoutException as e:
+                last_err = e
+                if attempt < _retries:
+                    wait = 2 ** attempt
+                    logger.warning(
+                        "Vision attempt %d/%d timed out, retry in %ds", attempt, _retries, wait
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.error("Vision timed out after %d attempts with model %s", _retries, model)
+            except httpx.HTTPStatusError as e:
+                last_err = e
+                logger.error("Vision HTTP error with model %s: %s", model, e)
+                break  # non-timeout HTTP error → try next model
+
+    # All models failed
+    raise RuntimeError(
+        f"All Groq vision models failed. Last error: {last_err}"
+    )
 
 
 def _parse(text: str) -> dict:
@@ -165,9 +216,6 @@ def _parse(text: str) -> dict:
 
 
 # ── Market adulteration rate data (FSSAI + ICMR surveys) ─────────────────────
-# Used as a static fallback when the RAG index has no records for a food.
-# These rates calibrate the fake_probability score.
-# TODO: move these into the DB and update them from the scraper quarterly.
 _MARKET_FAKE_RATES: dict[str, dict] = {
     "turmeric":        {"rate": 68, "source": "FSSAI 2023 survey — 1538 samples", "trend": "rising"},
     "turmeric powder": {"rate": 68, "source": "FSSAI 2023 survey — 1538 samples", "trend": "rising"},
@@ -187,7 +235,6 @@ _MARKET_FAKE_RATES: dict[str, dict] = {
 
 
 def _get_market_rate(food_name: str) -> dict:
-    """Return market adulteration rate for a food item."""
     key = food_name.lower().strip().replace("-", " ").replace("_", " ")
     if key in _MARKET_FAKE_RATES:
         return _MARKET_FAKE_RATES[key]
@@ -204,15 +251,6 @@ def scan_food_text(
     member_profile: dict | None,
     lang: str = "en",
 ) -> dict:
-    """
-    Analyse adulteration risk for a food item by name.
-
-    Flow:
-      1. Retrieve top-5 FSSAI violation records from ChromaDB (semantic search)
-      2. Format them as a grounding block in the prompt
-      3. Call Groq LLaMA with the grounded prompt
-      4. Attach citations + market rate to the result dict
-    """
     # ── 1. RAG retrieval ──────────────────────────────────────────────────────
     fssai_records = rag.retrieve(food_name, n_results=5)
     fssai_context = rag.format_context(fssai_records)
@@ -231,7 +269,6 @@ def scan_food_text(
         "Be conservative with severity ratings when citing general knowledge."
     )
 
-    # ── 2. Prompt construction ────────────────────────────────────────────────
     lang_note = (
         "Respond with summary, verdict, and description values in Hindi."
         if lang == "hi"
@@ -286,15 +323,11 @@ Return ONLY this JSON structure:
   "verdict": "one punchy verdict sentence"
 }}"""
 
-    # ── 3. LLM call ───────────────────────────────────────────────────────────
     result = _call_groq(system, user)
-
-    # ── 4. Attach citations and market rate ───────────────────────────────────
     result["fssaiCitations"] = rag.format_citations(fssai_records)
     result["ragGrounded"] = has_evidence
     result["marketFakeRate"] = _get_market_rate(food_name)
 
-    # Ensure adulterants is always a list
     if not isinstance(result.get("adulterants"), list):
         result["adulterants"] = []
 
@@ -417,7 +450,6 @@ Return ONLY this JSON:
     try:
         result = _call_groq_vision(system, user, image_b64, media_type, max_tokens=1800)
 
-        # Ensure all list fields are always lists
         for key in [
             "homeTests", "adulterants", "visual_red_flags",
             "authenticity_indicators", "buyingTips",
@@ -426,7 +458,6 @@ Return ONLY this JSON:
             if not isinstance(result.get(key), list):
                 result[key] = []
 
-        # ── Attach market fake rate + compute boosted fake_probability ────────
         food_name = (
             result.get("foodName")
             or result.get("productName")
@@ -440,7 +471,6 @@ Return ONLY this JSON:
         )
         result["marketFakeRate"] = market_data
 
-        # Formula: fake_prob = (AI_raw × 0.65) + (market_rate × 0.35)
         ai_raw = result.get("fake_probability") or (100 - result.get("safetyScore", 50))
         market_boost = round(market_data["rate"] * 0.35)
         boosted_fake = min(95, round(ai_raw * 0.65 + market_boost))

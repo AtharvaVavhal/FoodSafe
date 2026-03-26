@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FoodSafe — Protect Your Family's Plate</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --forest:    #0a1f12;
+    --deep:      #0d2818;
+    --mid:       #1a3d2b;
+    --leaf:      #2a5c40;
+    --gold:      #c9a84c;
+    --gold-light:#e0c068;
+    --gold-pale: #f5e9c0;
+    --cream:     #f7f3eb;
+    --warm:      #ede8de;
+    --text:      #1a1208;
+    --muted:     #6b5e42;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 18px 6%;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(10, 31, 18, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+  }
+
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none;
+  }
+
+  .nav-icon {
+    width: 34px; height: 34px;
+    background: rgba(201,168,76,0.15);
+    border: 1px solid rgba(201,168,76,0.35);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+  }
+
+  .nav-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 19px; font-weight: 700;
+    color: #f5f0e8;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-links {
+    display: flex; align-items: center; gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: rgba(245,240,232,0.65);
+    text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--gold-light); }
+
+  .nav-cta {
+    padding: 9px 22px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--deep) !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    transition: opacity 0.2s !important;
+  }
+  .nav-cta:hover { opacity: 0.88; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    background: linear-gradient(165deg, var(--forest) 0%, var(--deep) 45%, #152f1f 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 120px 6% 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-orb-1 {
+    position: absolute; top: -120px; right: -100px;
+    width: 500px; height: 500px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero-orb-2 {
+    position: absolute; bottom: -80px; left: -80px;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(42,92,64,0.3) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 11px; font-weight: 600;
+    color: var(--gold-light);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 28px;
+    animation: fadeUp 0.7s ease both;
+  }
+
+  .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(42px, 7vw, 82px);
+    font-weight: 700;
+    line-height: 1.07;
+    color: #f5f0e8;
+    letter-spacing: -0.02em;
+    max-width: 820px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--gold-light);
+  }
+
+  .hero-sub {
+    font-size: clamp(15px, 2vw, 18px);
+    color: rgba(245,240,232,0.6);
+    max-width: 560px;
+    line-height: 1.7;
+    font-weight: 300;
+    margin-bottom: 44px;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  .hero-actions {
+    display: flex; gap: 14px; align-items: center;
+    animation: fadeUp 0.7s 0.3s ease both;
+    flex-wrap: wrap; justify-content: center;
+  }
+
+  .btn-primary {
+    padding: 15px 36px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--deep);
+    border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; text-decoration: none;
+    letter-spacing: 0.01em;
+    box-shadow: 0 8px 32px rgba(201,168,76,0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: inline-block;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(201,168,76,0.45); }
+
+  .btn-ghost {
+    padding: 14px 32px;
+    background: transparent;
+    color: rgba(245,240,232,0.8);
+    border: 1px solid rgba(245,240,232,0.2);
+    border-radius: 10px;
+    font-size: 15px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; text-decoration: none;
+    transition: border-color 0.2s, color 0.2s;
+    display: inline-block;
+  }
+  .btn-ghost:hover { border-color: rgba(201,168,76,0.4); color: var(--gold-light); }
+
+  .hero-stats {
+    display: flex; gap: 48px; margin-top: 72px;
+    padding-top: 40px;
+    border-top: 1px solid rgba(245,240,232,0.1);
+    animation: fadeUp 0.7s 0.4s ease both;
+    flex-wrap: wrap; justify-content: center;
+  }
+
+  .stat-item { text-align: center; }
+
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 34px; font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 12px; color: rgba(245,240,232,0.45);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* ── TICKER ── */
+  .ticker-bar {
+    background: var(--mid);
+    padding: 13px 0;
+    overflow: hidden;
+    border-top: 1px solid rgba(201,168,76,0.1);
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+  }
+
+  .ticker-inner {
+    display: flex; align-items: center; gap: 60px;
+    white-space: nowrap;
+    animation: scrollTicker 35s linear infinite;
+  }
+
+  .ticker-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: rgba(245,240,232,0.7);
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  .ticker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+
+  @keyframes scrollTicker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* ── HOW IT WORKS ── */
+  .section {
+    padding: 100px 6%;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::before {
+    content: ''; width: 24px; height: 1px; background: var(--gold); display: block;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(32px, 4.5vw, 52px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    max-width: 620px;
+    margin-bottom: 16px;
+  }
+
+  .section-sub {
+    font-size: 16px; color: var(--muted);
+    font-weight: 300; line-height: 1.7;
+    max-width: 520px; margin-bottom: 60px;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+  }
+
+  .step-card {
+    background: #fff;
+    border: 1px solid var(--warm);
+    border-radius: 20px;
+    padding: 32px 28px;
+    position: relative;
+    transition: transform 0.25s, box-shadow 0.25s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .step-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.09); }
+
+  .step-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .step-icon {
+    font-size: 36px; margin-bottom: 16px; display: block;
+  }
+
+  .step-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .step-desc {
+    font-size: 14px; color: var(--muted);
+    line-height: 1.65; font-weight: 300;
+  }
+
+  .step-card::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    border-radius: 20px 20px 0 0;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .step-card:hover::after { opacity: 1; }
+
+  /* ── FEATURES ── */
+  .features-section {
+    background: linear-gradient(160deg, var(--forest), var(--deep));
+    padding: 100px 6%;
+    position: relative; overflow: hidden;
+  }
+
+  .features-section .section-title { color: #f5f0e8; }
+  .features-section .section-label { color: var(--gold); }
+  .features-section .section-sub { color: rgba(245,240,232,0.55); }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .feat-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 18px;
+    padding: 28px 24px;
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .feat-card:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(201,168,76,0.3);
+  }
+
+  .feat-icon {
+    width: 46px; height: 46px;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.25);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 18px;
+  }
+
+  .feat-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px; font-weight: 600;
+    color: #f5f0e8;
+    margin-bottom: 8px;
+  }
+
+  .feat-desc {
+    font-size: 13.5px;
+    color: rgba(245,240,232,0.5);
+    line-height: 1.65; font-weight: 300;
+  }
+
+  /* ── SCAN DEMO ── */
+  .demo-section {
+    padding: 100px 6%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+
+  .demo-phone {
+    position: relative;
+    display: flex; justify-content: center;
+  }
+
+  .phone-frame {
+    width: 280px;
+    background: var(--deep);
+    border-radius: 36px;
+    border: 2px solid rgba(201,168,76,0.2);
+    box-shadow: 0 40px 100px rgba(10,31,18,0.35), 0 0 0 8px rgba(201,168,76,0.05);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .phone-notch {
+    width: 80px; height: 20px;
+    background: var(--forest);
+    border-radius: 0 0 12px 12px;
+    margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+
+  .phone-content {
+    padding: 16px;
+  }
+
+  .phone-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .phone-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px; font-weight: 600;
+    color: #f5f0e8;
+  }
+
+  .phone-search {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(245,240,232,0.15);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px; color: #f5f0e8;
+    margin-bottom: 10px;
+  }
+
+  .phone-scan-btn {
+    width: 100%;
+    padding: 11px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--deep);
+    border-radius: 9px;
+    text-align: center;
+    font-size: 12px; font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .phone-result {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .result-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .badge-medium { background: rgba(255,165,0,0.2); color: #ffa500; border: 1px solid rgba(255,165,0,0.3); }
+
+  .result-food {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px; font-weight: 600;
+    color: #f5f0e8; margin-bottom: 4px;
+  }
+
+  .result-score {
+    font-size: 11px; color: rgba(245,240,232,0.5); margin-bottom: 12px;
+  }
+
+  .adulterant-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: rgba(245,240,232,0.7);
+    padding: 6px 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .adulterant-dot { width: 6px; height: 6px; border-radius: 50%; background: #e05a5a; flex-shrink: 0; }
+
+  .phone-glow {
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 340px; height: 340px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 65%);
+    pointer-events: none; z-index: -1;
+  }
+
+  /* ── TESTIMONIALS / STATS ── */
+  .stats-dark {
+    background: var(--mid);
+    padding: 80px 6%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    border-top: 1px solid rgba(201,168,76,0.1);
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+  }
+
+  .stat-block {
+    padding: 48px 40px;
+    text-align: center;
+    border-right: 1px solid rgba(201,168,76,0.1);
+    position: relative;
+  }
+  .stat-block:last-child { border-right: none; }
+
+  .stat-block-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 52px; font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1; margin-bottom: 8px;
+  }
+
+  .stat-block-label {
+    font-size: 13px; color: rgba(245,240,232,0.5);
+    font-weight: 400; line-height: 1.5;
+  }
+
+  /* ── CTA ── */
+  .cta-section {
+    padding: 120px 6%;
+    text-align: center;
+    background: var(--cream);
+    position: relative;
+  }
+
+  .cta-section::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(201,168,76,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-section .section-title { max-width: 700px; margin: 0 auto 20px; }
+  .cta-section .section-sub { margin: 0 auto 44px; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--forest);
+    padding: 60px 6% 32px;
+    border-top: 1px solid rgba(201,168,76,0.1);
+  }
+
+  .footer-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 40px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid rgba(245,240,232,0.08);
+    margin-bottom: 28px;
+  }
+
+  .footer-brand {
+    max-width: 280px;
+  }
+
+  .footer-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px; font-weight: 700;
+    color: #f5f0e8; margin-bottom: 10px;
+  }
+
+  .footer-tagline {
+    font-size: 13px; color: rgba(245,240,232,0.45);
+    line-height: 1.6; font-weight: 300;
+  }
+
+  .footer-links h4 {
+    font-size: 11px; font-weight: 700;
+    color: var(--gold); letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+
+  .footer-links ul { list-style: none; }
+
+  .footer-links li {
+    margin-bottom: 10px;
+  }
+
+  .footer-links a {
+    font-size: 13px; color: rgba(245,240,232,0.5);
+    text-decoration: none; transition: color 0.2s;
+    font-weight: 400;
+  }
+  .footer-links a:hover { color: var(--gold-light); }
+
+  .footer-bottom {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+
+  .footer-copy {
+    font-size: 12px; color: rgba(245,240,232,0.3);
+    font-weight: 300;
+  }
+
+  .footer-fssai {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: rgba(245,240,232,0.3);
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 6px; padding: 5px 10px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(22px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .reveal {
+    opacity: 0; transform: translateY(28px);
+    transition: opacity 0.65s ease, transform 0.65s ease;
+  }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .demo-section { grid-template-columns: 1fr; gap: 48px; }
+    .nav-links { display: none; }
+    .stat-block { border-right: none; border-bottom: 1px solid rgba(201,168,76,0.1); }
+  }
+
+  @media (max-width: 600px) {
+    .hero-stats { gap: 32px; }
+    .stats-dark { grid-template-columns: 1fr 1fr; }
+    .footer-top { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">
+    <div class="nav-icon">🌿</div>
+    <span class="nav-name">FoodSafe</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#scan">Live Demo</a></li>
+    <li><a href="/auth">Login</a></li><li><a href="/scan" class="nav-cta">Open App →</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-orb-1"></div>
+  <div class="hero-orb-2"></div>
+
+  <div class="hero-badge">
+    <span></span> AI-Powered Food Safety for India
+  </div>
+
+  <h1 class="hero-title">
+    Know what's <em>really</em><br>in your food
+  </h1>
+
+  <p class="hero-sub">
+    FoodSafe uses AI to detect adulteration in Indian foods — from turmeric to milk to spices. Scan by name, photo, or barcode in seconds.
+  </p>
+
+  <div class="hero-actions">
+    <a href="/scan" class="btn-primary">🔍 Scan Your Food Free</a>
+    <a href="#how" class="btn-ghost">See how it works</a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-item">
+      <div class="stat-num">68%</div>
+      <div class="stat-label">Turmeric adulterated</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">77%</div>
+      <div class="stat-label">Honey brands fail test</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">54%</div>
+      <div class="stat-label">Chilli powder unsafe</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">38%</div>
+      <div class="stat-label">Milk adulterated</div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-bar">
+  <div class="ticker-inner">
+    <div class="ticker-item"><div class="ticker-dot"></div> MDH spices flagged for pesticide residue — Apr 2026</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Everest Fish Curry Masala recalled — ethylene oxide detected</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> 83% paneer samples fail quality in UP cities — Feb 2026</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Honey adulteration with HFCS — NMR test recommended</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Sudan Red dye found in chilli powder — Tamil Nadu 2026</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Argemone oil in mustard oil detected — Rajasthan</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> MDH spices flagged for pesticide residue — Apr 2026</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Everest Fish Curry Masala recalled — ethylene oxide detected</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> 83% paneer samples fail quality in UP cities — Feb 2026</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Honey adulteration with HFCS — NMR test recommended</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Sudan Red dye found in chilli powder — Tamil Nadu 2026</div>
+    <div class="ticker-item"><div class="ticker-dot"></div> Argemone oil in mustard oil detected — Rajasthan</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="reveal">
+    <div class="section-label">Process</div>
+    <h2 class="section-title">Three steps to food safety</h2>
+    <p class="section-sub">Powered by Groq AI, FSSAI violation data, and seasonal risk models trained on Indian markets.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step-card reveal">
+      <span class="step-num">01 — SCAN</span>
+      <span class="step-icon">🔍</span>
+      <div class="step-title">Type, Photo or Barcode</div>
+      <p class="step-desc">Enter any food name in English, Hindi, or Marathi. Or snap a photo of the label. Or scan the barcode directly.</p>
+    </div>
+    <div class="step-card reveal" style="transition-delay:0.1s">
+      <span class="step-num">02 — ANALYSE</span>
+      <span class="step-icon">🧪</span>
+      <div class="step-title">AI Cross-References FSSAI</div>
+      <p class="step-desc">Our AI checks your food against real FSSAI violation records, market adulteration rates, and seasonal risk patterns.</p>
+    </div>
+    <div class="step-card reveal" style="transition-delay:0.2s">
+      <span class="step-num">03 — ACT</span>
+      <span class="step-icon">✅</span>
+      <div class="step-title">Get Clear Guidance</div>
+      <p class="step-desc">Risk score, adulterant list, easy home tests you can do today, safe brands to buy, and personalised warnings for your family.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="reveal">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything your family needs</h2>
+    <p class="section-sub">Built specifically for Indian households, festivals, and food habits.</p>
+  </div>
+
+  <div class="features-grid">
+    <div class="feat-card reveal">
+      <div class="feat-icon">📷</div>
+      <div class="feat-title">Label Scanner</div>
+      <p class="feat-desc">Photograph any food label. AI reads ingredients, flags E-numbers, detects counterfeits and suspicious packaging.</p>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.08s">
+      <div class="feat-icon">👨‍👩‍👧</div>
+      <div class="feat-title">Family Profiles</div>
+      <p class="feat-desc">Add family members with health conditions. Get personalised risk warnings — diabetic, pregnant, elderly, child-specific.</p>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.16s">
+      <div class="feat-icon">🎉</div>
+      <div class="feat-title">Festival Safety Guide</div>
+      <p class="feat-desc">Diwali sweets, Holi colours, Eid biryani — seasonal adulteration alerts for every Indian festival.</p>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.24s">
+      <div class="feat-icon">🩺</div>
+      <div class="feat-title">Symptom Checker</div>
+      <p class="feat-desc">Feeling unwell after eating? Describe your symptoms and recent meals — AI identifies possible adulteration causes.</p>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.32s">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Seasonal Risk Model</div>
+      <p class="feat-desc">Prophet ML model predicts adulteration risk spikes by season, region, and food type based on historical FSSAI data.</p>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.4s">
+      <div class="feat-icon">🗺️</div>
+      <div class="feat-title">Community Reports</div>
+      <p class="feat-desc">See adulteration reports from your city. Submit your own findings. Crowd-sourced safety for your neighbourhood.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SCAN DEMO + COPY -->
+<section class="demo-section" id="scan">
+  <div class="reveal">
+    <div class="section-label">Live App</div>
+    <h2 class="section-title">See it scan <em>milk</em> in real-time</h2>
+    <p style="font-size:15px; color:var(--muted); line-height:1.7; font-weight:300; margin-bottom:32px;">
+      The phone preview shows an actual response from our backend. Milk scored 60/100 — water, starch, and melamine detected as potential adulterants with home tests you can do right now.
+    </p>
+    <a href="/scan" class="btn-primary" style="font-size:14px; padding:13px 28px;">
+      Try it yourself →
+    </a>
+  </div>
+
+  <div class="demo-phone">
+    <div class="phone-glow"></div>
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div style="background:linear-gradient(160deg,#0d2818,#1a3d2b); padding:16px 16px 24px;">
+        <div class="phone-header">
+          <div style="font-size:16px;">🌿</div>
+          <div class="phone-brand">FoodSafe</div>
+        </div>
+        <div class="phone-search">🔍 milk</div>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <div style="flex:1; padding:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(245,240,232,0.12); border-radius:8px; text-align:center; font-size:10px; color:rgba(245,240,232,0.6);">📷 Photo</div>
+          <div style="flex:1; padding:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(245,240,232,0.12); border-radius:8px; text-align:center; font-size:10px; color:rgba(245,240,232,0.6);">🎤 Voice</div>
+        </div>
+        <div class="phone-scan-btn">🔍 Scan Now</div>
+      </div>
+      <div class="phone-content" style="background:#f7f5f0; padding:14px;">
+        <div class="phone-result" style="background:#fff; border:1px solid #ece8df; border-radius:12px; padding:14px;">
+          <span class="result-badge badge-medium">⚠ MEDIUM RISK</span>
+          <div class="result-food">Milk</div>
+          <div class="result-score">Safety Score: 60/100 · Market fake rate: 38%</div>
+          <div class="adulterant-item"><div class="adulterant-dot"></div> Melamine — CRITICAL</div>
+          <div class="adulterant-item"><div class="adulterant-dot" style="background:#ffa500"></div> Water dilution — MEDIUM</div>
+          <div class="adulterant-item"><div class="adulterant-dot" style="background:#4caf50"></div> Starch — LOW</div>
+          <div style="margin-top:10px; padding:8px; background:#f0faf5; border-radius:8px; font-size:10px; color:#1a3d2b; font-weight:500;">
+            🧪 Home test: Add iodine drops — blue colour = starch present
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS DARK -->
+<div class="stats-dark">
+  <div class="stat-block reveal">
+    <div class="stat-block-num">10+</div>
+    <div class="stat-block-label">Indian food categories<br>monitored</div>
+  </div>
+  <div class="stat-block reveal" style="transition-delay:0.1s">
+    <div class="stat-block-num">FSSAI</div>
+    <div class="stat-block-label">Verified violation<br>database</div>
+  </div>
+  <div class="stat-block reveal" style="transition-delay:0.2s">
+    <div class="stat-block-num">3</div>
+    <div class="stat-block-label">Languages: English,<br>Hindi, Marathi</div>
+  </div>
+  <div class="stat-block reveal" style="transition-delay:0.3s">
+    <div class="stat-block-num">0₹</div>
+    <div class="stat-block-label">Free to use,<br>always</div>
+  </div>
+</div>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="reveal">
+    <div class="section-label" style="justify-content:center;">Get Started</div>
+    <h2 class="section-title" style="text-align:center;">Your family deserves<br><em style="color:var(--gold);">safe food</em></h2>
+    <p class="section-sub" style="text-align:center;">
+      Scan any food right now — no signup needed. Works on mobile, tablet, and desktop.
+    </p>
+    <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+      <a href="/scan" class="btn-primary">🌿 Open FoodSafe App</a>
+      <a href="https://foodsafe-production.up.railway.app/docs" class="btn-ghost" target="_blank">View API Docs</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-name">🌿 FoodSafe</div>
+      <p class="footer-tagline">AI-powered food adulteration detection for Indian families. Know what's really in your food.</p>
+    </div>
+    <div class="footer-links">
+      <h4>App</h4>
+      <ul>
+        <li><a href="/scan">Open App</a></li>
+        <li><a href="/symptoms">Symptom Checker</a></li>
+        <li><a href="/festival">Festival Guide</a></li>
+        <li><a href="/brands">Safe Brands</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>Developers</h4>
+      <ul>
+        <li><a href="https://foodsafe-production.up.railway.app/docs" target="_blank">API Docs</a></li>
+        <li><a href="https://github.com/AtharvaVavhal/FoodSafe" target="_blank">GitHub</a></li><li><a href="/admin">Admin</a></li>
+        <li><a href="https://foodsafe-production.up.railway.app/health" target="_blank">API Status</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="footer-copy">© 2026 FoodSafe. Built for India's food safety.</p>
+    <div class="footer-fssai">🏛️ Data sourced from FSSAI public records</div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') })
+  }, { threshold: 0.12 })
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
+
+  // Smooth nav highlight
+  const navLinks = document.querySelectorAll('.nav-links a:not(.nav-cta)')
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY
+    document.querySelector('nav').style.background =
+      y > 60 ? 'rgba(10,31,18,0.97)' : 'rgba(10,31,18,0.85)'
+  })
+</script>
+</body>
+</html>

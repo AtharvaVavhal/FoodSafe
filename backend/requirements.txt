@@ -14,7 +14,7 @@ alembic==1.13.1
 
 # ── AI / ML / Data ───────────────────────────────────────────
 groq==0.4.2
-scikit-learn==1.4.2
+scikit-learn==1.5.0
 pandas==2.1.4
 numpy==1.26.4
 prophet==1.1.5

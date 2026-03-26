@@ -24,19 +24,16 @@ async def lifespan(app: FastAPI):
         print("✅ Database tables ready")
     except Exception as e:
         print(f"⚠ DB init skipped: {e}")
-
     try:
         import risk_scorer
         print("✅ Seasonal risk scorer loaded")
     except Exception as e:
         print(f"⚠ Seasonal risk scorer not loaded: {e}")
-
     try:
         import personalized_scorer
         print("✅ Personalized risk scorer loaded")
     except Exception as e:
         print(f"⚠ Personalized risk scorer not loaded: {e}")
-
     try:
         from services.rag_service import rag
         if rag.record_count == 0:
@@ -45,7 +42,6 @@ async def lifespan(app: FastAPI):
             print(f"✅ RAG index loaded: {rag.record_count} violations")
     except Exception as e:
         print(f"⚠ RAG service check failed: {e}")
-
     yield
     print("🌿 FoodSafe API shutting down...")
 

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import init_db
-from backend.routers import (
+from routers import (
     scan, symptoms, community, brands, fssai,
     users, whatsapp, recommendations, festival,
     meal_planner, push, admin, diary, news, chat,

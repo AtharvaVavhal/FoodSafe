@@ -132,7 +132,6 @@ async def submit_report(
         report_count = count_result.scalar() or 0
 
         if report_count >= 10 and report_count % 5 == 0:
-            # Trigger push to all subscribers
             from routers.push import _subscriptions
             if _subscriptions:
                 try:
@@ -140,9 +139,9 @@ async def submit_report(
                     import json as _json
                     payload = _json.dumps({
                         "title": f"⚠️ {req.food_name} Alert — {req.city}",
-                        "body": f"{report_count} adulteration reports for {req.food_name} in {req.city}. Be cautious!",
-                        "url": "/map",
-                        "icon": "/pwa-192.png",
+                        "body":  f"{report_count} adulteration reports for {req.food_name} in {req.city}. Be cautious!",
+                        "url":   "/map",
+                        "icon":  "/pwa-192.png",
                     })
                     private_key = settings.VAPID_PRIVATE_KEY if hasattr(settings, 'VAPID_PRIVATE_KEY') else None
                     vapid_email = getattr(settings, 'VAPID_EMAIL', 'mailto:admin@foodsafe.app')
@@ -186,13 +185,24 @@ async def upvote_report(
 # ── City risk summary (public) ────────────────────────────────────────────────
 @router.get("/city-risk")
 async def city_risk(db: AsyncSession = Depends(get_db)):
+
+    # ── Aggregate report count + avg coordinates per city ────────────────────
     count_result = await db.execute(
-        select(CommunityReport.city, func.count(CommunityReport.id).label("reports"))
+        select(
+            CommunityReport.city,
+            func.count(CommunityReport.id).label("reports"),
+            func.avg(CommunityReport.lat).label("lat"),
+            func.avg(CommunityReport.lng).label("lng"),
+        )
         .group_by(CommunityReport.city)
         .order_by(func.count(CommunityReport.id).desc())
     )
-    city_counts = {r.city: r.reports for r in count_result.all()}
+    city_data = {
+        r.city: {"reports": r.reports, "lat": r.lat, "lng": r.lng}
+        for r in count_result.all()
+    }
 
+    # ── Top food per city ─────────────────────────────────────────────────────
     top_food_result = await db.execute(
         select(
             CommunityReport.city,
@@ -210,17 +220,20 @@ async def city_risk(db: AsyncSession = Depends(get_db)):
     cities = [
         {
             "city":    city,
-            "reports": count,
-            "risk":    _risk_from_count(count),
+            "reports": d["reports"],
+            "lat":     d["lat"],
+            "lng":     d["lng"],
+            "risk":    _risk_from_count(d["reports"]),
             "topFood": top_food.get(city, "Various"),
         }
-        for city, count in city_counts.items()
+        for city, d in city_data.items()
         if city
     ]
+
     return {"cities": cities, "total": len(cities)}
 
 
-# ── Seed sample reports (dev only) ─────────────────────────────────────────
+# ── Seed sample reports (dev only) ────────────────────────────────────────────
 @router.post("/seed")
 async def seed_reports(
     db:   AsyncSession = Depends(get_db),
@@ -230,16 +243,21 @@ async def seed_reports(
         raise HTTPException(403, "Seed endpoint is disabled in production")
 
     samples = [
-        {"food_name": "Turmeric Powder", "brand": "Local brand",  "city": "Nagpur",
-         "state": "Maharashtra", "description": "Found yellow synthetic color, tasted bitter."},
-        {"food_name": "Buffalo Milk",    "brand": "Unbranded",    "city": "Pune",
-         "state": "Maharashtra", "description": "Milk appeared watery, detergent smell noticed."},
-        {"food_name": "Honey",           "brand": "Local honey",  "city": "Mumbai",
-         "state": "Maharashtra", "description": "Crystallized very quickly, tastes like sugar syrup."},
-        {"food_name": "Paneer",          "brand": "Local dairy",  "city": "Aurangabad",
-         "state": "Maharashtra", "description": "Rubbery texture, did not melt on heating."},
-        {"food_name": "Mustard Oil",     "brand": "Unbranded",    "city": "Nashik",
-         "state": "Maharashtra", "description": "Unusual bitter taste, stomach cramps after use."},
+        {"food_name": "Turmeric Powder", "brand": "Local brand", "city": "Nagpur",
+         "state": "Maharashtra", "description": "Found yellow synthetic color, tasted bitter.",
+         "lat": 21.1458, "lng": 79.0882},
+        {"food_name": "Buffalo Milk",    "brand": "Unbranded",   "city": "Pune",
+         "state": "Maharashtra", "description": "Milk appeared watery, detergent smell noticed.",
+         "lat": 18.5204, "lng": 73.8567},
+        {"food_name": "Honey",           "brand": "Local honey", "city": "Mumbai",
+         "state": "Maharashtra", "description": "Crystallized very quickly, tastes like sugar syrup.",
+         "lat": 19.0760, "lng": 72.8777},
+        {"food_name": "Paneer",          "brand": "Local dairy", "city": "Aurangabad",
+         "state": "Maharashtra", "description": "Rubbery texture, did not melt on heating.",
+         "lat": 19.8762, "lng": 75.3433},
+        {"food_name": "Mustard Oil",     "brand": "Unbranded",   "city": "Nashik",
+         "state": "Maharashtra", "description": "Unusual bitter taste, stomach cramps after use.",
+         "lat": 19.9975, "lng": 73.7898},
     ]
     for s in samples:
         db.add(CommunityReport(**s))

@@ -111,18 +111,18 @@ export default function DiaryPage() {
       })
       .catch(() => {})
       .finally(() => setLoadingInsights(false))
-  }, [scanHistory.length])
+  }, [scanHistory.length, token])
 
   // Fetch weekly digest
   useEffect(() => {
-    if (!token || scanHistory.length === 0) return
+    if (!token) return
     setLoadingDigest(true)
     fetch(`${API_URL}/diary/overconsumption`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (data.categories) setDigest(data) })
       .catch(() => {})
       .finally(() => setLoadingDigest(false))
-  }, [scanHistory.length])
+  }, [scanHistory.length, token])
 
   return (
     <div className="flex flex-col animate-fade-up px-4 md:px-8 py-6 max-w-4xl mx-auto w-full pb-32">

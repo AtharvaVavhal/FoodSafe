@@ -1,194 +1,359 @@
 """
 Real-time food safety news endpoint.
-Scrapes live data from food safety news sources and FSSAI;
-falls back to Groq-generated alerts if scraping fails.
+Sources: Google News RSS, FSSAI portal, The Hindu RSS, NDTV RSS, Times of India RSS.
+Groq enriches every scraped article (summary, severity, category).
+Groq generates fresh news if all scraping fails.
+Cache TTL: 30 minutes.
 """
 import time
-import re
 import logging
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter
+from services.ai_service import _call_groq
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── In-memory cache (30 min TTL) ──────────────────────────
+# ── Cache ──────────────────────────────────────────────────────────────────
 _cache: dict = {"data": None, "ts": 0}
 CACHE_TTL = 1800  # 30 minutes
 
 
-async def _scrape_food_safety_news() -> list[dict]:
-    """Scrape real food safety news from public sources (async)."""
+# ── RSS / HTML sources ─────────────────────────────────────────────────────
+RSS_SOURCES = [
+    {
+        "url": "https://news.google.com/rss/search?q=food+adulteration+India+FSSAI&hl=en-IN&gl=IN&ceid=IN:en",
+        "name": "Google News",
+    },
+    {
+        "url": "https://news.google.com/rss/search?q=food+safety+India+recall+contamination&hl=en-IN&gl=IN&ceid=IN:en",
+        "name": "Google News",
+    },
+    {
+        "url": "https://feeds.feedburner.com/ndtvnews-india-news",
+        "name": "NDTV",
+    },
+    {
+        "url": "https://www.thehindu.com/sci-tech/health/feeder/default.rss",
+        "name": "The Hindu",
+    },
+    {
+        "url": "https://timesofindia.indiatimes.com/rssfeeds/1221656.cms",
+        "name": "Times of India",
+    },
+]
+
+FOOD_KEYWORDS = [
+    "food", "fssai", "adulter", "safety", "contamin", "recall",
+    "milk", "spice", "honey", "oil", "pesticide", "ban", "poison",
+    "toxic", "paneer", "ghee", "atta", "flour", "packaged", "additive",
+    "preservative", "color", "dye", "chemical", "eat", "drink", "consume",
+    "vegetable", "fruit", "meat", "fish", "grain", "rice", "wheat",
+]
+
+
+async def _scrape_rss_sources() -> list[dict]:
+    """Scrape all RSS sources and return raw articles."""
     import httpx
     from bs4 import BeautifulSoup
 
-    articles = []
-    headers = {"User-Agent": "FoodSafe-Research-Bot/1.0"}
+    raw = []
+    headers = {"User-Agent": "FoodSafe-Research-Bot/1.0 (food safety aggregator)"}
 
     async with httpx.AsyncClient(follow_redirects=True, timeout=12) as client:
-        # ── Source 1: FSSAI portal notices ─────────────────────
-        try:
+        for source in RSS_SOURCES:
+            try:
+                resp = await client.get(source["url"], headers=headers)
+                if resp.status_code != 200:
+                    continue
+
+                soup = BeautifulSoup(resp.text, "xml")
+                items = soup.find_all("item")[:12]
+
+                for item in items:
+                    title     = (item.find("title").text     if item.find("title")   else "").strip()
+                    pub_date  = (item.find("pubDate").text   if item.find("pubDate") else "").strip()
+                    link      = (item.find("link").text      if item.find("link")    else "").strip()
+                    desc      = (item.find("description").text if item.find("description") else "").strip()
+                    src_tag   = item.find("source")
+                    src_name  = src_tag.text.strip() if src_tag else source["name"]
+
+                    if not title:
+                        continue
+
+                    # Only keep food-related articles
+                    combined = (title + " " + desc).lower()
+                    if not any(kw in combined for kw in FOOD_KEYWORDS):
+                        continue
+
+                    # Parse date
+                    date_clean = _parse_date(pub_date)
+
+                    raw.append({
+                        "title":      title[:250],
+                        "raw_desc":   desc[:400],
+                        "date":       date_clean,
+                        "source":     src_name,
+                        "source_url": link,
+                    })
+
+            except Exception as e:
+                logger.warning("RSS scrape failed for %s: %s", source["name"], e)
+
+    # ── FSSAI food recall portal ──────────────────────────────────────────
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=12) as client:
             resp = await client.get(
                 "https://www.fssai.gov.in/cms/food-recall-portal.php",
                 headers=headers,
             )
             if resp.status_code == 200:
+                from bs4 import BeautifulSoup
                 soup = BeautifulSoup(resp.text, "html.parser")
-                rows = soup.select("table tr")[1:15]  # skip header
+
+                # Try multiple table selectors
+                rows = (
+                    soup.select("table.table tr")[1:12]
+                    or soup.select("table tr")[1:12]
+                )
                 for row in rows:
                     cols = row.find_all("td")
-                    if len(cols) >= 3:
-                        title = cols[1].get_text(strip=True)[:200]
-                        date_str = cols[0].get_text(strip=True)
+                    if len(cols) >= 2:
+                        title    = cols[1].get_text(strip=True)[:250] if len(cols) > 1 else ""
+                        date_str = cols[0].get_text(strip=True)       if len(cols) > 0 else ""
+                        link_tag = row.find("a")
+                        link     = link_tag["href"] if link_tag and link_tag.get("href") else "https://www.fssai.gov.in/cms/food-recall-portal.php"
+
                         if title:
-                            articles.append({
-                                "title": title,
-                                "summary": f"FSSAI recall notice: {title}",
-                                "severity": _infer_severity(title),
-                                "date": date_str or datetime.now().strftime("%d %b %Y"),
-                                "source": "FSSAI Food Recall Portal",
-                                "source_url": "https://www.fssai.gov.in/cms/food-recall-portal.php",
-                                "category": "recall",
+                            raw.append({
+                                "title":      title,
+                                "raw_desc":   f"FSSAI official recall notice: {title}",
+                                "date":       date_str or datetime.now().strftime("%d %b %Y"),
+                                "source":     "FSSAI Food Recall Portal",
+                                "source_url": link if link.startswith("http") else f"https://www.fssai.gov.in{link}",
                             })
-        except Exception as e:
-            logger.warning("FSSAI scrape failed: %s", e)
+    except Exception as e:
+        logger.warning("FSSAI portal scrape failed: %s", e)
 
-        # ── Source 2: Google News RSS for Indian food safety ───
+    # Deduplicate by title similarity
+    seen_titles = set()
+    deduped = []
+    for a in raw:
+        key = a["title"][:60].lower()
+        if key not in seen_titles:
+            seen_titles.add(key)
+            deduped.append(a)
+
+    return deduped
+
+
+def _parse_date(pub_date: str) -> str:
+    """Try multiple date formats and return clean DD Mon YYYY string."""
+    formats = [
+        "%a, %d %b %Y %H:%M:%S %z",
+        "%a, %d %b %Y %H:%M:%S GMT",
+        "%a, %d %b %Y %H:%M:%S +0000",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%d %b %Y",
+    ]
+    for fmt in formats:
         try:
-            rss_url = "https://news.google.com/rss/search?q=food+adulteration+India+FSSAI&hl=en-IN&gl=IN&ceid=IN:en"
-            resp = await client.get(rss_url, headers=headers)
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, "xml")
-                items = soup.find_all("item")[:10]
-                for item in items:
-                    title = item.find("title").text if item.find("title") else ""
-                    pub_date = item.find("pubDate").text if item.find("pubDate") else ""
-                    link = item.find("link").text if item.find("link") else ""
-                    source_tag = item.find("source")
-                    source_name = source_tag.text if source_tag else "Google News"
+            dt = datetime.strptime(pub_date[:35].strip(), fmt)
+            return dt.strftime("%d %b %Y")
+        except Exception:
+            continue
+    return pub_date[:16] if pub_date else datetime.now().strftime("%d %b %Y")
 
-                    if title and any(kw in title.lower() for kw in [
-                        "food", "fssai", "adulter", "safety", "contamin", "recall",
-                        "milk", "spice", "honey", "oil", "pesticide", "ban",
-                    ]):
-                        # Clean date
-                        try:
-                            dt = datetime.strptime(pub_date[:25], "%a, %d %b %Y %H:%M:%S")
-                            date_clean = dt.strftime("%d %b %Y")
-                        except Exception:
-                            date_clean = pub_date[:16] if pub_date else datetime.now().strftime("%d %b %Y")
 
-                        articles.append({
-                            "title": title[:200],
-                            "summary": f"Reported by {source_name}",
-                            "severity": _infer_severity(title),
-                            "date": date_clean,
-                            "source": source_name,
-                            "source_url": link,
-                            "category": "news",
-                        })
+def _groq_enrich_articles(raw_articles: list[dict]) -> list[dict]:
+    """Use Groq to enrich scraped articles with severity, category, and summary."""
+    if not raw_articles:
+        return []
+
+    # Send in batches of 8 to stay within token limits
+    enriched = []
+    batch_size = 8
+
+    for i in range(0, len(raw_articles), batch_size):
+        batch = raw_articles[i:i + batch_size]
+        articles_json = [
+            {"index": j, "title": a["title"], "desc": a.get("raw_desc", "")}
+            for j, a in enumerate(batch)
+        ]
+
+        system = (
+            "You are an Indian food safety expert and journalist. "
+            "Respond ONLY with valid JSON. No markdown, no extra text."
+        )
+        user = f"""Analyze these food safety news articles from Indian sources and enrich each one.
+
+Articles:
+{articles_json}
+
+For each article, determine:
+1. A concise 2-sentence summary focused on the food safety angle
+2. Severity: HIGH (toxic/carcinogenic/death/recall/ban), MEDIUM (warning/violation/fine/substandard), LOW (regulation/update/awareness)
+3. Category: recall | warning | news | update
+4. Whether it is actually relevant to Indian food safety (is_relevant: true/false)
+
+Return ONLY this JSON:
+{{
+  "articles": [
+    {{
+      "index": <same index as input>,
+      "summary": "<2-sentence food safety focused summary>",
+      "severity": "HIGH|MEDIUM|LOW",
+      "category": "recall|warning|news|update",
+      "is_relevant": true
+    }}
+  ]
+}}
+
+Be strict about severity — HIGH only for genuinely dangerous situations with documented health risk."""
+
+        try:
+            result = _call_groq(system, user, max_tokens=2000)
+            groq_items = {item["index"]: item for item in result.get("articles", [])}
+
+            for j, article in enumerate(batch):
+                groq_data = groq_items.get(j, {})
+                if not groq_data.get("is_relevant", True):
+                    continue
+                enriched.append({
+                    "title":      article["title"],
+                    "summary":    groq_data.get("summary", article.get("raw_desc", "")[:200]),
+                    "severity":   groq_data.get("severity", "MEDIUM"),
+                    "category":   groq_data.get("category", "news"),
+                    "date":       article["date"],
+                    "source":     article["source"],
+                    "source_url": article["source_url"],
+                })
         except Exception as e:
-            logger.warning("Google News RSS scrape failed: %s", e)
+            logger.warning("Groq enrichment failed for batch %d: %s", i, e)
+            # Keep raw articles without enrichment rather than dropping them
+            for article in batch:
+                enriched.append({
+                    "title":      article["title"],
+                    "summary":    article.get("raw_desc", "")[:200],
+                    "severity":   _infer_severity_fallback(article["title"]),
+                    "category":   "news",
+                    "date":       article["date"],
+                    "source":     article["source"],
+                    "source_url": article["source_url"],
+                })
 
-    return articles
+    return enriched
 
 
-def _infer_severity(text: str) -> str:
-    """Infer severity from keywords in text."""
-    text_lower = text.lower()
-    high_keywords = [
-        "death", "cancer", "carcinogen", "lead", "pesticide", "ban",
-        "recall", "seized", "toxic", "poison", "sudan", "argemone",
-        "critical", "dangerous", "fatal", "hospitalized",
-    ]
-    medium_keywords = [
-        "warning", "fail", "violation", "fine", "penalty", "unsafe",
-        "contaminated", "adulterated", "fake", "substandard",
-    ]
-    if any(kw in text_lower for kw in high_keywords):
+def _infer_severity_fallback(text: str) -> str:
+    """Keyword-based severity inference used only when Groq is unavailable."""
+    t = text.lower()
+    if any(k in t for k in ["death", "cancer", "carcinogen", "lead", "poison", "toxic", "fatal", "ban", "recall", "seized", "argemone", "sudan"]):
         return "HIGH"
-    if any(kw in text_lower for kw in medium_keywords):
+    if any(k in t for k in ["warning", "fail", "violation", "fine", "unsafe", "contaminat", "adulterat", "fake", "substandard"]):
         return "MEDIUM"
     return "LOW"
 
 
-def _ai_fallback_news() -> list[dict]:
-    """Generate AI-based food safety news via Groq when scraping fails."""
-    try:
-        from services.ai_service import _call_groq
-        system = "You are an Indian food safety journalist. Respond ONLY with valid JSON."
-        user = """Generate 8 realistic, current Indian food safety news headlines.
-Base them on real patterns from FSSAI, food adulteration incidents, and seasonal risks.
-Use current month/year.
+def _groq_generate_news() -> list[dict]:
+    """Ask Groq to generate food safety news based on real documented patterns when scraping fails."""
+    system = (
+        "You are an Indian food safety journalist with deep knowledge of FSSAI reports, "
+        "CSE studies, state food safety surveys, and documented adulteration cases. "
+        "Respond ONLY with valid JSON. No markdown."
+    )
+    user = f"""Generate 10 food safety news items for India based on REAL documented patterns from:
+- FSSAI annual surveillance reports and recall notices
+- CSE (Centre for Science and Environment) lab studies
+- State food safety authority survey findings
+- Documented seasonal adulteration patterns
+
+Current month/year context: {datetime.now().strftime("%B %Y")}
+
+Each item must be based on a real documented pattern (e.g. honey NMR failure, argemone in mustard oil, 
+Sudan Red in chilli, urea in milk, starch in paneer, lead chromate in turmeric).
 
 Return ONLY this JSON:
-{
-  "news": [
-    {
-      "title": "headline",
-      "summary": "2-sentence summary",
+{{
+  "articles": [
+    {{
+      "title": "<specific, factual headline citing real pattern>",
+      "summary": "<2 sentences citing the documented study, survey, or report this is based on>",
       "severity": "HIGH|MEDIUM|LOW",
-      "date": "DD Mon YYYY",
-      "source": "news source name",
-      "category": "recall|warning|update|news"
-    }
+      "category": "recall|warning|news|update",
+      "date": "<{datetime.now().strftime("%b %Y")}>",
+      "source": "<real Indian news source or FSSAI>",
+      "source_url": ""
+    }}
   ]
-}"""
-        result = _call_groq(system, user, max_tokens=1200)
-        news = result.get("news", [])
-        for item in news:
-            item["source_url"] = ""
-        return news
+}}
+
+Rules:
+- Base every item on a real documented case or pattern — no invented incidents
+- Mention actual adulterants, chemicals, or violations by name
+- Vary severity realistically across the 10 items
+- Include at least 2 LOW severity regulatory/update items"""
+
+    try:
+        result = _call_groq(system, user, max_tokens=2500)
+        articles = result.get("articles", [])
+        # Ensure source_url is always present
+        for a in articles:
+            a.setdefault("source_url", "")
+        return articles
     except Exception as e:
-        logger.warning(f"AI fallback also failed: {e}")
-        return _static_fallback()
+        logger.error("Groq news generation failed: %s", e)
+        return []
 
 
-def _static_fallback() -> list[dict]:
-    """Last resort static fallback data."""
-    return [
-        {"title": "MDH spices flagged for pesticide residue — ethylene oxide detected", "summary": "Multiple batches of MDH spice products recalled after testing positive for ethylene oxide above permissible limits.", "severity": "HIGH", "date": datetime.now().strftime("%d %b %Y"), "source": "FSSAI", "source_url": "", "category": "recall"},
-        {"title": "83% paneer samples fail quality tests in UP cities", "summary": "Food safety department finds widespread adulteration using starch, urea, and detergent in paneer samples.", "severity": "HIGH", "date": datetime.now().strftime("%d %b %Y"), "source": "Times of India", "source_url": "", "category": "news"},
-        {"title": "Honey adulteration with HFCS remains rampant — NMR testing recommended", "summary": "CSE study reveals majority of honey brands fail NMR purity tests, containing high-fructose corn syrup.", "severity": "MEDIUM", "date": datetime.now().strftime("%d %b %Y"), "source": "CSE Report", "source_url": "", "category": "warning"},
-        {"title": "Sudan Red dye found in chilli powder samples in Tamil Nadu", "summary": "Carcinogenic Sudan Red IV dye detected in loose chilli powder sold at local markets.", "severity": "HIGH", "date": datetime.now().strftime("%d %b %Y"), "source": "The Hindu", "source_url": "", "category": "news"},
-        {"title": "Argemone oil contamination in mustard oil — Rajasthan districts affected", "summary": "Toxic argemone seeds mixed with mustard causing epidemic dropsy cases reported.", "severity": "HIGH", "date": datetime.now().strftime("%d %b %Y"), "source": "NDTV", "source_url": "", "category": "warning"},
-        {"title": "FSSAI introduces new testing norms for packaged drinking water", "summary": "Updated standards mandate additional heavy metal testing for all bottled water brands.", "severity": "LOW", "date": datetime.now().strftime("%d %b %Y"), "source": "FSSAI", "source_url": "", "category": "update"},
-        {"title": "Synthetic milk adulteration racket busted in Maharashtra", "summary": "Police seize synthetic milk manufacturing unit producing fake milk using urea, detergent, and refined oil.", "severity": "HIGH", "date": datetime.now().strftime("%d %b %Y"), "source": "Indian Express", "source_url": "", "category": "news"},
-        {"title": "FSSAI mandates FoSTaC training for all food businesses by 2025", "summary": "New compliance requirement for food safety training across all registered food businesses in India.", "severity": "LOW", "date": datetime.now().strftime("%d %b %Y"), "source": "FSSAI", "source_url": "", "category": "update"},
-    ]
-
-
+# ── GET /news/feed ─────────────────────────────────────────────────────────
 @router.get("/feed")
 async def get_news_feed(severity: Optional[str] = None, limit: int = 20):
     """Get real-time food safety news feed."""
     now = time.time()
 
-    # Check cache
+    # Serve from cache if fresh
     if _cache["data"] and (now - _cache["ts"]) < CACHE_TTL:
         articles = _cache["data"]
     else:
-        # Try scraping first
-        articles = await _scrape_food_safety_news()
+        # 1. Scrape all sources
+        raw_articles = await _scrape_rss_sources()
 
-        # Fallback to AI if scraping yields nothing
-        if not articles:
-            articles = _ai_fallback_news()
+        if raw_articles:
+            # 2. Enrich with Groq (summary, severity, category)
+            articles = _groq_enrich_articles(raw_articles)
+        else:
+            # 3. All scraping failed — Groq generates based on real patterns
+            logger.warning("All scraping failed — falling back to Groq generation")
+            articles = _groq_generate_news()
 
-        # Update cache
-        _cache["data"] = articles
-        _cache["ts"] = now
+        if articles:
+            # Sort: HIGH first, then MEDIUM, then LOW, then by date
+            severity_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+            articles.sort(key=lambda a: severity_order.get(a.get("severity", "LOW"), 2))
 
-    # Filter by severity if requested
+            _cache["data"] = articles
+            _cache["ts"]   = now
+
+    # Filter by severity
     if severity:
         articles = [a for a in articles if a.get("severity", "").upper() == severity.upper()]
 
-    # Limit results
-    articles = articles[:limit]
-
     return {
-        "articles": articles,
-        "total": len(articles),
-        "cached": (now - _cache["ts"]) < CACHE_TTL and _cache["data"] is not None,
+        "articles":     articles[:limit],
+        "total":        len(articles),
+        "cached":       (now - _cache["ts"]) < CACHE_TTL,
         "last_updated": datetime.fromtimestamp(_cache["ts"]).isoformat() if _cache["ts"] else None,
+        "source":       "scraped+groq" if _cache["data"] else "groq",
     }
+
+
+# ── GET /news/categories ───────────────────────────────────────────────────
+@router.get("/categories")
+async def get_news_categories():
+    """Return available severity levels and categories dynamically."""
+    articles = _cache.get("data") or []
+    severities = sorted(list({a.get("severity") for a in articles if a.get("severity")}))
+    categories = sorted(list({a.get("category") for a in articles if a.get("category")}))
+    return {"severities": severities, "categories": categories}

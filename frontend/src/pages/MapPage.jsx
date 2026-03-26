@@ -1,382 +1,610 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 import { t } from '../i18n/translations'
-import { Map as MapIcon, Database, AlertCircle, AlertOctagon, MapPin, Search, ChevronRight, CheckCircle2 } from 'lucide-react'
+import {
+  Map as MapIcon, Database, AlertCircle, AlertOctagon,
+  MapPin, Search, ChevronRight, CheckCircle2, X, Send,
+  TrendingUp, Shield, Flame
+} from 'lucide-react'
 
 const API_URL = '/api'
 
-const MH_BOUNDS = { latMin:15.6, latMax:22.1, lngMin:72.6, lngMax:80.9 }
-const SVG_W = 560, SVG_H = 460
-
-function latLngToXY(lat, lng) {
-  const x = ((lng - MH_BOUNDS.lngMin) / (MH_BOUNDS.lngMax - MH_BOUNDS.lngMin)) * (SVG_W - 80) + 40
-  const y = ((MH_BOUNDS.latMax - lat) / (MH_BOUNDS.latMax - MH_BOUNDS.latMin)) * (SVG_H - 80) + 40
-  return { x: Math.round(x), y: Math.round(y) }
-}
-
-const _geoCache = {}
-async function geocodeCity(cityName) {
-  if (_geoCache[cityName]) return _geoCache[cityName]
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=\${encodeURIComponent(cityName + ', Maharashtra, India')}&format=json&limit=1`
-    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
-    const data = await res.json()
-    if (data?.[0]) {
-      const coords = latLngToXY(parseFloat(data[0].lat), parseFloat(data[0].lon))
-      _geoCache[cityName] = coords
-      return coords
-    }
-  } catch {}
-  return null
-}
-
+// ── Risk config ────────────────────────────────────────────────────────────
 const RISK_CONFIG = {
-  LOW:      { bg: 'bg-brand/10', text: 'text-brand', border: 'border-brand/30', dot: '#00e09c', label: 'Low Risk' },
-  MEDIUM:   { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30', dot: '#fac775', label: 'Medium Risk' },
-  HIGH:     { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: '#f7c1c1', label: 'High Risk' },
-  CRITICAL: { bg: 'bg-red-900/40', text: 'text-red-500', border: 'border-red-600/50', dot: '#ff7b7b', label: 'Critical Risk' },
+  LOW:      { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: '#34d399', glow: 'rgba(52,211,153,0.4)',  label: 'Low Risk',      icon: Shield },
+  MEDIUM:   { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: '#fbbf24', glow: 'rgba(251,191,36,0.4)',  label: 'Medium Risk',   icon: TrendingUp },
+  HIGH:     { bg: 'bg-orange-500/10',  text: 'text-orange-400',  border: 'border-orange-500/30',  dot: '#fb923c', glow: 'rgba(251,146,60,0.4)',  label: 'High Risk',     icon: AlertCircle },
+  CRITICAL: { bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/30',     dot: '#f87171', glow: 'rgba(248,113,113,0.4)', label: 'Critical Risk', icon: Flame },
 }
-
 const RISK_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 
-export default function MapPage() {
-  const { lang, token } = useStore()
-  const [cities, setCities] = useState([])
-  const [mappedCities, setMappedCities] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState(null)
-  const [filter, setFilter] = useState('ALL')
-  const [showForm, setShowForm] = useState(false)
-  const [reportFood, setReportFood] = useState('')
-  const [reportCity, setReportCity] = useState('')
-  const [reportDesc, setReportDesc] = useState('')
-  const [reportBrand, setReportBrand] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [submitMsg, setSubmitMsg] = useState('')
+// ── Leaflet map component (lazy-loads leaflet from CDN) ────────────────────
+function LeafletMap({ cities, selected, onSelect, filter }) {
+  const mapRef = useRef(null)
+  const leafletMapRef = useRef(null)
+  const markersRef = useRef({})
+  const [leafletLoaded, setLeafletLoaded] = useState(false)
 
+  // Load Leaflet CSS + JS from CDN
   useEffect(() => {
-    fetch(`${API_URL}/community/city-risk`)
-      .then(r => r.json())
-      .then(data => { if (data.cities?.length > 0) setCities(data.cities) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    if (window.L) { setLeafletLoaded(true); return }
+
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    document.head.appendChild(link)
+
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    script.onload = () => setLeafletLoaded(true)
+    document.head.appendChild(script)
   }, [])
 
-  async function submitReport() {
-    if (!reportFood.trim() || !reportCity.trim() || !reportDesc.trim()) return
+  // Init map
+  useEffect(() => {
+    if (!leafletLoaded || !mapRef.current || leafletMapRef.current) return
+    const L = window.L
+
+    leafletMapRef.current = L.map(mapRef.current, {
+      center: [19.2, 76.5],
+      zoom: 7,
+      zoomControl: false,
+      attributionControl: false,
+    })
+
+    // Dark tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO',
+      maxZoom: 19,
+    }).addTo(leafletMapRef.current)
+
+    // Subtle attribution
+    L.control.attribution({ position: 'bottomleft', prefix: '' })
+      .addAttribution('<span style="opacity:0.3;font-size:9px">© OpenStreetMap © CARTO</span>')
+      .addTo(leafletMapRef.current)
+
+    L.control.zoom({ position: 'bottomright' }).addTo(leafletMapRef.current)
+  }, [leafletLoaded])
+
+  // Update markers when cities change
+  useEffect(() => {
+    if (!leafletLoaded || !leafletMapRef.current) return
+    const L = window.L
+    const map = leafletMapRef.current
+
+    // Remove old markers
+    Object.values(markersRef.current).forEach(m => map.removeLayer(m))
+    markersRef.current = {}
+
+    cities.forEach(city => {
+      if (!city.lat || !city.lng) return
+      const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
+      const isFiltered = filter !== 'ALL' && city.risk !== filter
+      if (isFiltered) return
+
+      const isSel = selected === city.city
+      const size = isSel ? 22 : city.reports > 25 ? 18 : city.reports > 15 ? 14 : 11
+
+      const icon = L.divIcon({
+        className: '',
+        html: `
+          <div style="
+            width:${size}px; height:${size}px;
+            background:${cfg.dot};
+            border-radius:50%;
+            border: ${isSel ? '3px solid #fff' : '2px solid rgba(0,0,0,0.4)'};
+            box-shadow: 0 0 ${isSel ? 20 : 10}px ${cfg.glow};
+            transition: all 0.3s;
+            ${city.risk === 'CRITICAL' ? 'animation: pulse 1.8s ease-in-out infinite;' : ''}
+          "></div>
+          <style>@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }</style>
+        `,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      })
+
+      const marker = L.marker([city.lat, city.lng], { icon })
+        .addTo(map)
+        .on('click', () => onSelect(selected === city.city ? null : city.city))
+
+      marker.bindTooltip(`
+        <div style="background:#1a1a2e;border:1px solid ${cfg.dot}40;border-radius:10px;padding:8px 12px;color:#fff;font-family:sans-serif;min-width:120px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px">${city.city}</div>
+          <div style="font-size:10px;color:${cfg.dot};text-transform:uppercase;letter-spacing:0.1em">${cfg.label}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">${city.reports} reports · ${city.topFood}</div>
+        </div>
+      `, { permanent: false, direction: 'top', offset: [0, -size / 2], opacity: 1, className: 'custom-tooltip' })
+
+      markersRef.current[city.city] = marker
+    })
+  }, [cities, selected, filter, leafletLoaded])
+
+  return (
+    <div className="relative w-full h-full min-h-[420px] rounded-[24px] overflow-hidden" style={{ zIndex: 0 }}>
+      {!leafletLoaded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-100 gap-3" style={{ zIndex: 1 }}>
+          <MapPin className="w-8 h-8 text-white/20 animate-bounce" />
+          <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Loading Map…</span>
+        </div>
+      )}
+      <div ref={mapRef} className="w-full h-full" style={{ minHeight: 420, background: '#0d0d1a', zIndex: 0 }} />
+      {/* Vignette overlay */}
+      <div className="pointer-events-none absolute inset-0 rounded-[24px]"
+        style={{ boxShadow: 'inset 0 0 60px rgba(0,0,0,0.6)', zIndex: 1 }} />
+    </div>
+  )
+}
+
+// ── City Card ───────────────────────────────────────────────────────────────
+function CityCard({ city, selected, onSelect, index }) {
+  const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
+  const Icon = cfg.icon
+  const isSel = selected === city.city
+
+  return (
+    <div
+      onClick={() => onSelect(isSel ? null : city.city)}
+      className={`group relative flex items-center gap-3 p-3.5 cursor-pointer transition-all duration-300 rounded-2xl mx-2 my-1
+        ${isSel
+          ? `${cfg.bg} border ${cfg.border}`
+          : 'hover:bg-white/5 border border-transparent'
+        }`}
+      style={{ animationDelay: `${index * 40}ms` }}
+    >
+      {/* Risk dot */}
+      <div className="relative shrink-0">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: `${cfg.dot}18`, border: `1px solid ${cfg.dot}40` }}>
+          <Icon className={`w-4 h-4 ${cfg.text}`} />
+        </div>
+        {city.risk === 'CRITICAL' && (
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <span className={`text-[13px] font-bold truncate ${isSel ? 'text-white' : 'text-white/80'}`}>{city.city}</span>
+          <span className="text-[10px] font-bold text-white/25 ml-2 shrink-0">{city.reports}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className={`text-[9px] font-bold uppercase tracking-wider ${cfg.text}`}>{cfg.label}</span>
+          <span className="text-white/20">·</span>
+          <span className="text-[10px] text-white/30 truncate">{city.topFood}</span>
+        </div>
+      </div>
+
+      <ChevronRight className={`w-3.5 h-3.5 text-white/20 shrink-0 transition-transform duration-200
+        ${isSel ? 'rotate-90 text-white/50' : 'group-hover:translate-x-0.5'}`} />
+    </div>
+  )
+}
+
+// ── Selected City Detail Panel ──────────────────────────────────────────────
+function CityDetail({ city, onClose }) {
+  const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
+  const Icon = cfg.icon
+
+  return (
+    <div className={`relative overflow-hidden rounded-[24px] border ${cfg.border} p-5 animate-fade-up`}
+      style={{ background: 'rgba(15,15,30,0.9)', backdropFilter: 'blur(20px)' }}>
+
+      {/* Glow bg */}
+      <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none"
+        style={{ background: cfg.glow, opacity: 0.15 }} />
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
+              style={{ background: `${cfg.dot}20`, border: `1px solid ${cfg.dot}40` }}>
+              <Icon className={`w-5 h-5 ${cfg.text}`} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">{city.city}</h3>
+              <span className={`text-[9px] font-bold uppercase tracking-widest ${cfg.text}`}>{cfg.label}</span>
+            </div>
+          </div>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+            <X className="w-3.5 h-3.5 text-white/40" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl p-3.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold mb-1.5">Reports</div>
+            <div className="text-2xl font-black text-white tabular-nums">{city.reports}</div>
+          </div>
+          <div className="rounded-2xl p-3.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold mb-1.5">Top Risk</div>
+            <div className="text-sm font-bold text-white/90 leading-tight">{city.topFood || 'Various'}</div>
+          </div>
+        </div>
+
+        {/* Risk bar */}
+        <div className="mt-3">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[9px] uppercase tracking-wider text-white/30 font-bold">Risk Level</span>
+            <span className={`text-[9px] font-bold uppercase ${cfg.text}`}>{city.risk}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${{ LOW: 25, MEDIUM: 50, HIGH: 75, CRITICAL: 100 }[city.risk]}%`,
+                background: cfg.dot,
+                boxShadow: `0 0 8px ${cfg.glow}`,
+              }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Report Form ─────────────────────────────────────────────────────────────
+function ReportForm({ lang, token, onClose, onSuccess }) {
+  const [food, setFood] = useState('')
+  const [city, setCity] = useState('')
+  const [brand, setBrand] = useState('')
+  const [desc, setDesc] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [step, setStep] = useState(1)
+
+  const valid1 = food.trim() && city.trim()
+  const valid2 = desc.trim().length >= 10
+
+  async function submit() {
+    if (!valid1 || !valid2) return
     setSubmitting(true)
     try {
       const res = await fetch(`${API_URL}/community/report`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ food_name: reportFood.trim(), city: reportCity.trim(), description: reportDesc.trim(), brand: reportBrand.trim() || null }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ food_name: food.trim(), city: city.trim(), description: desc.trim(), brand: brand.trim() || null }),
       })
-      if (!res.ok) throw new Error('Failed')
-      setSubmitMsg(t(lang, 'reportSuccess') || 'Report submitted secretly.')
-      setReportFood(''); setReportCity(''); setReportDesc(''); setReportBrand('')
-      setTimeout(() => { setShowForm(false); setSubmitMsg('') }, 2000)
-      
-      const r2 = await fetch(`${API_URL}/community/city-risk`)
-      const d2 = await r2.json()
-      if (d2.cities) setCities(d2.cities)
+      if (!res.ok) throw new Error()
+      setMsg('success')
+      setTimeout(() => { onSuccess?.(); onClose() }, 1800)
     } catch {
-      setSubmitMsg(t(lang, 'reportFailed') || 'Failed. Try again.')
+      setMsg('error')
     } finally {
       setSubmitting(false)
     }
   }
 
-  useEffect(() => {
-    if (cities.length === 0) return
-    let cancelled = false
-    async function geocodeAll() {
-      const results = await Promise.all(
-        cities.map(async city => {
-          const coords = await geocodeCity(city.city)
-          return coords ? { ...city, ...coords } : null
-        })
-      )
-      if (!cancelled) setMappedCities(results.filter(Boolean))
-    }
-    geocodeAll()
-    return () => { cancelled = true }
-  }, [cities])
+  return (
+    <div className="fixed inset-0 flex items-end md:items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)', zIndex: 2000 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
 
-  const filtered = filter === 'ALL' ? mappedCities : mappedCities.filter(c => c.risk === filter)
-  const sel = selected ? mappedCities.find(c => c.city === selected) : null
+      <div className="w-full max-w-md rounded-[28px] overflow-hidden animate-fade-up"
+        style={{ background: 'rgba(14,14,28,0.98)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}>
+
+        {/* Header */}
+        <div className="relative p-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse at top right, rgba(239,68,68,0.08) 0%, transparent 70%)' }} />
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+                <AlertCircle className="w-4.5 h-4.5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-wide">Report Adulteration</h3>
+                <p className="text-[10px] text-white/30 mt-0.5">Submitted anonymously · Helps the community</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+              <X className="w-4 h-4 text-white/40" />
+            </button>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex gap-1.5 mt-4 relative z-10">
+            {[1, 2].map(s => (
+              <div key={s} className="h-0.5 flex-1 rounded-full transition-all duration-500"
+                style={{ background: step >= s ? '#f87171' : 'rgba(255,255,255,0.1)' }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 flex flex-col gap-4">
+          {msg === 'success' && (
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 animate-fade-up">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span className="text-sm text-emerald-300 font-medium">Report submitted! Thank you 🙏</span>
+            </div>
+          )}
+          {msg === 'error' && (
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20">
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+              <span className="text-sm text-red-300 font-medium">Failed to submit. Try again.</span>
+            </div>
+          )}
+
+          {step === 1 ? (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Food Name *</span>
+                <input value={food} onChange={e => setFood(e.target.value)}
+                  placeholder="e.g. Turmeric Powder, Buffalo Milk…"
+                  className="w-full rounded-xl py-3 px-4 text-sm text-white placeholder-white/20 outline-none transition-all"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(248,113,113,0.5)'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">City *</span>
+                  <input value={city} onChange={e => setCity(e.target.value)}
+                    placeholder="e.g. Pune"
+                    className="w-full rounded-xl py-3 px-4 text-sm text-white placeholder-white/20 outline-none transition-all"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(248,113,113,0.5)'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Brand <span className="text-white/15">(opt)</span></span>
+                  <input value={brand} onChange={e => setBrand(e.target.value)}
+                    placeholder="Brand name"
+                    className="w-full rounded-xl py-3 px-4 text-sm text-white placeholder-white/20 outline-none transition-all"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(248,113,113,0.5)'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+                  />
+                </label>
+              </div>
+              <button onClick={() => valid1 && setStep(2)} disabled={!valid1}
+                className="mt-1 w-full py-3.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 flex items-center justify-center gap-2"
+                style={{
+                  background: valid1 ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.05)',
+                  color: valid1 ? '#fff' : 'rgba(255,255,255,0.2)',
+                  border: valid1 ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.05)',
+                  boxShadow: valid1 ? '0 4px 20px rgba(239,68,68,0.25)' : 'none',
+                  cursor: valid1 ? 'pointer' : 'not-allowed',
+                }}>
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <MapPin className="w-3.5 h-3.5 text-white/25" />
+                <span className="text-xs text-white/50">{food} · {city}{brand && ` · ${brand}`}</span>
+                <button onClick={() => setStep(1)} className="ml-auto text-[10px] text-red-400/70 hover:text-red-400 font-bold transition-colors">Edit</button>
+              </div>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Describe the issue *</span>
+                <textarea value={desc} onChange={e => setDesc(e.target.value)}
+                  placeholder="What did you notice? Unusual smell, color, texture, or taste? Any symptoms after eating?"
+                  rows={4}
+                  className="w-full rounded-xl py-3 px-4 text-sm text-white placeholder-white/20 outline-none transition-all resize-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(248,113,113,0.5)'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+                />
+                <span className="text-[10px] text-white/20 text-right">{desc.length} chars · min 10</span>
+              </label>
+
+              <button onClick={submit} disabled={submitting || !valid2 || msg === 'success'}
+                className="mt-1 w-full py-3.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 flex items-center justify-center gap-2"
+                style={{
+                  background: (!submitting && valid2) ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.05)',
+                  color: (!submitting && valid2) ? '#fff' : 'rgba(255,255,255,0.2)',
+                  border: (!submitting && valid2) ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.05)',
+                  boxShadow: (!submitting && valid2) ? '0 4px 20px rgba(239,68,68,0.25)' : 'none',
+                  cursor: (!submitting && valid2) ? 'pointer' : 'not-allowed',
+                }}>
+                {submitting
+                  ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Submitting…</>
+                  : <><Send className="w-4 h-4" /> Submit Report</>
+                }
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main MapPage ─────────────────────────────────────────────────────────────
+export default function MapPage() {
+  const { lang, token } = useStore()
+  const [cities, setCities] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(null)
+  const [filter, setFilter] = useState('ALL')
+  const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    fetch(`${API_URL}/community/city-risk`)
+      .then(r => r.json())
+      .then(d => { if (d.cities?.length) setCities(d.cities) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function refresh() {
+    const r = await fetch(`${API_URL}/community/city-risk`)
+    const d = await r.json()
+    if (d.cities) setCities(d.cities)
+  }
 
   const totalReports = cities.reduce((s, c) => s + c.reports, 0)
   const criticalCount = cities.filter(c => c.risk === 'CRITICAL').length
   const highCount = cities.filter(c => c.risk === 'HIGH').length
+  const sel = selected ? cities.find(c => c.city === selected) : null
+
+  const filtered = cities
+    .filter(c => filter === 'ALL' || c.risk === filter)
+    .filter(c => !search || c.city.toLowerCase().includes(search.toLowerCase()) || c.topFood?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => RISK_ORDER.indexOf(a.risk) - RISK_ORDER.indexOf(b.risk))
 
   return (
-    <div className="flex flex-col animate-fade-up px-3 md:px-8 py-6 max-w-5xl mx-auto w-full pb-32">
-      
-      {/* Header */}
-      <div className="relative p-6 md:p-8 rounded-[32px] bg-glass-gradient border border-surface-200 shadow-2xl overflow-hidden mb-6 backdrop-blur-xl">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 blur-[80px] rounded-full pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="flex flex-col animate-fade-up px-3 md:px-8 py-6 max-w-6xl mx-auto w-full pb-32">
+
+      {/* ── Header ── */}
+      <div className="relative p-6 md:p-8 rounded-[28px] mb-6 overflow-hidden"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)' }}>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at top right, rgba(99,102,241,0.08) 0%, transparent 60%)' }} />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-surface-200 text-white border border-white/10 flex flex-col items-center justify-center shrink-0 shadow-inner">
-              <MapIcon className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <MapIcon className="w-6 h-6 text-white/70" />
             </div>
             <div>
-              <h1 className="text-2xl font-serif font-bold text-white mb-1">{t(lang, 'riskMap')}</h1>
-              <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.15em]">{t(lang, 'riskMapSub')}</p>
+              <h1 className="text-xl font-bold text-white tracking-tight">{t(lang, 'riskMap') || 'Adulteration Risk Map'}</h1>
+              <p className="text-[11px] text-white/30 mt-0.5 uppercase tracking-widest font-medium">Maharashtra · Live Reports</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
-            <div className="bg-surface-200/50 border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center backdrop-blur-md">
-              <span className="text-xl font-serif font-bold text-brand leading-none mb-1">{totalReports}</span>
-              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'totalReports')}</span>
-            </div>
-            <div className="bg-surface-200/50 border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center backdrop-blur-md">
-              <span className="text-xl font-serif font-bold text-white leading-none mb-1">{cities.length}</span>
-              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'cities')}</span>
-            </div>
-            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 flex flex-col items-center justify-center backdrop-blur-md">
-              <span className="text-xl font-serif font-bold text-red-400 leading-none mb-1 flex items-center gap-1">
-                {criticalCount + highCount > 0 && <AlertOctagon className="w-3.5 h-3.5 text-red-500/80" />} {criticalCount + highCount}
-              </span>
-              <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold text-center">{t(lang, 'highRisk')}</span>
-            </div>
+          <div className="flex gap-3">
+            {[
+              { label: 'Total Reports', value: totalReports, color: 'text-white' },
+              { label: 'Cities Tracked', value: cities.length, color: 'text-white' },
+              { label: 'High Risk', value: criticalCount + highCount, color: 'text-red-400', icon: AlertOctagon },
+            ].map(({ label, value, color, icon: Icon }) => (
+              <div key={label} className="flex flex-col items-center justify-center px-4 py-3 rounded-2xl min-w-[80px]"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <span className={`text-xl font-black leading-none mb-1 ${color} flex items-center gap-1`}>
+                  {Icon && <Icon className="w-4 h-4" />}{value}
+                </span>
+                <span className="text-[9px] uppercase tracking-widest text-white/30 font-bold text-center">{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
-        
-        {/* Map Area */}
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap gap-2 w-full">
-            {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(f => {
-              const active = filter === f
+      {/* ── Main grid ── */}
+      <div className="grid lg:grid-cols-[1fr_340px] gap-5">
+
+        {/* ── Map ── */}
+        <div className="flex flex-col gap-4">
+          {/* Filter pills */}
+          <div className="flex flex-wrap gap-2">
+            {['ALL', ...RISK_ORDER].map(f => {
               const cfg = f !== 'ALL' ? RISK_CONFIG[f] : null
+              const active = filter === f
               return (
-                <button 
-                  key={f} 
-                  onClick={() => setFilter(f)} 
-                  className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border
-                    \${active 
-                      ? (cfg ? \`\${cfg.bg} \${cfg.text} \${cfg.border}\` : 'bg-surface-300 text-white border-white/20')
-                      : 'bg-surface-100/50 text-white/40 border-white/5 hover:bg-surface-200 hover:text-white/80'}`}
-                >
-                  {f === 'ALL' ? t(lang, 'allCities') || 'All Cities' : cfg.label}
+                <button key={f} onClick={() => setFilter(f)}
+                  className="px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border"
+                  style={{
+                    background: active ? (cfg ? `${cfg.dot}20` : 'rgba(255,255,255,0.1)') : 'rgba(255,255,255,0.04)',
+                    color: active ? (cfg ? cfg.dot : '#fff') : 'rgba(255,255,255,0.3)',
+                    borderColor: active ? (cfg ? `${cfg.dot}50` : 'rgba(255,255,255,0.2)') : 'rgba(255,255,255,0.06)',
+                  }}>
+                  {f === 'ALL' ? 'All Cities' : cfg.label}
                 </button>
               )
             })}
           </div>
 
-          <div className="bg-surface-100 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl relative p-4 flex justify-center backdrop-blur-sm min-h-[400px]">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center h-full absolute inset-0 text-white/30 text-xs font-bold uppercase tracking-widest gap-3">
-                 <MapPin className="w-8 h-8 animate-bounce opacity-50" /> {t(lang, 'loadingMap') || 'Loading Map...'}
-              </div>
-            ) : (
-              <svg width="100%" height="100%" viewBox="0 0 560 460" className="drop-shadow-2xl">
-                {/* Simplified Maharashtra Outline Geometry (unchanged conceptually) */}
-                <polygon
-                  points="90,210 100,170 130,130 170,100 220,90 280,100 340,90 400,100 450,120 480,160 470,210 460,250 430,280 410,310 370,340 320,370 280,390 240,400 200,390 170,380 140,360 110,330 90,290 80,250"
-                  fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinejoin="round"
-                />
+          {/* Leaflet map */}
+          <div className="rounded-[24px] overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)', height: 460 }}>
+            <LeafletMap cities={cities} selected={selected} onSelect={setSelected} filter={filter} />
+          </div>
 
-                {/* City nodes */}
-                {mappedCities.map(city => {
-                  const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
-                  const isFiltered = filter !== 'ALL' && city.risk !== filter
-                  const isSel = selected === city.city
-                  const r = isSel ? 12 : city.reports > 25 ? 9 : city.reports > 15 ? 7 : 5
-
-                  return (
-                    <g key={city.city} style={{ cursor: 'pointer' }} onClick={() => setSelected(isSel ? null : city.city)} className="transition-all duration-300">
-                      {city.risk === 'CRITICAL' && !isFiltered && (
-                        <circle cx={city.x} cy={city.y} r={20} fill={cfg.dot} opacity={0.2} className="animate-pulse-slow" />
-                      )}
-                      {isSel && (
-                        <circle cx={city.x} cy={city.y} r={r + 8} fill={cfg.dot} opacity={0.3} />
-                      )}
-                      
-                      <circle
-                        cx={city.x} cy={city.y} r={r}
-                        fill={isFiltered ? '#333' : cfg.dot}
-                        stroke={isFiltered ? '#444' : isSel ? '#fff' : 'rgba(0,0,0,0.5)'}
-                        strokeWidth={isSel ? 3 : 1.5}
-                        opacity={isFiltered ? 0.2 : 1}
-                        className="transition-all duration-300"
-                        style={!isFiltered ? { filter: `drop-shadow(0 0 8px \${cfg.dot})` } : {}}
-                      />
-                      
-                      {!isFiltered && (
-                        <text
-                          x={city.x + 14} y={city.y + 4}
-                          fontSize={11} fill={isSel ? '#fff' : 'rgba(255,255,255,0.6)'}
-                          fontFamily="Inter, sans-serif"
-                          fontWeight={isSel ? '700' : '500'}
-                          className="transition-all duration-300 drop-shadow-md"
-                        >
-                          {city.city}
-                        </text>
-                      )}
-                    </g>
-                  )
-                })}
-
-                {/* Internal Legend overlay */}
-                <g transform="translate(20, 360)">
-                  <rect x="-10" y="-10" width="120" height="90" fill="rgba(0,0,0,0.4)" rx="12" stroke="rgba(255,255,255,0.05)" backdropFilter="blur(8px)" />
-                  {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((r, i) => (
-                    <g key={r} transform={`translate(0, \${i * 20})`}>
-                      <circle cx="8" cy="8" r="4" fill={RISK_CONFIG[r].dot} />
-                      <text x="20" y="12" fontSize={10} fill="rgba(255,255,255,0.6)" fontFamily="Inter, sans-serif" fontWeight="600" letterSpacing="0.05em">
-                        {RISK_CONFIG[r].label}
-                      </text>
-                    </g>
-                  ))}
-                </g>
-              </svg>
-            )}
+          {/* Legend */}
+          <div className="flex items-center gap-4 px-1 flex-wrap">
+            {RISK_ORDER.map(r => {
+              const cfg = RISK_CONFIG[r]
+              return (
+                <div key={r} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: cfg.dot, boxShadow: `0 0 6px ${cfg.glow}` }} />
+                  <span className="text-[10px] text-white/30 font-medium">{cfg.label}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Sidebar Info & List */}
-        <div className="flex flex-col gap-6 w-full">
-          {sel && (
-             <div className={`p-6 bg-surface-100 border \${RISK_CONFIG[sel.risk]?.border || 'border-white/10'} rounded-[24px] shadow-2xl animate-fade-up flex flex-col gap-4 relative overflow-hidden backdrop-blur-md`}>
-                <div className={`absolute top-0 right-0 w-32 h-32 \${RISK_CONFIG[sel.risk]?.bg || 'bg-white/5'} blur-[40px] rounded-full pointer-events-none`} />
-                
-                <div className="flex justify-between items-start relative z-10">
-                  <h3 className="text-xl font-serif font-bold text-white flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-white/50" /> {sel.city}
-                  </h3>
-                  <span className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border shrink-0 \${RISK_CONFIG[sel.risk]?.bg} \${RISK_CONFIG[sel.risk]?.text} \${RISK_CONFIG[sel.risk]?.border}`}>
-                    {sel.risk} RISK
-                  </span>
-                </div>
+        {/* ── Sidebar ── */}
+        <div className="flex flex-col gap-4">
+          {/* Selected city detail */}
+          {sel && <CityDetail city={sel} onClose={() => setSelected(null)} />}
 
-                <div className="grid grid-cols-2 gap-4 mt-2 relative z-10">
-                  <div className="bg-surface-200/50 p-4 rounded-2xl border border-white/5">
-                    <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-1">{t(lang, 'reports')}</div>
-                    <div className="text-2xl font-serif font-bold text-white">{sel.reports}</div>
-                  </div>
-                  <div className="bg-surface-200/50 p-4 rounded-2xl border border-white/5">
-                    <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold mb-1">{t(lang, 'topRiskyFood')}</div>
-                    <div className="text-base font-bold text-white/90 truncate pr-2">{sel.topFood || 'Various'}</div>
-                  </div>
-                </div>
-             </div>
-          )}
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search city or food…"
+              className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm text-white placeholder-white/20 outline-none transition-all"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              onFocus={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
+            />
+          </div>
 
-          <div className="flex flex-col">
-            <h3 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.15em] pl-1 mb-3 flex items-center gap-2">
-              <Database className="w-3.5 h-3.5" /> {filtered.length} {t(lang, 'cities') || 'Cities'}
-            </h3>
-            
-            <div className="bg-surface-100 border border-white/10 rounded-[24px] overflow-hidden shadow-xl min-h-[200px] flex flex-col">
-              {loading ? (
-                <div className="flex-1 flex items-center justify-center text-white/30 text-[11px] font-bold uppercase tracking-wider">{t(lang, 'loading')}</div>
-              ) : filtered.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-3">
-                  <Search className="w-8 h-8 text-white/10" />
-                  <p className="text-white/40 text-sm font-medium">{t(lang, 'noReports') || 'No reports found for this filter.'}</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-white/5 overflow-y-auto max-h-[500px] custom-scrollbar">
-                  {[...filtered].sort((a, b) => RISK_ORDER.indexOf(a.risk) - RISK_ORDER.indexOf(b.risk)).map(city => {
-                    const cfg = RISK_CONFIG[city.risk] || RISK_CONFIG.LOW
-                    return (
-                      <div
-                        key={city.city}
-                        onClick={() => setSelected(selected === city.city ? null : city.city)}
-                        className={`p-4 flex justify-between items-center cursor-pointer transition-all hover:bg-surface-200/50
-                          \${selected === city.city ? 'bg-surface-200' : ''}`}
-                      >
-                        <div className="min-w-0 pr-4">
-                          <h4 className="text-[13px] font-bold text-white/90 truncate">{city.city}</h4>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium mt-0.5 truncate">{city.topFood || 'Various'}</p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-[11px] font-bold text-white/30">{city.reports} <span className="hidden sm:inline">{t(lang, 'reports') || 'reps'}</span></span>
-                          <span className={`w-3 h-3 rounded-full shrink-0 border border-black/20`} style={{ background: cfg.dot }} />
-                          <ChevronRight className={`w-4 h-4 text-white/20 transition-transform \${selected === city.city ? 'rotate-90' : ''}`} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+          {/* City list */}
+          <div className="rounded-[24px] overflow-hidden flex flex-col"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', minHeight: 200 }}>
+            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <Database className="w-3.5 h-3.5 text-white/20" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/25">
+                {filtered.length} {filtered.length === 1 ? 'City' : 'Cities'}
+              </span>
             </div>
+
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center py-12 text-white/20 text-xs font-bold uppercase tracking-wider">
+                Loading…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3">
+                <Search className="w-7 h-7 text-white/10" />
+                <p className="text-white/25 text-sm">No cities found</p>
+              </div>
+            ) : (
+              <div className="overflow-y-auto py-2" style={{ maxHeight: 380 }}>
+                {filtered.map((city, i) => (
+                  <CityCard key={city.city} city={city} selected={selected} onSelect={setSelected} index={i} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Floating Action Button (FAB) */}
-      <button
-        onClick={() => setShowForm(!showForm)}
-        className={`fixed bottom-24 md:bottom-10 right-6 z-[100] w-14 h-14 rounded-full bg-brand hover:bg-brand-light text-deep border border-brand-light/50 flex items-center justify-center shadow-[0_0_24px_rgba(0,224,156,0.4)] hover:shadow-[0_0_32px_rgba(0,224,156,0.6)] hover:scale-105 transition-all duration-300 \${showForm ? 'rotate-45 !bg-surface-300 !text-white !border-white/20 !shadow-lg' : ''}`}
-      >
-        <span className="text-3xl leading-none font-light mb-1">+</span>
+      {/* ── FAB ── */}
+      <button onClick={() => setShowForm(true)}
+        className="fixed bottom-24 md:bottom-10 right-6 flex items-center gap-2.5 pl-4 pr-5 h-12 rounded-full font-bold text-sm tracking-wide transition-all duration-300 group"
+        style={{ zIndex: 1500 }}
+        style={{
+          background: 'rgba(239,68,68,0.9)',
+          border: '1px solid rgba(239,68,68,0.5)',
+          boxShadow: '0 4px 24px rgba(239,68,68,0.35)',
+          color: '#fff',
+        }}
+        onMouseEnter={e => e.currentTarget.style.boxShadow = '0 6px 32px rgba(239,68,68,0.55)'}
+        onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 24px rgba(239,68,68,0.35)'}>
+        <AlertCircle className="w-4 h-4" />
+        Report
       </button>
 
-      {/* Report Form Modal / Overlay */}
+      {/* ── Report Form Modal ── */}
       {showForm && (
-        <>
-          <div className="fixed inset-0 bg-deep/80 backdrop-blur-sm z-[90] animate-fade-up opacity-100" onClick={() => setShowForm(false)} />
-          <div className="fixed bottom-24 md:bottom-28 right-6 left-6 md:left-auto md:w-[420px] z-[95] animate-fade-up">
-            <div className="bg-surface-100 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 relative overflow-hidden backdrop-blur-xl">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-white uppercase tracking-wider">{t(lang, 'reportAdulteration')}</h3>
-              </div>
-
-              {submitMsg && (
-                <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-bold \${submitMsg.includes('Failed') ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-brand/10 text-brand border border-brand/20'}`}>
-                  {submitMsg.includes('Failed') ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />} {submitMsg}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                <input
-                  value={reportFood} onChange={e => setReportFood(e.target.value)}
-                  placeholder={t(lang, 'foodNameLabel') || 'Food Name *'}
-                  className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium"
-                />
-                <div className="flex gap-3">
-                  <input
-                    value={reportCity} onChange={e => setReportCity(e.target.value)}
-                    placeholder={t(lang, 'city') || 'City *'}
-                     className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium flex-1"
-                  />
-                  <input
-                    value={reportBrand} onChange={e => setReportBrand(e.target.value)}
-                    placeholder={`${t(lang, 'brands')} (opt)`}
-                    className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium flex-1"
-                  />
-                </div>
-                <textarea
-                  value={reportDesc} onChange={e => setReportDesc(e.target.value)}
-                  placeholder={t(lang, 'descriptionLabel') || 'Describe the issue... *'}
-                  rows={3}
-                  className="w-full bg-surface-200 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/40 transition-all font-medium resize-none"
-                />
-              </div>
-
-              <button
-                onClick={submitReport}
-                disabled={submitting || !reportFood.trim() || !reportCity.trim() || !reportDesc.trim()}
-                className={`w-full py-4 mt-2 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2
-                  \${submitting || !reportFood.trim() || !reportCity.trim() || !reportDesc.trim() 
-                    ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' 
-                    : 'bg-red-500 hover:bg-red-400 text-white shadow-[0_4px_24px_rgba(239,68,68,0.3)] border border-red-400'}`}
-              >
-                {submitting ? '⏳...' : `📢 ${t(lang, 'submitReport')}`}
-              </button>
-            </div>
-          </div>
-        </>
+        <ReportForm
+          lang={lang}
+          token={token}
+          onClose={() => setShowForm(false)}
+          onSuccess={refresh}
+        />
       )}
     </div>
   )

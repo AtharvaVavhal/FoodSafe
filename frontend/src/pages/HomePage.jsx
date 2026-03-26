@@ -53,13 +53,14 @@ export default function HomePage() {
     const recognition = new SpeechRecognition()
     recognition.lang = LANG_MAP[lang] || 'en-IN'
     recognition.interimResults = false
+    recognition.continuous = false
     recognition.maxAlternatives = 1
 
     recognition.onresult = (event) => {
       setQuery(event.results[0][0].transcript)
       setListening(false)
     }
-    recognition.onerror = () => setListening(false)
+    recognition.onerror = (e) => { setListening(false); setError(`Voice error: ${e.error}`) }
     recognition.onend   = () => setListening(false)
 
     recognitionRef.current = recognition

@@ -16,7 +16,7 @@ class User(Base):
     city          = Column(String, default="")
     state         = Column(String, default="Maharashtra")
     lang          = Column(String, default="en")
-    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at    = Column(DateTime, default=datetime.utcnow)
     scans         = relationship("ScanRecord", back_populates="user")
     members       = relationship("FamilyMember", back_populates="user")
     push_subs     = relationship("PushSubscriptionRecord", back_populates="user")
@@ -44,7 +44,7 @@ class ScanRecord(Base):
     city          = Column(String)
     feedback      = Column(String, nullable=True)
     feedback_note = Column(Text, nullable=True)
-    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at    = Column(DateTime, default=datetime.utcnow)
     user          = relationship("User", back_populates="scans")
 
 class CommunityReport(Base):
@@ -59,7 +59,7 @@ class CommunityReport(Base):
     upvotes       = Column(Integer, default=0)
     lat           = Column(Float)
     lng           = Column(Float)
-    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at    = Column(DateTime, default=datetime.utcnow)
 
 class FssaiViolation(Base):
     __tablename__ = "fssai_violations"
@@ -71,7 +71,7 @@ class FssaiViolation(Base):
     date          = Column(DateTime)
     source_url    = Column(String)
     raw_text      = Column(Text)
-    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at    = Column(DateTime, default=datetime.utcnow)
 
 class SafeBrand(Base):
     __tablename__ = "safe_brands"
@@ -90,5 +90,5 @@ class PushSubscriptionRecord(Base):
     user_id    = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     endpoint   = Column(Text, unique=True, nullable=False)
     keys       = Column(JSON, nullable=False)   # {"p256dh": "...", "auth": "..."}
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
     user       = relationship("User", back_populates="push_subs")

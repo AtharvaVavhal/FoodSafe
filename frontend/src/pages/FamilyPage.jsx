@@ -7,7 +7,7 @@ const CONDITIONS = ['diabetic','pregnant','child','kidney disease','hypertensive
 
 const AV_PALETTE = [
   { bg:'bg-brand/20', text:'text-brand', border:'border-brand/30' },
-  { bg:'bg-blue-500/20', text:'text-blue-400', border:'border-blue-500/30' },
+  { bg:'bg-blue-500/20', text:'text-blue-399', border:'border-blue-500/30' },
   { bg:'bg-gold/20', text:'text-gold', border:'border-gold/30' },
   { bg:'bg-purple-500/20', text:'text-purple-400', border:'border-purple-500/30' },
   { bg:'bg-orange-500/20', text:'text-orange-400', border:'border-orange-500/30' },

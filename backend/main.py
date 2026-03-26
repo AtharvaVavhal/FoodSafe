@@ -1,15 +1,14 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ml'))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ml'))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
 from core.config import settings
-from db.database import init_db   # ✅ FIXED IMPORT
-
+from db.database import init_db
 from routers import (
     scan, symptoms, community, brands, fssai,
     users, whatsapp, recommendations, festival,
@@ -20,7 +19,6 @@ from routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🌿 FoodSafe API starting...")
-
     try:
         await init_db()
         print("✅ Database tables ready")

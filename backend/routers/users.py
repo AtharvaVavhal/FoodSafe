@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib, hmac, secrets, logging
 from jose import JWTError, jwt
 
-from core.config import settings
+from app.core.config import settings
 from db.database import get_db
 from models.models import User, ScanRecord
 

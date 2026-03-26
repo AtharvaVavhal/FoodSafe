@@ -2,13 +2,20 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
-# Updated engine with pool settings for serverless database (Neon)
+db_url = settings.DATABASE_URL
+
+# Render gives postgres://, SQLAlchemy async needs postgresql+asyncpg://
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.DATABASE_URL, 
+    db_url,
     echo=False,
-    pool_pre_ping=True,  # Crucial: Checks if connection is alive before using it
-    pool_size=5,         # Keeps a baseline of 5 connections open
-    max_overflow=10      # Allows 10 extra connections during traffic spikes
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)

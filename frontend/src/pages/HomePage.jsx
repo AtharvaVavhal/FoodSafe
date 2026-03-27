@@ -5,7 +5,7 @@ import { t } from '../i18n/translations'
 import { scanFoodAPI, scanImageAPI, scanCombinationAPI } from '../services/api'
 import ScanLoader from '../components/ScanLoader'
 import { Camera, Image as ImageIcon, Mic, Search as SearchIcon, X, Sparkles, HeartPulse, MapPin, ShieldCheck, Plus, CheckCircle2 } from 'lucide-react'
-
+import { SpeedInsights } from "@vercel/speed-insights/next"
 const DEFAULT_ALERTS = [
   "MDH spices flagged for pesticide residue — Apr 2024",
   "Everest Fish Curry Masala recalled — ethylene oxide",

@@ -13,7 +13,6 @@
     "lint": "eslint src --ext .js,.jsx"
   },
   "dependencies": {
-    "framer-motion": "^11.x",
     "axios": "^1.6.7",
     "dayjs": "^1.11.10",
     "framer-motion": "^12.38.0",

@@ -13,7 +13,7 @@
     "lint": "eslint src --ext .js,.jsx"
   },
   "dependencies": {
-    "framer-motion": "^11.x",
+    "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.6.7",
     "dayjs": "^1.11.10",
     "framer-motion": "^12.38.0",

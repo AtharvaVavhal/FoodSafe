@@ -69,7 +69,7 @@ Return ONLY this JSON:
 Use Maharashtra dishes: poha, misal, varan bhaat, bhakri, solkadhi, thalipeeth, etc."""
 
     try:
-        result = _call_groq(system, user, max_tokens=2000)
+        result = await _call_groq(system, user, max_tokens=2000)
         return result
     except Exception as e:
         return {"error": str(e), "plan_type": req.plan_type}

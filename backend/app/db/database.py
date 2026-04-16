@@ -2,13 +2,16 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
-# Updated engine with pool settings for serverless database (Neon)
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
 engine = create_async_engine(
-    settings.DATABASE_URL, 
+    settings.DATABASE_URL,
     echo=False,
-    pool_pre_ping=True,  # Crucial: Checks if connection is alive before using it
-    pool_size=5,         # Keeps a baseline of 5 connections open
-    max_overflow=10      # Allows 10 extra connections during traffic spikes
+    **({} if is_sqlite else {
+        "pool_pre_ping": True,
+        "pool_size": 5,
+        "max_overflow": 10,
+    })
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)

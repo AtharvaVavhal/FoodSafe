@@ -53,7 +53,7 @@ Return food safety guidance for this season as ONLY this JSON:
 }}"""
 
     try:
-        result = _call_groq(system, user, max_tokens=1200)
+        result = await _call_groq(system, user, max_tokens=1200)
         return result
     except Exception as e:
         return {

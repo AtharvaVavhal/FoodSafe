@@ -76,14 +76,14 @@ export default function MealPlannerPage() {
           <div className="flex bg-surface-200/50 p-1.5 rounded-2xl border border-white/5 w-full md:w-auto">
             <button
               className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2
-                \${planType === 'single' ? 'bg-surface-300 text-gold shadow-md border border-white/10' : 'text-white/40 hover:text-white hover:bg-surface-300/50'}`}
+                ${planType === 'single' ? 'bg-surface-300 text-gold shadow-md border border-white/10' : 'text-white/40 hover:text-white hover:bg-surface-300/50'}`}
               onClick={() => { setPlanType('single'); setPlan(null) }}
             >
               <Calendar className="w-4 h-4" /> {t(lang, 'todaysPlan')}
             </button>
             <button
               className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2
-                \${planType === 'weekly' ? 'bg-surface-300 text-gold shadow-md border border-white/10' : 'text-white/40 hover:text-white hover:bg-surface-300/50'}`}
+                ${planType === 'weekly' ? 'bg-surface-300 text-gold shadow-md border border-white/10' : 'text-white/40 hover:text-white hover:bg-surface-300/50'}`}
               onClick={() => { setPlanType('weekly'); setPlan(null) }}
             >
               <Calendar className="w-4 h-4" /> {t(lang, 'weeklyPlan')}
@@ -96,7 +96,7 @@ export default function MealPlannerPage() {
         {/* Generate Action */}
         <button 
           className={`w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 flex justify-center items-center gap-2 shadow-lg
-            \${loading ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' : 'bg-gold hover:bg-[#e0c068] text-deep hover:scale-[1.02] shadow-[0_4px_24px_rgba(201,168,76,0.3)] hover:shadow-[0_8px_32px_rgba(201,168,76,0.5)] border border-[#e0c068]'}`}
+            ${loading ? 'bg-surface-200 text-white/30 border border-white/5 cursor-not-allowed' : 'bg-gold hover:bg-[#e0c068] text-deep hover:scale-[1.02] shadow-[0_4px_24px_rgba(201,168,76,0.3)] hover:shadow-[0_8px_32px_rgba(201,168,76,0.5)] border border-[#e0c068]'}`}
           onClick={generate} 
           disabled={loading}
         >

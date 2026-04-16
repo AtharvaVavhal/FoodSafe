@@ -87,7 +87,7 @@ Return ONLY this JSON:
 }}"""
 
     try:
-        return _call_groq(system, user_prompt, max_tokens=500)
+        return await _call_groq(system, user_prompt, max_tokens=500)
     except Exception as e:
         return {
             "main":        "Could not generate insights. Try again later.",

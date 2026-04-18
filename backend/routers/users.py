@@ -3,20 +3,19 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import datetime, timedelta, timezone
+from sqlalchemy import select, delete
+from datetime import datetime, timedelta
 import hashlib, hmac, secrets, logging
 from jose import JWTError, jwt
 
 from app.core.config import settings
 from app.db.database import get_db
-from models.models import User, ScanRecord
+from models.models import User, ScanRecord, RefreshToken
 
 logger = logging.getLogger(__name__)
 
-router  = APIRouter()
+router = APIRouter()
 
-# PBKDF2-based password hashing (no C extensions needed, OWASP recommended)
 _PW_ITERATIONS = 260_000
 
 def _hash_pw(password: str) -> str:
@@ -31,7 +30,10 @@ def _verify_pw(password: str, hashed: str) -> bool:
     computed = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), _PW_ITERATIONS)
     return hmac.compare_digest(computed.hex(), h)
 
-bearer  = HTTPBearer(auto_error=False)
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+bearer = HTTPBearer(auto_error=False)
 
 # ── Schemas ───────────────────────────────────────────────
 class RegisterRequest(BaseModel):
@@ -46,10 +48,17 @@ class LoginRequest(BaseModel):
     password: str
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type:   str = "bearer"
-    user_id:      str
-    name:         str
+    access_token:  str
+    refresh_token: str
+    token_type:    str = "bearer"
+    user_id:       str
+    name:          str
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 class SyncScanRequest(BaseModel):
     food_name:    str
@@ -57,21 +66,39 @@ class SyncScanRequest(BaseModel):
     safety_score: Optional[int] = None
     scanned_at:   Optional[str] = None
 
-# ── JWT helpers ───────────────────────────────────────────
-def create_token(user_id: str) -> str:
+# ── JWT / refresh token helpers ───────────────────────────
+def _create_access_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
-        {"sub": user_id, "exp": expire},
+        {"sub": user_id, "exp": expire, "type": "access"},
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
 
-def decode_token(token: str) -> str:
+def _decode_access_token(token: str) -> str:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload.get("sub")
+        if payload.get("type") != "access":
+            raise HTTPException(401, "Invalid token type")
+        return payload["sub"]
     except JWTError:
         raise HTTPException(401, "Invalid or expired token")
+
+async def _create_refresh_token(user_id: str, db: AsyncSession) -> str:
+    # Rotate: clean up expired tokens for this user to keep the table lean
+    await db.execute(
+        delete(RefreshToken).where(
+            RefreshToken.user_id == user_id,
+            RefreshToken.expires_at < datetime.utcnow(),
+        )
+    )
+    raw = secrets.token_urlsafe(64)
+    db.add(RefreshToken(
+        user_id    = user_id,
+        token_hash = _hash_token(raw),
+        expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    ))
+    return raw
 
 # ── Auth dependency ───────────────────────────────────────
 async def get_current_user(
@@ -80,7 +107,7 @@ async def get_current_user(
 ) -> User:
     if not creds:
         raise HTTPException(401, "Not authenticated")
-    user_id = decode_token(creds.credentials)
+    user_id = _decode_access_token(creds.credentials)
     result  = await db.execute(select(User).where(User.id == user_id))
     user    = result.scalar_one_or_none()
     if not user:
@@ -97,9 +124,10 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if not req.name or not req.name.strip():
         raise HTTPException(400, "Name is required")
 
-    result = await db.execute(select(User).where(User.email == req.email))
+    result = await db.execute(select(User).where(User.email == req.email.strip().lower()))
     if result.scalar_one_or_none():
         raise HTTPException(400, "Email already registered")
+
     user = User(
         name      = req.name.strip(),
         email     = req.email.strip().lower(),
@@ -109,12 +137,14 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user)
     await db.flush()
+    refresh_raw = await _create_refresh_token(user.id, db)
     await db.commit()
     logger.info("User registered: %s (%s)", user.email, user.id)
     return TokenResponse(
-        access_token = create_token(user.id),
-        user_id      = user.id,
-        name         = user.name,
+        access_token  = _create_access_token(user.id),
+        refresh_token = refresh_raw,
+        user_id       = user.id,
+        name          = user.name,
     )
 
 # ── Login ─────────────────────────────────────────────────
@@ -125,12 +155,51 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user or not _verify_pw(req.password, user.hashed_pw or ""):
         logger.warning("Failed login attempt for: %s", req.email)
         raise HTTPException(401, "Invalid email or password")
+
+    refresh_raw = await _create_refresh_token(user.id, db)
+    await db.commit()
     logger.info("User logged in: %s (%s)", user.email, user.id)
     return TokenResponse(
-        access_token = create_token(user.id),
-        user_id      = user.id,
-        name         = user.name,
+        access_token  = _create_access_token(user.id),
+        refresh_token = refresh_raw,
+        user_id       = user.id,
+        name          = user.name,
     )
+
+# ── Refresh ───────────────────────────────────────────────
+@router.post("/refresh")
+async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    token_hash = _hash_token(req.refresh_token)
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    )
+    record = result.scalar_one_or_none()
+
+    if not record or record.is_revoked or record.expires_at < datetime.utcnow():
+        raise HTTPException(401, "Invalid or expired refresh token")
+
+    # Rotate: revoke used token, issue new one
+    record.is_revoked = True
+    new_refresh_raw   = await _create_refresh_token(record.user_id, db)
+    await db.commit()
+
+    return {
+        "access_token":  _create_access_token(record.user_id),
+        "refresh_token": new_refresh_raw,
+    }
+
+# ── Logout (revoke refresh token) ─────────────────────────
+@router.post("/logout")
+async def logout(req: LogoutRequest, db: AsyncSession = Depends(get_db)):
+    token_hash = _hash_token(req.refresh_token)
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    )
+    record = result.scalar_one_or_none()
+    if record:
+        record.is_revoked = True
+        await db.commit()
+    return {"success": True}
 
 # ── Me ────────────────────────────────────────────────────
 @router.get("/me")

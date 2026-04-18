@@ -39,7 +39,7 @@ export default function AuthPage() {
       };
 
       // 1. Save to Store & LocalStorage
-      setAuth(userData, res.access_token || res.token);
+      setAuth(userData, res.access_token, res.refresh_token);
       
       // 2. Redirect straight to the Scan Page
       nav('/scan', { replace: true });

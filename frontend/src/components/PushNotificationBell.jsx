@@ -3,7 +3,7 @@ import { useStore } from '../store'
 
 export default function PushNotificationBell() {
   const { permission, subscribed, loading, subscribe, unsubscribe } = usePushNotifications()
-  const { token } = useStore()
+  const { accessToken: token } = useStore()
 
   async function toggle() {
     if (subscribed) {

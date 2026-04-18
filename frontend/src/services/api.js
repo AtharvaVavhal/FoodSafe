@@ -1,17 +1,73 @@
 import axios from 'axios'
+import { useStore } from '../store'
 
-const api = axios.create({
-  // Points directly to your FastAPI backend
-  baseURL: import.meta.env.VITE_API_URL || 'https://foodsafe-api.onrender.com/api',
-  timeout: 30000,
-})
+const BASE = import.meta.env.VITE_API_URL || 'https://foodsafe-api.onrender.com/api'
 
-// ── Auth token injection ──────────────────────────────────
+const api = axios.create({ baseURL: BASE, timeout: 30000 })
+
+// ── Token injection ───────────────────────────────────────
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('foodsafe_token')
+  const token = useStore.getState().accessToken
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
+
+// ── Silent refresh on 401 ────────────────────────────────
+let isRefreshing = false
+let waitQueue    = []  // [{resolve, reject}]
+
+const drainQueue = (token, error) =>
+  waitQueue.splice(0).forEach(p => (token ? p.resolve(token) : p.reject(error)))
+
+api.interceptors.response.use(
+  res => res,
+  async error => {
+    const original = error.config
+
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error)
+    }
+    original._retry = true
+
+    // Queue concurrent requests while refresh is in flight
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        waitQueue.push({
+          resolve: token => {
+            original.headers.Authorization = `Bearer ${token}`
+            resolve(api(original))
+          },
+          reject,
+        })
+      })
+    }
+
+    isRefreshing = true
+    const { refreshToken, setAccessToken, logout } = useStore.getState()
+
+    if (!refreshToken) {
+      isRefreshing = false
+      logout()
+      return Promise.reject(error)
+    }
+
+    try {
+      const { data } = await axios.post(`${BASE}/users/refresh`, {
+        refresh_token: refreshToken,
+      })
+      setAccessToken(data.access_token, data.refresh_token)
+      drainQueue(data.access_token, null)
+      original.headers.Authorization = `Bearer ${data.access_token}`
+      return api(original)
+    } catch (refreshError) {
+      drainQueue(null, refreshError)
+      logout()
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
+  }
+)
 
 // ── Auth ──────────────────────────────────────────────────
 export const register = (payload) =>
@@ -29,7 +85,7 @@ export const scanFoodAPI = (payload) =>
 
 export const scanImageAPI = (formData) =>
   api.post('/scan/image', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
   }).then(r => r.data)
 
 export const scanBarcodeAPI = (barcode) =>

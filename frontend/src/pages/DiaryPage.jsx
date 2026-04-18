@@ -5,7 +5,7 @@ import { t } from '../i18n/translations'
 import { useEffect, useState } from 'react'
 import { BookOpen, AlertTriangle, Download, FileText, PieChart, BarChart2, Lightbulb, UserCheck, ShieldAlert, Sparkles, RefreshCw, FileWarning } from 'lucide-react'
 
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const RISK_COLOR = { LOW: '#00e09c', MEDIUM: '#fac775', HIGH: '#f7c1c1', CRITICAL: '#ff7b7b' }
 const RISK_BG = { LOW: 'bg-brand/10', MEDIUM: 'bg-orange-500/10', HIGH: 'bg-red-500/10', CRITICAL: 'bg-red-900/40' }
@@ -46,7 +46,7 @@ function DonutChart({ data, size = 120 }) {
 }
 
 export default function DiaryPage() {
-  const { scanHistory, lang, token } = useStore()
+  const { scanHistory, lang, accessToken: token } = useStore()
   const [aiInsights, setAiInsights] = useState(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [digest, setDigest] = useState(null)

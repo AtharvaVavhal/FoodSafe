@@ -1,4 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useStore } from './store'
 import Layout from './components/layout/Layout'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
@@ -20,6 +22,12 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
   const { pathname } = useLocation()
+  const { accessToken, refreshAccessToken } = useStore()
+
+  // On page load: if we have a refresh token but no access token, recover silently
+  useEffect(() => {
+    if (!accessToken) refreshAccessToken()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const noLayout = ['/', '/auth'].includes(pathname)
 
   const routes = (

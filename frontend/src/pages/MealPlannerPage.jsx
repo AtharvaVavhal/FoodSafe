@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { Calendar, Sparkles, ChefHat, AlertTriangle, ArrowRight, CheckCircle2, Clock } from 'lucide-react'
 
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const MEAL_ICONS = {
   breakfast: '🌅', morning_snack: '🍵',

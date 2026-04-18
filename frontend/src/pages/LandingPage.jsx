@@ -163,7 +163,7 @@ const DEFAULT_ALERTS = [
 
 export default function LandingPage() {
   const nav = useNavigate()
-  const { token } = useStore() // Get the token
+  const { refreshToken: token } = useStore()
   
   const [statsRef, statsInView] = useInView(0.3)
   const [featRef, featInView] = useInView(0.1)

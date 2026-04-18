@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { Stethoscope, Clock, ShieldAlert, CheckCircle2, ArrowRight } from 'lucide-react'
 
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const URGENCY_CONFIG = {
   MONITOR:        { bg:'bg-brand/10', color:'text-brand', border:'border-brand/30', icon: '🟢', label:'Monitor at home' },

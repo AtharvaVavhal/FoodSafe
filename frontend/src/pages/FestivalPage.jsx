@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { t } from '../i18n/translations'
 import { Calendar, AlertTriangle, ShieldAlert, FileWarning, ArrowRight } from 'lucide-react'
 
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const RISK_CONFIG = {
   LOW:      { bg:'bg-brand/10', text:'text-brand', border:'border-brand/20' },

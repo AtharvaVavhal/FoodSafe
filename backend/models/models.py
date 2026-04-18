@@ -9,17 +9,29 @@ def gen_id():
 
 class User(Base):
     __tablename__ = "users"
-    id            = Column(String, primary_key=True, default=gen_id)
-    name          = Column(String, nullable=False)
-    email         = Column(String, unique=True, index=True)
-    hashed_pw     = Column(String)
-    city          = Column(String, default="")
-    state         = Column(String, default="Maharashtra")
-    lang          = Column(String, default="en")
-    created_at    = Column(DateTime, default=datetime.utcnow)
-    scans         = relationship("ScanRecord", back_populates="user")
-    members       = relationship("FamilyMember", back_populates="user")
-    push_subs     = relationship("PushSubscriptionRecord", back_populates="user")
+    id             = Column(String, primary_key=True, default=gen_id)
+    name           = Column(String, nullable=False)
+    email          = Column(String, unique=True, index=True)
+    hashed_pw      = Column(String)
+    city           = Column(String, default="")
+    state          = Column(String, default="Maharashtra")
+    lang           = Column(String, default="en")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    scans          = relationship("ScanRecord", back_populates="user")
+    members        = relationship("FamilyMember", back_populates="user")
+    push_subs      = relationship("PushSubscriptionRecord", back_populates="user")
+    refresh_tokens = relationship("RefreshToken", back_populates="user")
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    id         = Column(String, primary_key=True, default=gen_id)
+    user_id    = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    token_hash = Column(String, unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user       = relationship("User", back_populates="refresh_tokens")
 
 class FamilyMember(Base):
     __tablename__ = "family_members"

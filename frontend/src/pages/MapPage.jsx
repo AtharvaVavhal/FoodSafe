@@ -7,7 +7,7 @@ import {
   TrendingUp, Shield, Flame
 } from 'lucide-react'
 
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 // ── Risk config ────────────────────────────────────────────────────────────
 const RISK_CONFIG = {
@@ -420,7 +420,7 @@ function ReportForm({ lang, token, onClose, onSuccess }) {
 
 // ── Main MapPage ─────────────────────────────────────────────────────────────
 export default function MapPage() {
-  const { lang, token } = useStore()
+  const { lang, accessToken: token } = useStore()
   const [cities, setCities] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
@@ -584,8 +584,8 @@ export default function MapPage() {
       {/* ── FAB ── */}
       <button onClick={() => setShowForm(true)}
         className="fixed bottom-24 md:bottom-10 right-6 flex items-center gap-2.5 pl-4 pr-5 h-12 rounded-full font-bold text-sm tracking-wide transition-all duration-300 group"
-        style={{ zIndex: 1500 }}
         style={{
+          zIndex: 1500,
           background: 'rgba(239,68,68,0.9)',
           border: '1px solid rgba(239,68,68,0.5)',
           boxShadow: '0 4px 24px rgba(239,68,68,0.35)',

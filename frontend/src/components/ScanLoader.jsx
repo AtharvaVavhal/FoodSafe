@@ -191,7 +191,6 @@ export default function ScanLoader({ food = '', lang = 'en' }) {
           border: '3px solid transparent',
           borderTopColor: '#00c896',
           borderRightColor: 'rgba(0,200,150,0.5)',
-          borderRadius: '50%',
           animation: 'spin 2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
           filter: 'drop-shadow(0 0 8px rgba(0,200,150,0.6))',
         }} />

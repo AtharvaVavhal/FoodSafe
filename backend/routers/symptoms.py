@@ -12,4 +12,4 @@ class SymptomRequest(BaseModel):
 
 @router.post("/analyze")
 async def analyze(req: SymptomRequest):
-    return analyze_symptoms(req.symptoms, req.recent_foods or [], req.lang)
+    return await analyze_symptoms(req.symptoms, req.recent_foods or [], req.lang)

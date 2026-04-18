@@ -101,7 +101,7 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
     # ── Multi-turn: if we're mid-symptom flow, continue it ────────────────────
     if session["state"] == "symptoms":
         session["state"] = "idle"
-        result  = analyze_symptoms(message, session.get("recent_foods", []))
+        result  = await analyze_symptoms(message, session.get("recent_foods", []))
         urgency = result.get("urgency", "MONITOR")
         emoji   = {"MONITOR": "👁", "CONSULT_DOCTOR": "👨‍⚕️", "EMERGENCY": "🚨"}.get(urgency, "⚠️")
         causes  = result.get("possibleCauses", [])
@@ -149,7 +149,7 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
     food_name = normalize_food_name(message)
 
     try:
-        result = scan_food_text(food_name, None, lang)
+        result = await scan_food_text(food_name, None, lang)
         session["recent_foods"] = ([food_name] + session.get("recent_foods", []))[:5]
 
         # Append seasonal risk if available

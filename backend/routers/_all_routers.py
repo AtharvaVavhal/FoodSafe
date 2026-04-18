@@ -19,7 +19,7 @@ class SymptomRequest(BaseModel):
 async def symptom_analyze(req: SymptomRequest):
     if not req.symptoms.strip():
         raise HTTPException(400, "symptoms required")
-    return analyze_symptoms(req.symptoms, req.recent_foods or [])
+    return await analyze_symptoms(req.symptoms, req.recent_foods or [])
 
 
 # ────────────────────────────────────── community

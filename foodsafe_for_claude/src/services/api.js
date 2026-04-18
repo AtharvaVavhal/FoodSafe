@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   // Points directly to your FastAPI backend
-  baseURL: import.meta.env.VITE_API_URL || 'https://foodsafe-api.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 30000,
 })
 
